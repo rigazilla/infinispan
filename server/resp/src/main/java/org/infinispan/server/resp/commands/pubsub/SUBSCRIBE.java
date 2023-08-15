@@ -53,7 +53,7 @@ public class SUBSCRIBE extends RespCommand implements Resp3Command, PubSubResp3C
             SubscriberHandler.PubSubListener pubSubListener = new SubscriberHandler.PubSubListener(ctx.channel(), handler.cache().getKeyDataConversion(), handler.cache().getValueDataConversion());
             handler.specificChannelSubscribers().put(wrappedByteArray, pubSubListener);
             byte[] channel = KeyChannelUtils.keyToChannel(keyChannel);
-            CompletionStage<Void> stage = handler.cache().addListenerAsync(pubSubListener, new EventListenerKeysFilter(channel, handler.cache().getKeyDataConversion()), null);
+            CompletionStage<Void> stage = handler.cache().addListenerAsync(pubSubListener, new EventListenerKeysFilter(channel), null);
             aggregateCompletionStage.dependsOn(handler.handleStageListenerError(stage, keyChannel, true));
          }
       }

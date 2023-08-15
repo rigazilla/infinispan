@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.infinispan.commons.marshall.Marshaller;
+import org.infinispan.commons.marshall.WrappedByteArray;
 import org.infinispan.commons.util.Util;
 
 /**
@@ -109,6 +110,7 @@ public final class DefaultTranscoder extends AbstractTranscoder {
          if (content instanceof String) {
             return content.toString().getBytes(UTF_8);
          }
+         if (content instanceof WrappedByteArray) return ((WrappedByteArray) content).getBytes();
          return marshaller.objectToByteBuffer(content);
       }
       return content;
