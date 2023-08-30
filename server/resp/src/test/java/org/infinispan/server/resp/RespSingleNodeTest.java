@@ -71,7 +71,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
 
    @Factory
    public Object[] factory() {
-      return new Object[]{
+      return new Object[] {
             new RespSingleNodeTest(),
             new RespSingleNodeTest().simpleCache()
       };
@@ -304,7 +304,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
    Object[][] booleans() {
       // Reset disabled for now as the client isn't sending a reset command to the
       // server
-      return new Object[][]{{true}, {false}};
+      return new Object[][] { { true }, { false } };
    }
 
    @Test(dataProvider = "booleans")
@@ -352,6 +352,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
       }
    }
 
+   @Test
    public void testPubSub() throws InterruptedException {
       RedisPubSubCommands<String, String> connection = createPubSubConnection();
       BlockingQueue<String> handOffQueue = addPubSubListener(connection);
@@ -378,7 +379,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
       connection.unsubscribe("channel", "test");
 
       int subscriptions = 3;
-      for (String channel : new String[]{"channel2", "doesn't-exist", "channel", "test"}) {
+      for (String channel : new String[] { "channel2", "doesn't-exist", "channel", "test" }) {
          value = handOffQueue.poll(10, TimeUnit.SECONDS);
          assertThat(value).isEqualTo("unsubscribed-" + channel + "-" + Math.max(0, --subscriptions));
       }
@@ -393,7 +394,8 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
 
    public void testAuth() {
       RedisCommands<String, String> redis = redisConnection.sync();
-      Exceptions.expectException(RedisCommandExecutionException.class, "WRONGPASS invalid username-password pair or user is disabled.",
+      Exceptions.expectException(RedisCommandExecutionException.class,
+            "WRONGPASS invalid username-password pair or user is disabled.",
             () -> redis.auth("user", "pass"));
    }
 
@@ -451,7 +453,6 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
       redis.set("dbsize-key", "dbsize-value");
       assertThat(redis.dbsize()).isEqualTo(size + 1);
    }
-
 
    @Test
    public void testClient() {
@@ -546,7 +547,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
          all.add(k);
       }
       Set<String> keys = new HashSet<>();
-      for (KeyScanCursor<String> cursor = redis.scan(); ; cursor = redis.scan(cursor)) {
+      for (KeyScanCursor<String> cursor = redis.scan();; cursor = redis.scan(cursor)) {
          keys.addAll(cursor.getKeys());
          if (cursor.isFinished())
             break;
@@ -566,7 +567,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
       }
       Set<String> keys = new HashSet<>();
       ScanArgs args = ScanArgs.Builder.limit(5);
-      for (KeyScanCursor<String> cursor = redis.scan(args); ; cursor = redis.scan(cursor, args)) {
+      for (KeyScanCursor<String> cursor = redis.scan(args);; cursor = redis.scan(cursor, args)) {
          if (!cursor.isFinished()) {
             assertEquals(5, cursor.getKeys().size());
          }
@@ -590,7 +591,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
       }
       Set<String> keys = new HashSet<>();
       ScanArgs args = ScanArgs.Builder.matches("k1*");
-      for (KeyScanCursor<String> cursor = redis.scan(args); ; cursor = redis.scan(cursor, args)) {
+      for (KeyScanCursor<String> cursor = redis.scan(args);; cursor = redis.scan(cursor, args)) {
          for (String key : cursor.getKeys()) {
             assertThat(key).startsWith("k1");
             keys.add(key);
@@ -675,21 +676,21 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
 
    @DataProvider
    public Object[][] lcsCases() {
-      return new Object[][]{
-            {"GAC", "AGCAT", "AC", new int[][]{{2, 2, 2, 2}, {1, 1, 0, 0}, {2}}},
-            {"XMJYAUZ", "MZJAWXU", "MJAU",
-                  new int[][]{{5, 5, 6, 6}, {4, 4, 3, 3}, {2, 2, 2, 2}, {1, 1, 0, 0}, {4}}},
-            {"ohmytext", "mynewtext", "mytext", new int[][]{{4, 7, 5, 8}, {2, 3, 0, 1}, {6}}},
-            {"ABCBDAB", "BDCABA", "BDAB", new int[][]{{5, 6, 3, 4}, {3, 4, 0, 1}, {4}}},
-            {"ABCEZ12 21AAZ", "12ABZ 21AZAZ", "ABZ 21AAZ",
-                  new int[][]{{11, 12, 10, 11}, {7, 10, 5, 8}, {4, 4, 4, 4}, {0, 1, 2, 3}, {9}}}
+      return new Object[][] {
+            { "GAC", "AGCAT", "AC", new int[][] { { 2, 2, 2, 2 }, { 1, 1, 0, 0 }, { 2 } } },
+            { "XMJYAUZ", "MZJAWXU", "MJAU",
+                  new int[][] { { 5, 5, 6, 6 }, { 4, 4, 3, 3 }, { 2, 2, 2, 2 }, { 1, 1, 0, 0 }, { 4 } } },
+            { "ohmytext", "mynewtext", "mytext", new int[][] { { 4, 7, 5, 8 }, { 2, 3, 0, 1 }, { 6 } } },
+            { "ABCBDAB", "BDCABA", "BDAB", new int[][] { { 5, 6, 3, 4 }, { 3, 4, 0, 1 }, { 4 } } },
+            { "ABCEZ12 21AAZ", "12ABZ 21AZAZ", "ABZ 21AAZ",
+                  new int[][] { { 11, 12, 10, 11 }, { 7, 10, 5, 8 }, { 4, 4, 4, 4 }, { 0, 1, 2, 3 }, { 9 } } }
       };
    }
 
    @DataProvider
    public Object[][] lcsCasesWithMinLen() {
       List<Object[]> testCases = new ArrayList<>();
-      var minLengths = new Object[][]{{1}, {2}, {4}, {10}};
+      var minLengths = new Object[][] { { 1 }, { 2 }, { 4 }, { 10 } };
       var lcsCases = this.lcsCases();
       for (Object[] len : minLengths) {
          for (Object[] lcsCase : lcsCases) {
@@ -784,18 +785,18 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
 
    @Test
    public void testType() {
-      RedisCommands<String, String> redis = redisConnection.sync();
-      redis.set(k(), "1");
-      assertThat(redis.type(k())).isEqualTo("string");
-      redis.hset(k(1), "k", "v");
-      assertThat(redis.type(k(1))).isEqualTo("hash");
-      redis.lpush(k(2), "a");
-      assertThat(redis.type(k(2))).isEqualTo("list");
-      redis.sadd(k(3), "a");
-      assertThat(redis.type(k(3))).isEqualTo("set");
-      redis.zadd(k(4), 1.0, "a");
-      assertThat(redis.type(k(4))).isEqualTo("zset");
-      assertThat(redis.type(k(100))).isEqualTo("none");
+   RedisCommands<String, String> redis = redisConnection.sync();
+   redis.set(k(), "1");
+   assertThat(redis.type(k())).isEqualTo("string");
+   redis.hset(k(1), "k", "v");
+   assertThat(redis.type(k(1))).isEqualTo("hash");
+   redis.lpush(k(2), "a");
+   assertThat(redis.type(k(2))).isEqualTo("list");
+   redis.sadd(k(3), "a");
+   assertThat(redis.type(k(3))).isEqualTo("set");
+   redis.zadd(k(4), 1.0, "a");
+   assertThat(redis.type(k(4))).isEqualTo("zset");
+   assertThat(redis.type(k(100))).isEqualTo("none");
    }
 
    @Test
