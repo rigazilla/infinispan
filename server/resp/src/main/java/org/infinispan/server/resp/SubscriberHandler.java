@@ -174,4 +174,22 @@ public class SubscriberHandler extends CacheRespRequestHandler {
          }
       });
    }
+
+      public CompletionStage<RespRequestHandler> dontSendAndBlock(ChannelHandlerContext ctx, CompletionStage<Void> stageToWaitFor,
+         Collection<byte[]> keyChannels, boolean subscribeOrUnsubscribe) {
+      return stageToReturn(stageToWaitFor, ctx, (__, alloc) -> {
+         assert ctx.executor().inEventLoop();
+
+         Long counter = ctx.channel().attr(SUBSCRIPTIONS_COUNTER).get();
+         if (counter == null) counter = 0L;
+
+         if (counter == 0) {
+            ctx.channel().attr(SUBSCRIPTIONS_COUNTER).set(null);
+         } else {
+            ctx.channel().attr(SUBSCRIPTIONS_COUNTER).set(counter);
+         }
+      });
+   }
+
+
 }

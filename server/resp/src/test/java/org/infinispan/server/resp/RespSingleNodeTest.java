@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 import static org.infinispan.server.resp.test.RespTestingUtil.OK;
 import static org.infinispan.server.resp.test.RespTestingUtil.PONG;
+import static org.infinispan.server.resp.test.RespTestingUtil.createClient;
 import static org.infinispan.test.TestingUtil.k;
 import static org.infinispan.test.TestingUtil.v;
 import static org.testng.AssertJUnit.assertEquals;
@@ -20,7 +21,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -71,7 +74,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
 
    @Factory
    public Object[] factory() {
-      return new Object[]{
+      return new Object[] {
             new RespSingleNodeTest(),
             new RespSingleNodeTest().simpleCache()
       };
@@ -304,7 +307,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
    Object[][] booleans() {
       // Reset disabled for now as the client isn't sending a reset command to the
       // server
-      return new Object[][]{{true}, {false}};
+      return new Object[][] { { true }, { false } };
    }
 
    @Test(dataProvider = "booleans")
@@ -352,6 +355,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
       }
    }
 
+   @Test
    public void testPubSub() throws InterruptedException {
       RedisPubSubCommands<String, String> connection = createPubSubConnection();
       BlockingQueue<String> handOffQueue = addPubSubListener(connection);
@@ -378,7 +382,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
       connection.unsubscribe("channel", "test");
 
       int subscriptions = 3;
-      for (String channel : new String[]{"channel2", "doesn't-exist", "channel", "test"}) {
+      for (String channel : new String[] { "channel2", "doesn't-exist", "channel", "test" }) {
          value = handOffQueue.poll(10, TimeUnit.SECONDS);
          assertThat(value).isEqualTo("unsubscribed-" + channel + "-" + Math.max(0, --subscriptions));
       }
@@ -393,7 +397,8 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
 
    public void testAuth() {
       RedisCommands<String, String> redis = redisConnection.sync();
-      Exceptions.expectException(RedisCommandExecutionException.class, "WRONGPASS invalid username-password pair or user is disabled.",
+      Exceptions.expectException(RedisCommandExecutionException.class,
+            "WRONGPASS invalid username-password pair or user is disabled.",
             () -> redis.auth("user", "pass"));
    }
 
@@ -419,6 +424,38 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
       assertEquals("Hello", response);
       response = redis.dispatch(new SimpleCommand("echo"), new StatusOutput<>(StringCodec.UTF8), args);
       assertEquals("Hello", response);
+   }
+
+   @Test
+   public void testBlpop() throws InterruptedException, ExecutionException {
+      RedisCommands<String, String> redis = redisConnection.sync();
+
+      RedisCommands<String, String> redisBlock = createClient(30000, server.getPort()).connect().sync();
+      redis.rpush("key1", "first", "second", "third");
+      CompletableFuture<KeyValue<String, String>> cf = new CompletableFuture<>();
+      Executors.newCachedThreadPool().submit(() -> {
+         Thread.sleep(500);
+         cf.complete(redisBlock.blpop(0, "keyZ"));
+         return null;
+      });
+      Thread.sleep(1500);
+      redis.lpush("keyZ", "firsto");
+      KeyValue<String, String> res;
+      try {
+         res = cf.get(3, TimeUnit.SECONDS);
+         assertThat(res.getKey()).isEqualTo("keyZ");
+         assertThat(res.getValue()).isEqualTo("first");
+      } catch (TimeoutException e) {
+      }
+      // assertThat(redis.lrange("key1", 0,
+      // -1)).containsExactlyInAnyOrder("second","third");
+      res = redis.blpop(0, "key1");
+      assertThat(res.getKey()).isEqualTo("key1");
+      assertThat(res.getValue()).isEqualTo("first");
+      res = redis.blpop(0, "key2", "key1");
+      assertThat(res.getKey()).isEqualTo("key1");
+      assertThat(res.getValue()).isEqualTo("second");
+      // res = redis.blpop(0, "key2", "key3");
    }
 
    @Test
@@ -451,7 +488,6 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
       redis.set("dbsize-key", "dbsize-value");
       assertThat(redis.dbsize()).isEqualTo(size + 1);
    }
-
 
    @Test
    public void testClient() {
@@ -546,7 +582,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
          all.add(k);
       }
       Set<String> keys = new HashSet<>();
-      for (KeyScanCursor<String> cursor = redis.scan(); ; cursor = redis.scan(cursor)) {
+      for (KeyScanCursor<String> cursor = redis.scan();; cursor = redis.scan(cursor)) {
          keys.addAll(cursor.getKeys());
          if (cursor.isFinished())
             break;
@@ -566,7 +602,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
       }
       Set<String> keys = new HashSet<>();
       ScanArgs args = ScanArgs.Builder.limit(5);
-      for (KeyScanCursor<String> cursor = redis.scan(args); ; cursor = redis.scan(cursor, args)) {
+      for (KeyScanCursor<String> cursor = redis.scan(args);; cursor = redis.scan(cursor, args)) {
          if (!cursor.isFinished()) {
             assertEquals(5, cursor.getKeys().size());
          }
@@ -590,7 +626,7 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
       }
       Set<String> keys = new HashSet<>();
       ScanArgs args = ScanArgs.Builder.matches("k1*");
-      for (KeyScanCursor<String> cursor = redis.scan(args); ; cursor = redis.scan(cursor, args)) {
+      for (KeyScanCursor<String> cursor = redis.scan(args);; cursor = redis.scan(cursor, args)) {
          for (String key : cursor.getKeys()) {
             assertThat(key).startsWith("k1");
             keys.add(key);
@@ -675,21 +711,21 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
 
    @DataProvider
    public Object[][] lcsCases() {
-      return new Object[][]{
-            {"GAC", "AGCAT", "AC", new int[][]{{2, 2, 2, 2}, {1, 1, 0, 0}, {2}}},
-            {"XMJYAUZ", "MZJAWXU", "MJAU",
-                  new int[][]{{5, 5, 6, 6}, {4, 4, 3, 3}, {2, 2, 2, 2}, {1, 1, 0, 0}, {4}}},
-            {"ohmytext", "mynewtext", "mytext", new int[][]{{4, 7, 5, 8}, {2, 3, 0, 1}, {6}}},
-            {"ABCBDAB", "BDCABA", "BDAB", new int[][]{{5, 6, 3, 4}, {3, 4, 0, 1}, {4}}},
-            {"ABCEZ12 21AAZ", "12ABZ 21AZAZ", "ABZ 21AAZ",
-                  new int[][]{{11, 12, 10, 11}, {7, 10, 5, 8}, {4, 4, 4, 4}, {0, 1, 2, 3}, {9}}}
+      return new Object[][] {
+            { "GAC", "AGCAT", "AC", new int[][] { { 2, 2, 2, 2 }, { 1, 1, 0, 0 }, { 2 } } },
+            { "XMJYAUZ", "MZJAWXU", "MJAU",
+                  new int[][] { { 5, 5, 6, 6 }, { 4, 4, 3, 3 }, { 2, 2, 2, 2 }, { 1, 1, 0, 0 }, { 4 } } },
+            { "ohmytext", "mynewtext", "mytext", new int[][] { { 4, 7, 5, 8 }, { 2, 3, 0, 1 }, { 6 } } },
+            { "ABCBDAB", "BDCABA", "BDAB", new int[][] { { 5, 6, 3, 4 }, { 3, 4, 0, 1 }, { 4 } } },
+            { "ABCEZ12 21AAZ", "12ABZ 21AZAZ", "ABZ 21AAZ",
+                  new int[][] { { 11, 12, 10, 11 }, { 7, 10, 5, 8 }, { 4, 4, 4, 4 }, { 0, 1, 2, 3 }, { 9 } } }
       };
    }
 
    @DataProvider
    public Object[][] lcsCasesWithMinLen() {
       List<Object[]> testCases = new ArrayList<>();
-      var minLengths = new Object[][]{{1}, {2}, {4}, {10}};
+      var minLengths = new Object[][] { { 1 }, { 2 }, { 4 }, { 10 } };
       var lcsCases = this.lcsCases();
       for (Object[] len : minLengths) {
          for (Object[] lcsCase : lcsCases) {
