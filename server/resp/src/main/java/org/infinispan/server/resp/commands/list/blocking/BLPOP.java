@@ -28,7 +28,6 @@ import org.infinispan.server.resp.SubscriberHandler;
 import org.infinispan.server.resp.commands.ArgumentUtils;
 import org.infinispan.server.resp.commands.PubSubResp3Command;
 import org.infinispan.server.resp.commands.Resp3Command;
-import org.infinispan.server.resp.commands.pubsub.KeyChannelUtils;
 import org.infinispan.server.resp.filter.EventListenerKeysFilter;
 import org.infinispan.server.resp.logging.Log;
 import org.infinispan.util.concurrent.AggregateCompletionStage;
