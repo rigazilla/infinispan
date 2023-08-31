@@ -2,6 +2,9 @@ package org.infinispan.server.resp.commands.list.blocking;
 
 import static org.infinispan.server.resp.RespConstants.CRLF_STRING;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOError;
+import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -9,6 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 
 import org.infinispan.commons.logging.LogFactory;
 import org.infinispan.commons.marshall.WrappedByteArray;
@@ -37,7 +41,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.CharsetUtil;
-
 
 /**
  * @link https://redis.io/commands/subscribe/
@@ -92,34 +95,30 @@ public class BLPOP extends RespCommand implements Resp3Command, PubSubResp3Comma
    }
 
    AggregateCompletionStage<Void> addSubscribers(List<byte[]> arguments, int lastKeyIdx, SubscriberHandler handler,
-         ChannelHandlerContext ctx) {
+         ChannelHandlerContext ctx) throws IOException {
       AggregateCompletionStage<Void> aggregateCompletionStage = CompletionStages.aggregateCompletionStage();
+      var filterKeys = arguments.subList(0, lastKeyIdx);
       for (int i = 0; i < lastKeyIdx; ++i) {
          var keyChannel = arguments.get(i);
-
          if (log.isTraceEnabled()) {
-            log.tracef("Subscriber for channel: " +
-                  CharsetUtil.UTF_8.decode(ByteBuffer.wrap(keyChannel)));
+            log.tracef("Subscriber for keys: " +
+                  filterKeys.toString());
          }
-         WrappedByteArray wrappedByteArray = new WrappedByteArray(keyChannel);
-         if (handler.specificChannelSubscribers().get(wrappedByteArray) == null) {
-            PubSubListener pubSubListener = new PubSubListener(ctx.channel(),
-                  handler.cache().getKeyDataConversion(),
-                  handler.cache().getValueDataConversion());
-            handler.specificChannelSubscribers().put(wrappedByteArray, pubSubListener);
-            byte[] channel = keyChannel;
-            CompletionStage<Void> stage = handler.cache().addListenerAsync(pubSubListener,
-                  new EventListenerKeysFilter(channel, handler.cache().getKeyDataConversion()),
-                  null);
-            aggregateCompletionStage.dependsOn(handler.handleStageListenerError(stage,
-                  keyChannel, true));
-         }
+         PubSubListener pubSubListener = new PubSubListener(ctx.channel(),
+               handler.cache().getKeyDataConversion(),
+               handler.cache().getValueDataConversion());
+         byte[] channel = keyChannel;
+         CompletionStage<Void> stage = handler.cache().addListenerAsync(pubSubListener,
+               new EventListenerKeysFilter(filterKeys.toArray(byte[][]::new), handler.cache().getKeyDataConversion()),
+               null);
+         aggregateCompletionStage.dependsOn(handler.handleStageListenerError(stage,
+               keyChannel, true));
       }
       return aggregateCompletionStage;
    }
 
    @Listener(clustered = true)
-   public static class PubSubListener extends SubscriberHandler.PubSubListener{
+   public static class PubSubListener extends SubscriberHandler.PubSubListener {
       private final Channel channel;
       private final DataConversion keyConversion;
       private final DataConversion valueConversion;
