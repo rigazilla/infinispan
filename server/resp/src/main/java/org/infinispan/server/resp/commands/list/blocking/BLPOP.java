@@ -95,7 +95,7 @@ public class BLPOP extends RespCommand implements Resp3Command, PubSubResp3Comma
    }
 
    AggregateCompletionStage<Void> addSubscribers(List<byte[]> arguments, int lastKeyIdx, SubscriberHandler handler,
-         ChannelHandlerContext ctx) throws IOException {
+         ChannelHandlerContext ctx) {
       AggregateCompletionStage<Void> aggregateCompletionStage = CompletionStages.aggregateCompletionStage();
       var filterKeys = arguments.subList(0, lastKeyIdx);
       for (int i = 0; i < lastKeyIdx; ++i) {
@@ -107,7 +107,6 @@ public class BLPOP extends RespCommand implements Resp3Command, PubSubResp3Comma
          PubSubListener pubSubListener = new PubSubListener(ctx.channel(),
                handler.cache().getKeyDataConversion(),
                handler.cache().getValueDataConversion());
-         byte[] channel = keyChannel;
          CompletionStage<Void> stage = handler.cache().addListenerAsync(pubSubListener,
                new EventListenerKeysFilter(filterKeys.toArray(byte[][]::new), handler.cache().getKeyDataConversion()),
                null);
