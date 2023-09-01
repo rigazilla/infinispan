@@ -82,7 +82,7 @@ public class EventListenerKeysFilter implements CacheEventFilter<Object, Object>
 
       @Override
       public EventListenerKeysFilter readObject(ObjectInput input) throws IOException, ClassNotFoundException {
-         List<byte[]> keys = MarshallUtil.unmarshallCollection(input, ArrayList::new);
+         List<byte[]> keys = new ArrayList(MarshallUtil.unmarshallCollection(input, ArrayList::new));
          return new EventListenerKeysFilter(keys);
       }
 

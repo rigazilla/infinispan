@@ -2,20 +2,14 @@ package org.infinispan.server.resp.commands.list.blocking;
 
 import static org.infinispan.server.resp.RespConstants.CRLF_STRING;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOError;
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.stream.Collectors;
 
 import org.infinispan.commons.logging.LogFactory;
-import org.infinispan.commons.marshall.WrappedByteArray;
 import org.infinispan.commons.util.concurrent.CompletableFutures;
 import org.infinispan.encoding.DataConversion;
 import org.infinispan.multimap.impl.EmbeddedMultimapListCache;
@@ -108,8 +102,7 @@ public class BLPOP extends RespCommand implements Resp3Command, PubSubResp3Comma
                handler.cache().getKeyDataConversion(),
                handler.cache().getValueDataConversion());
          CompletionStage<Void> stage = handler.cache().addListenerAsync(pubSubListener,
-               new EventListenerKeysFilter(filterKeys.toArray(byte[][]::new), handler.cache().getKeyDataConversion()),
-               null);
+               new EventListenerKeysFilter(filterKeys.toArray(byte[][]::new)), null);
          aggregateCompletionStage.dependsOn(handler.handleStageListenerError(stage,
                keyChannel, true));
       }
