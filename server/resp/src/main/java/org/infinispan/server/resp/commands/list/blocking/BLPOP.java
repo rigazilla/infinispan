@@ -1,7 +1,5 @@
 package org.infinispan.server.resp.commands.list.blocking;
 
-import static org.infinispan.server.resp.RespConstants.CRLF_STRING;
-
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,13 +26,9 @@ import org.infinispan.server.resp.commands.PubSubResp3Command;
 import org.infinispan.server.resp.commands.Resp3Command;
 import org.infinispan.server.resp.filter.EventListenerKeysFilter;
 import org.infinispan.server.resp.logging.Log;
-import org.infinispan.util.concurrent.AggregateCompletionStage;
-import org.infinispan.util.concurrent.CompletionStages;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.util.CharsetUtil;
 
 /**
  * @link https://redis.io/commands/subscribe/
@@ -42,7 +36,6 @@ import io.netty.util.CharsetUtil;
  */
 public class BLPOP extends RespCommand implements Resp3Command, PubSubResp3Command {
    private static final Log log = LogFactory.getLog(MethodHandles.lookup().lookupClass(), Log.class);
-
    public BLPOP() {
       super(-3, 1, -2, 1);
    }
@@ -66,7 +59,7 @@ public class BLPOP extends RespCommand implements Resp3Command, PubSubResp3Comma
       // If all the keys are empty or null, create a listener for each key
       // otherwise return the left value of the first non empty list
       var pollStage = pollKeyValue(listMultimap, arguments.get(0));
-      for (int i = 0; i < lastKeyIdx; ++i) {
+      for (int i = 1; i < lastKeyIdx; ++i) {
          var keyChannel = arguments.get(i);
          // chain all polls returning first not null value or null/empty list
          pollStage = pollStage.thenCompose(
@@ -75,10 +68,12 @@ public class BLPOP extends RespCommand implements Resp3Command, PubSubResp3Comma
                      : CompletableFuture.completedFuture(v));
       }
       // If no value returned, we need subscribers
-      return pollStage.thenCompose(v -> (v != null && !v.isEmpty())
-            ? handler.stageToReturn(CompletableFuture.completedFuture(v), ctx, Consumers.COLLECTION_BULK_BICONSUMER)
-            : handler.dontSendAndBlock(ctx, addSubscribers(arguments, lastKeyIdx, handler, ctx).freeze(), arguments,
-                  true));
+      return pollStage.thenCompose(v ->
+            handler.stageToReturn(
+                (v != null && !v.isEmpty())
+               ? CompletableFuture.completedFuture(v)
+               : addSubscriber(arguments, lastKeyIdx, handler, ctx)
+               , ctx, Consumers.COLLECTION_BULK_BICONSUMER));
    }
 
    CompletionStage<Collection<byte[]>> pollKeyValue(EmbeddedMultimapListCache<byte[], byte[]> cache, byte[] key) {
@@ -88,12 +83,9 @@ public class BLPOP extends RespCommand implements Resp3Command, PubSubResp3Comma
                   : Arrays.asList(key, v.iterator().next()));
    }
 
-   AggregateCompletionStage<Void> addSubscribers(List<byte[]> arguments, int lastKeyIdx, SubscriberHandler handler,
+   CompletionStage<Collection<byte[]>> addSubscriber(List<byte[]> arguments, int lastKeyIdx, SubscriberHandler handler,
          ChannelHandlerContext ctx) {
-      AggregateCompletionStage<Void> aggregateCompletionStage = CompletionStages.aggregateCompletionStage();
       var filterKeys = arguments.subList(0, lastKeyIdx);
-      for (int i = 0; i < lastKeyIdx; ++i) {
-         var keyChannel = arguments.get(i);
          if (log.isTraceEnabled()) {
             log.tracef("Subscriber for keys: " +
                   filterKeys.toString());
@@ -101,12 +93,10 @@ public class BLPOP extends RespCommand implements Resp3Command, PubSubResp3Comma
          PubSubListener pubSubListener = new PubSubListener(ctx.channel(),
                handler.cache().getKeyDataConversion(),
                handler.cache().getValueDataConversion());
-         CompletionStage<Void> stage = handler.cache().addListenerAsync(pubSubListener,
+         // TODO: should depend from the addListenerAsync future?
+         handler.cache().addListenerAsync(pubSubListener,
                new EventListenerKeysFilter(filterKeys.toArray(byte[][]::new)), null);
-         aggregateCompletionStage.dependsOn(handler.handleStageListenerError(stage,
-               keyChannel, true));
-      }
-      return aggregateCompletionStage;
+      return pubSubListener.getFuture();
    }
 
    @Listener(clustered = true)
@@ -114,6 +104,11 @@ public class BLPOP extends RespCommand implements Resp3Command, PubSubResp3Comma
       private final Channel channel;
       private final DataConversion keyConversion;
       private final DataConversion valueConversion;
+      private CompletableFuture<Collection<byte[]>> future = new CompletableFuture<>();
+
+      public CompletableFuture<Collection<byte[]>> getFuture() {
+         return future;
+      }
 
       public PubSubListener(Channel channel, DataConversion keyConversion, DataConversion valueConversion) {
          super(channel, keyConversion, valueConversion);
@@ -128,25 +123,7 @@ public class BLPOP extends RespCommand implements Resp3Command, PubSubResp3Comma
          byte[] key = (byte[]) keyConversion.fromStorage(entryEvent.getKey());
          ListBucket<byte[]> bucket = (ListBucket<byte[]>) entryEvent.getValue();
          byte[] value = bucket == null ? null : bucket.toDeque().peek();
-         if (key.length > 0 && value != null && value.length > 0) {
-            // *3 + \r\n + $7 + \r\n + message + \r\n + $ + keylength (log10 + 1) + \r\n +
-            // key + \r\n +
-            // $ + valuelength (log 10 + 1) + \r\n + value + \r\n
-            int byteSize = 2 + 2 + (int) Math.log10(key.length) + 1
-                  + 2 + key.length + 2 + 1 + (int) Math.log10(value.length) + 1 + 2 + value.length + 2;
-            // TODO: this is technically an issue with concurrent events before/after
-            // register/unregister message
-            ByteBuf byteBuf = channel.alloc().buffer(byteSize, byteSize);
-            byteBuf.writeCharSequence("*2\r\n" + key.length + CRLF_STRING, CharsetUtil.US_ASCII);
-            byteBuf.writeBytes(key);
-            byteBuf.writeCharSequence("\r\n$" + value.length + CRLF_STRING, CharsetUtil.US_ASCII);
-            byteBuf.writeBytes(value);
-            byteBuf.writeByte('\r');
-            byteBuf.writeByte('\n');
-            assert byteBuf.writerIndex() == byteSize;
-            // TODO: add some back pressure? - something like ClientListenerRegistry?
-            channel.writeAndFlush(byteBuf, channel.voidPromise());
-         }
+         future.complete(Arrays.asList(key,value));
          return CompletableFutures.completedNull();
       }
    }
