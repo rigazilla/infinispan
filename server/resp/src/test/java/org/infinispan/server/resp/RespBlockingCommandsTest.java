@@ -5,14 +5,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.infinispan.server.resp.test.RespTestingUtil.createClient;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.notifications.cachelistener.CacheNotifier;
+import org.infinispan.notifications.cachelistener.CacheNotifierImpl;
+import org.infinispan.server.resp.commands.list.blocking.BLPOP;
 import org.infinispan.server.resp.test.RespTestingUtil;
+import org.infinispan.test.TestingUtil;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
@@ -62,6 +65,13 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       }
    }
 
+   private CompletableFuture<KeyValue<String, String>> registerBLPOPListener(RedisAsyncCommands<String, String> redis, long timeout, String ... keys) {
+      RedisFuture<KeyValue<String, String>> rf = redis.blpop(timeout, keys);
+      CacheNotifierImpl<?, ?> cni = (CacheNotifierImpl<?, ?>) TestingUtil.extractComponent(cache, CacheNotifier.class);
+      eventually(() -> cni.getListeners().stream().anyMatch(l -> l instanceof BLPOP.PubSubListener));
+      return rf.toCompletableFuture();
+   }
+
    @Test
    void testBlpopAsync() throws InterruptedException, ExecutionException, TimeoutException {
       RedisCommands<String, String> redis = redisConnection.sync();
@@ -69,17 +79,11 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       RedisAsyncCommands<String, String> redis1 = client.connect().async();
       redis.lpush("keyY", "firstY");
       redis.rpush("key1", "first", "second", "third");
-      CountDownLatch latch = new CountDownLatch(1);
-      var cf = CompletableFuture.supplyAsync(() -> {
-         var rf = redis1.blpop(0, "keyZ");
-         latch.countDown();
-         return rf.toCompletableFuture();
-      }, testExecutor()).thenCompose(v -> v);
+      var cf = registerBLPOPListener(redis1, 0, "keyZ");
       // Ensure lpush is after blpop
       try {
-         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
          redis.lpush("keyZ", "firstZ");
-         var response = cf.get(4, TimeUnit.SECONDS);
+         var response = cf.get(10, TimeUnit.SECONDS);
          assertThat(response.getKey()).isEqualTo("keyZ");
          assertThat(response.getValue()).isEqualTo("firstZ");
       } finally {
@@ -92,17 +96,10 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       RedisCommands<String, String> redis = redisConnection.sync();
       var client = createClient(30000, server.getPort());
       RedisAsyncCommands<String, String> redisBlock = client.connect().async();
-      CountDownLatch latch = new CountDownLatch(1);
-      var cf = CompletableFuture.supplyAsync(() -> {
-         RedisFuture<KeyValue<String, String>> rf = redisBlock.blpop(0, "keyZ");
-         latch.countDown();
-         return rf.toCompletableFuture();
-      }, testExecutor()).thenCompose(v -> v);
-      // Ensure lpush is after blpop
+      var cf = registerBLPOPListener(redisBlock, 0, "keyZ");
       try {
-         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
          redis.lpush("keyZ", "firstZ");
-         var res = cf.get(3, TimeUnit.SECONDS);
+         var res = cf.get(10, TimeUnit.SECONDS);
          assertThat(res.getKey()).isEqualTo("keyZ");
          assertThat(res.getValue()).isEqualTo("firstZ");
 
@@ -125,27 +122,21 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       RedisCommands<String, String> redis = redisConnection.sync();
       var client = createClient(30000, server.getPort());
       RedisAsyncCommands<String, String> redisAsync = client.connect().async();
+
       redis.rpush("key1", "first", "second", "third");
-      assertThatThrownBy(() -> {
-         redisAsync.blpop(-1, "keyZ").get();
-      }).cause().isInstanceOf(RedisCommandExecutionException.class)
+
+      assertThatThrownBy(() -> redisAsync.blpop(-1, "keyZ").get(10, TimeUnit.SECONDS))
+            .cause()
+            .isInstanceOf(RedisCommandExecutionException.class)
             .hasMessageContaining("ERR value is out of range, must be positive");
       var res = redisAsync.blpop(1, "keyZ");
       // Ensure blpop is expired
-      res.get();
+      eventually(res::isDone);
       redis.lpush("keyZ", "firstZ");
       assertThat(res.get()).isNull();
 
-      CountDownLatch latch = new CountDownLatch(1);
-      var cf = CompletableFuture.supplyAsync(() -> {
-         var rf = redisAsync.blpop(1, "keyY");
-         latch.countDown();
-         return rf.toCompletableFuture();
-      }, testExecutor()).thenCompose(v -> v);
-      // Ensure lpush is after blpop
+      var cf = registerBLPOPListener(redisAsync, 0, "keyY");
       try {
-         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
-         Thread.sleep(500);
          redis.lpush("keyY", "valueY");
          assertThat(cf.get().getKey()).isEqualTo("keyY");
          assertThat(cf.get().getValue()).isEqualTo("valueY");

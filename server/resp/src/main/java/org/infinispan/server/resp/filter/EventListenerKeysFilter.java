@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.encoding.DataConversion;
 import org.infinispan.metadata.Metadata;
 import org.infinispan.notifications.cachelistener.filter.CacheEventFilter;
@@ -33,6 +34,11 @@ public class EventListenerKeysFilter implements CacheEventFilter<Object, Object>
    public EventListenerKeysFilter(byte[] key, DataConversion conversion) {
       this.keys = Map.of(key.length, Collections.singletonList(key));
       this.keyConversion = conversion;
+   }
+
+   @Override
+   public MediaType format() {
+      return null;
    }
 
    @Override

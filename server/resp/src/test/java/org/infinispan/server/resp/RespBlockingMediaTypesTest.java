@@ -46,9 +46,10 @@ public class RespBlockingMediaTypesTest extends RespBlockingCommandsTest {
    public Object[] factory() {
       List<RespBlockingMediaTypesTest> instances = new ArrayList<>();
       MediaType[] types = new MediaType[] {
+            MediaType.APPLICATION_PROTOSTREAM,
             MediaType.APPLICATION_OCTET_STREAM,
             MediaType.APPLICATION_OBJECT,
-            // MediaType.TEXT_PLAIN,
+            MediaType.TEXT_PLAIN,
       };
       for (MediaType value : types) {
          instances.add(new RespBlockingMediaTypesTest().withValueType(value));
