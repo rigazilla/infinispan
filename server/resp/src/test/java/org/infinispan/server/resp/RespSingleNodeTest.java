@@ -806,6 +806,14 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
    }
 
    @Test
+   public void testPTTLList() {
+      RedisCommands<String, String> redis = redisConnection.sync();
+      redis.rpush(k(), v());
+      assertThat(redis.pttl(k())).isEqualTo(-1);
+      assertThat(redis.pttl(k(1))).isEqualTo(-2);
+   }
+
+   @Test
    public void testExpireTime() {
       RedisCommands<String, String> redis = redisConnection.sync();
       redis.set(k(), v());
