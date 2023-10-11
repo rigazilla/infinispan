@@ -31,7 +31,6 @@ import org.infinispan.server.resp.commands.ArgumentUtils;
 import org.infinispan.server.resp.commands.Resp3Command;
 import org.infinispan.server.resp.filter.EventListenerKeysFilter;
 import org.infinispan.server.resp.logging.Log;
-import org.infinispan.util.concurrent.CompletionStages;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -66,26 +65,14 @@ public class BLPOP extends RespCommand implements Resp3Command {
       // otherwise return the left value of the first non empty list
       var pollStage = pollAllKeys(listMultimap, arguments);
       // If no value returned, we need subscribers
-      return pollStage.thenCompose(v -> {
+      return handler.stageToReturn(pollStage.thenCompose(v -> {
          // addSubscriber call can rise exception that needs to be reported
          // as error
-         try {
             var retStage = (v != null && !v.isEmpty())
                   ? CompletableFuture.completedFuture(v)
                   : addSubscriber(listMultimap, filterKeys, timeout, handler, ctx);
-            return CompletionStages.handleAndCompose(retStage, (s, t) -> {
-               if (t != null) {
-                  RespErrorUtil.customError(t.toString(), handler.allocator());
-                  return handler.myStage();
-               }
-               return handler.stageToReturn(CompletableFuture.completedFuture(s), ctx,
-                     Consumers.COLLECTION_BULK_BICONSUMER);
-            });
-         } catch (Exception ex) {
-            RespErrorUtil.customError(ex.toString(), handler.allocator());
-            return handler.myStage();
-         }
-      });
+                  return retStage;
+      }), ctx, Consumers.COLLECTION_BULK_BICONSUMER);
    }
 
    CompletionStage<Collection<byte[]>> pollKeyValue(EmbeddedMultimapListCache<byte[], byte[]> mmList, byte[] key) {
@@ -108,26 +95,21 @@ public class BLPOP extends RespCommand implements Resp3Command {
       EventListenerKeysFilter filter = new EventListenerKeysFilter(filterKeys.toArray(byte[][]::new));
       CacheEventConverter<Object, Object, Object> converter = (key, oldValue, oldMetadata, newValue, newMetadata,
             eventType) -> vc.fromStorage(newValue);
-      var listnerStage = cache.addListenerAsync(pubSubListener, filter, converter);
-      listnerStage.whenComplete((s, t) -> {
-         if (t != null) {
-            pubSubListener.getFuture().completeExceptionally(t);
+      cache.addListener(pubSubListener, filter, converter);
+      final ScheduledFuture<?> scheduledTimer = (timeout > 0) ? ctx.channel().eventLoop().schedule(() -> {
+         pubSubListener.getFuture().complete(null);
+      }, timeout, TimeUnit.MILLISECONDS) : null;
+      pubSubListener.getFuture().thenAccept(ignore -> {
+         if (scheduledTimer != null) {
+            scheduledTimer.cancel(true);
          }
-         final ScheduledFuture<?> scheduledTimer = (timeout > 0) ? ctx.channel().eventLoop().schedule(() -> {
-            pubSubListener.getFuture().complete(null);
-         }, timeout, TimeUnit.MILLISECONDS) : null;
-         pubSubListener.getFuture().thenAccept(ignore -> {
-               if (scheduledTimer != null) {
-                  scheduledTimer.cancel(true);
-               }
-         });
-         pollAllKeys(listMultimap, filterKeys).thenAccept(v -> {
-            if (v != null) {
-               pubSubListener.getFuture().complete(v);
-               }
-         });
       });
-      //listnerStage.toCompletableFuture().join();
+      pollAllKeys(listMultimap, filterKeys).thenAccept(v -> {
+         if (v != null) {
+            pubSubListener.getFuture().complete(v);
+         }
+      });
+      // listnerStage.toCompletableFuture().join();
       return pubSubListener.getFuture();
    }
    // pubSubListener.future = CompletableFuture.failedFuture(new

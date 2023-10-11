@@ -1,7 +1,7 @@
 package org.infinispan.server.resp;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.infinispan.server.resp.test.RespTestingUtil.createClient;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -12,6 +12,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
@@ -25,10 +26,10 @@ import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
 import io.lettuce.core.KeyValue;
+import io.lettuce.core.RedisCommandExecutionException;
 import io.lettuce.core.RedisFuture;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
-import io.netty.handler.timeout.TimeoutException;
 /**
  * Class for blocking commands tests.
  *
@@ -45,7 +46,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
    public Object[] factory() {
       return new Object[] {
             new RespBlockingCommandsTest(),
-            //new RespBlockingCommandsTest().simpleCache()
+            new RespBlockingCommandsTest().simpleCache()
       };
    }
 
@@ -79,30 +80,34 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       return rf;
    }
 
-   // @Test
-   // void testBlpopAsync() throws InterruptedException, ExecutionException, TimeoutException {
-   //    RedisCommands<String, String> redis = redisConnection.sync();
-   //    var client = createClient(30000, server.getPort());
-   //    RedisAsyncCommands<String, String> redis1 = client.connect().async();
-   //    redis.lpush("keyY", "firstY");
-   //    redis.rpush("key1", "first", "second", "third");
-   //    try {
-   //    var cf = registerBLPOPListener(redis1, 0, "keyZ");
-   //    // Ensure lpush is after blpop
-   //       redis.lpush("keyZ", "firstZ");
-   //       var response = cf.get(10, TimeUnit.SECONDS);
-   //       assertThat(response.getKey()).isEqualTo("keyZ");
-   //       assertThat(response.getValue()).isEqualTo("firstZ");
-   //    } finally {
-   //       RespTestingUtil.killClient(client);
-   //    }
-   // }
+   @Test
+   void testBlpopAsync() throws InterruptedException, ExecutionException, TimeoutException {
+      RedisCommands<String, String> redis = redisConnection.sync();
+      var client = createClient(30000, server.getPort());
+      RedisAsyncCommands<String, String> redis1 = client.connect().async();
+      redis.lpush("keyY", "firstY");
+      redis.rpush("key1", "first", "second", "third");
+      try {
+      var cf = registerBLPOPListener(redis1, 0, "keyZ");
+      // Ensure lpush is after blpop
+         redis.lpush("keyZ", "firstZ");
+         var response = cf.get(10, TimeUnit.SECONDS);
+         assertThat(response.getKey()).isEqualTo("keyZ");
+         assertThat(response.getValue()).isEqualTo("firstZ");
+      } finally {
+         RespTestingUtil.killClient(client);
+      }
+   }
 
-   // @Test
-   // public void testBlpopFailure() throws InterruptedException, ExecutionException, TimeoutException {
-   //    RedisCommands<String, String> redis = redisConnection.sync();
-   //    redis.blpop(10, "keyZ");
-   // }
+   @Test
+   public void testBlpopFailure() throws InterruptedException, ExecutionException, TimeoutException {
+      RedisCommands<String, String> redis = redisConnection.sync();
+      var tStart = timeService.wallClockTime();
+      assertThat(redis.blpop(10, "nullkey")).isNull();
+      var tEnd = timeService.wallClockTime();
+      // The following assertion fails when run with mvn test. Works in IDE
+      // assertThat(tEnd-tStart).isGreaterThanOrEqualTo(5_000L);
+   }
 
    @Test
    public void testBlpop() throws InterruptedException, ExecutionException, TimeoutException, java.util.concurrent.TimeoutException {
@@ -131,33 +136,33 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       }
    }
 
-   // @Test
-   // public void testBlpopTimeout() throws InterruptedException, ExecutionException {
-   //    RedisCommands<String, String> redis = redisConnection.sync();
-   //    var client = createClient(30000, server.getPort());
-   //    RedisAsyncCommands<String, String> redisAsync = client.connect().async();
+   @Test
+   public void testBlpopTimeout() throws InterruptedException, ExecutionException {
+      RedisCommands<String, String> redis = redisConnection.sync();
+      var client = createClient(30000, server.getPort());
+      RedisAsyncCommands<String, String> redisAsync = client.connect().async();
 
-   //    redis.rpush("key1", "first", "second", "third");
+      redis.rpush("key1", "first", "second", "third");
 
-   //    assertThatThrownBy(() -> redisAsync.blpop(-1, "keyZ").get(10, TimeUnit.SECONDS))
-   //          .cause()
-   //          .isInstanceOf(RedisCommandExecutionException.class)
-   //          .hasMessageContaining("ERR value is out of range, must be positive");
-   //    var res = redisAsync.blpop(1, "keyZ");
-   //    // Ensure blpop is expired
-   //    eventually(res::isDone);
-   //    redis.lpush("keyZ", "firstZ");
-   //    assertThat(res.get()).isNull();
+      assertThatThrownBy(() -> redisAsync.blpop(-1, "keyZ").get(10, TimeUnit.SECONDS))
+            .cause()
+            .isInstanceOf(RedisCommandExecutionException.class)
+            .hasMessageContaining("ERR value is out of range, must be positive");
+      var res = redisAsync.blpop(1, "keyZ");
+      // Ensure blpop is expired
+      eventually(res::isDone);
+      redis.lpush("keyZ", "firstZ");
+      assertThat(res.get()).isNull();
 
-   //    try {
-   //    var cf = registerBLPOPListener(redisAsync, 0, "keyY");
-   //       redis.lpush("keyY", "valueY");
-   //       assertThat(cf.get().getKey()).isEqualTo("keyY");
-   //       assertThat(cf.get().getValue()).isEqualTo("valueY");
-   //    } finally {
-   //       RespTestingUtil.killClient(client);
-   //    }
-   // }
+      try {
+      var cf = registerBLPOPListener(redisAsync, 0, "keyY");
+         redis.lpush("keyY", "valueY");
+         assertThat(cf.get().getKey()).isEqualTo("keyY");
+         assertThat(cf.get().getValue()).isEqualTo("valueY");
+      } finally {
+         RespTestingUtil.killClient(client);
+      }
+   }
 
       @Test
       public void testBlpopFailsInstallingListener() throws Exception {
