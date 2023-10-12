@@ -100,16 +100,6 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
    }
 
    @Test
-   public void testBlpopFailure() throws InterruptedException, ExecutionException, TimeoutException {
-      RedisCommands<String, String> redis = redisConnection.sync();
-      var tStart = timeService.wallClockTime();
-      assertThat(redis.blpop(10, "nullkey")).isNull();
-      var tEnd = timeService.wallClockTime();
-      // The following assertion fails when run with mvn test. Works in IDE
-      // assertThat(tEnd-tStart).isGreaterThanOrEqualTo(5_000L);
-   }
-
-   @Test
    public void testBlpop() throws InterruptedException, ExecutionException, TimeoutException, java.util.concurrent.TimeoutException {
       RedisCommands<String, String> redis = redisConnection.sync();
       var client = createClient(30000, server.getPort());

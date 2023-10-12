@@ -31,6 +31,7 @@ import org.infinispan.server.resp.commands.ArgumentUtils;
 import org.infinispan.server.resp.commands.Resp3Command;
 import org.infinispan.server.resp.filter.EventListenerKeysFilter;
 import org.infinispan.server.resp.logging.Log;
+import org.infinispan.util.concurrent.CompletionStages;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -68,10 +69,10 @@ public class BLPOP extends RespCommand implements Resp3Command {
       return handler.stageToReturn(pollStage.thenCompose(v -> {
          // addSubscriber call can rise exception that needs to be reported
          // as error
-            var retStage = (v != null && !v.isEmpty())
-                  ? CompletableFuture.completedFuture(v)
-                  : addSubscriber(listMultimap, filterKeys, timeout, handler, ctx);
-                  return retStage;
+         var retStage = (v != null && !v.isEmpty())
+               ? CompletableFuture.completedFuture(v)
+               : addSubscriber(listMultimap, filterKeys, timeout, handler, ctx);
+         return retStage;
       }), ctx, Consumers.COLLECTION_BULK_BICONSUMER);
    }
 
@@ -95,69 +96,32 @@ public class BLPOP extends RespCommand implements Resp3Command {
       EventListenerKeysFilter filter = new EventListenerKeysFilter(filterKeys.toArray(byte[][]::new));
       CacheEventConverter<Object, Object, Object> converter = (key, oldValue, oldMetadata, newValue, newMetadata,
             eventType) -> vc.fromStorage(newValue);
-      cache.addListener(pubSubListener, filter, converter);
-      final ScheduledFuture<?> scheduledTimer = (timeout > 0) ? ctx.channel().eventLoop().schedule(() -> {
-         pubSubListener.getFuture().complete(null);
-      }, timeout, TimeUnit.MILLISECONDS) : null;
-      pubSubListener.getFuture().thenAccept(ignore -> {
-         if (scheduledTimer != null) {
-            scheduledTimer.cancel(true);
+      CompletionStage<Void> addListenerStage = cache.addListenerAsync(pubSubListener, filter, converter);
+      return CompletionStages.handleAndCompose(addListenerStage, (ignore, t) -> {
+         if (t != null) {
+            pubSubListener.getFuture().completeExceptionally(t);
          }
+         // Listener can lose events during its install, so we need to poll again
+         // and if we get values complete the listener future.
+         return pollAllKeys(listMultimap, filterKeys).thenCompose(v -> {
+            if (v != null) {
+               // poll return values, complete the listener future ...
+               pubSubListener.getFuture().complete(v);
+            } else {
+               // ... else wait for values with timeout if required
+               pubSubListener.startTimer(timeout);
+               pubSubListener.getFuture().thenApply(ret -> {
+                  pubSubListener.deleteTimer();
+                  return ret;
+               });
+            }
+            return pubSubListener.getFuture().thenApply(ret -> {
+               cache.removeListenerAsync(pubSubListener);
+               return ret;
+            });
+         });
       });
-      pollAllKeys(listMultimap, filterKeys).thenAccept(v -> {
-         if (v != null) {
-            pubSubListener.getFuture().complete(v);
-         }
-      });
-      // listnerStage.toCompletableFuture().join();
-      return pubSubListener.getFuture();
    }
-   // pubSubListener.future = CompletableFuture.failedFuture(new
-   // RuntimeException());
-
-   // <Void>handle((s,t) ->
-   // {
-   // if (t!=null) {
-   // pubSubListener.getFuture().completeExceptionally(t);
-   // }
-   // pubSubListener.getFuture().completeExceptionally(t);
-   // // pollAllKeys(listMultimap, filterKeys)
-   // // pubSubListener.getFuture().thenAccept(pollAllKeys(listMultimap,
-   // filterKeys)).thenAccept(v -> {
-   // // if (v != null) {
-   // // pubSubListener.getFuture().complete(v);
-   // // if (scheduledTimer != null) {
-   // // scheduledTimer.cancel(true);
-   // // }
-   // // }
-   // // });}
-   // });
-   // return pubSubListener.getFuture();
-   // // // start a timer if needed
-   // // final ScheduledFuture<?> scheduledTimer = (timeout > 0) ?
-   // ctx.channel().eventLoop().schedule(() -> {
-   // // pubSubListener.getFuture().complete(null);
-   // // }, timeout, TimeUnit.MILLISECONDS) : null;
-   // // // Listener can lose events during its install, so we need to poll again
-   // // // and if we get values complete the listener future.
-   // // listnerStage.thenCompose(v -> pollAllKeys(listMultimap,
-   // filterKeys)).thenAccept(v -> {
-   // // if (v != null) {
-   // // pubSubListener.getFuture().complete(v);
-   // // if (scheduledTimer != null) {
-   // // scheduledTimer.cancel(true);
-   // // }
-   // // }
-   // // });
-   // // // Uninstall the listener when got values
-   // // return pubSubListener.getFuture().thenApply(v -> {
-   // // if (scheduledTimer != null) {
-   // // scheduledTimer.cancel(true);
-   // // }
-   // // handler.cache().removeListener(pubSubListener);
-   // // return v;
-   // // });
-   // });
 
    private CompletionStage<Collection<byte[]>> pollAllKeys(EmbeddedMultimapListCache<byte[], byte[]> listMultimap,
          List<byte[]> filterKeys) {
@@ -175,6 +139,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
    @Listener(clustered = true)
    public static class PubSubListener {
       private final Channel channel;
+      ScheduledFuture<?> scheduledTimer;
       private CompletableFuture<Collection<byte[]>> future = new CompletableFuture<>();
 
       public CompletableFuture<Collection<byte[]>> getFuture() {
@@ -183,6 +148,19 @@ public class BLPOP extends RespCommand implements Resp3Command {
 
       public PubSubListener(Channel channel) {
          this.channel = channel;
+      }
+
+      public void startTimer(long timeout) {
+         deleteTimer();
+         scheduledTimer = (timeout > 0) ? channel.eventLoop().schedule(() -> {
+            future.complete(null);
+         }, timeout, TimeUnit.MILLISECONDS) : null;
+      }
+
+      public void deleteTimer() {
+         if (scheduledTimer != null)
+            scheduledTimer.cancel(true);
+         scheduledTimer = null;
       }
 
       @CacheEntryCreated
