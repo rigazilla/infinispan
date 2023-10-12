@@ -106,9 +106,8 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       RedisAsyncCommands<String, String> redisBlock = client.connect().async();
       try {
          var cf = registerBLPOPListener(redisBlock, 0, "keyZ");
-         Thread.sleep(2000);
          redis.lpush("keyZ", "firstZ");
-         var res = cf.get(30, TimeUnit.SECONDS);
+         var res = cf.get(10, TimeUnit.SECONDS);
          assertThat(res.getKey()).isEqualTo("keyZ");
          assertThat(res.getValue()).isEqualTo("firstZ");
 
@@ -173,7 +172,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
 
       try {
          TestingUtil.replaceComponent(cache, CacheNotifier.class, spyCni, true);
-               assertThatThrownBy(() -> redisAsync.blpop(0, "my-nice-key").get() )
+               assertThatThrownBy(() -> redisAsync.blpop(0, "my-nice-key").get(10, TimeUnit.SECONDS) )
             .isInstanceOf(ExecutionException.class)
             .hasMessageContaining("Injected failure");
       } finally {
