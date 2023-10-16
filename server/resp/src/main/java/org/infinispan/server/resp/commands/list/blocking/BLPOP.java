@@ -97,28 +97,35 @@ public class BLPOP extends RespCommand implements Resp3Command {
       CacheEventConverter<Object, Object, Object> converter = (key, oldValue, oldMetadata, newValue, newMetadata,
             eventType) -> vc.fromStorage(newValue);
       CompletionStage<Void> addListenerStage = cache.addListenerAsync(pubSubListener, filter, converter);
+      final var pubSubFuture = pubSubListener.getFuture();
       return CompletionStages.handleAndCompose(addListenerStage, (ignore, t) -> {
+         // If listener fails to install, complete exceptionally pubSubFuture and return
          if (t != null) {
-            pubSubListener.getFuture().completeExceptionally(t);
+            pubSubFuture.completeExceptionally(t);
+            return pubSubFuture;
          }
          // Listener can lose events during its install, so we need to poll again
-         // and if we get values complete the listener future.
-         return pollAllKeys(listMultimap, filterKeys).thenCompose(v -> {
+         // and if we get values complete the listener future. In case of exception
+         // completeExceptionally
+         return CompletionStages.handleAndCompose(pollAllKeys(listMultimap, filterKeys), (v, t2) -> {
+            // If second poll fails, remove listener and complete exceptionally
+            if (t2 != null) {
+               cache.removeListenerAsync(pubSubListener);
+               pubSubFuture.completeExceptionally(t);
+               return pubSubFuture;
+            }
             if (v != null) {
-               // poll return values, complete the listener future ...
-               pubSubListener.getFuture().complete(v);
+               // poll returns values, complete the listener future ...
+               pubSubFuture.complete(v);
             } else {
                // ... else wait for values with timeout if required
                pubSubListener.startTimer(timeout);
-               pubSubListener.getFuture().thenApply(ret -> {
-                  pubSubListener.deleteTimer();
-                  return ret;
-               });
             }
-            return pubSubListener.getFuture().thenApply(ret -> {
+            pubSubFuture.thenRun(() -> {
+               pubSubListener.deleteTimer();
                cache.removeListenerAsync(pubSubListener);
-               return ret;
             });
+            return pubSubFuture;
          });
       });
    }
@@ -165,11 +172,15 @@ public class BLPOP extends RespCommand implements Resp3Command {
 
       @CacheEntryCreated
       public CompletionStage<Void> onEvent(CacheEntryEvent<Object, Object> entryEvent) {
-         if (entryEvent.getValue() instanceof ListBucket) {
-            byte[] key = unwrapKey(entryEvent.getKey());
-            var bucket = (ListBucket<byte[]>) entryEvent.getValue();
-            byte[] value = bucket == null ? null : bucket.toDeque().peek();
-            future.complete(Arrays.asList(key, value));
+         try {
+            if (entryEvent.getValue() instanceof ListBucket) {
+               byte[] key = unwrapKey(entryEvent.getKey());
+               var bucket = (ListBucket<byte[]>) entryEvent.getValue();
+               byte[] value = bucket == null ? null : bucket.toDeque().peek();
+               future.complete(Arrays.asList(key, value));
+            }
+         } catch (Exception ex) {
+            future.completeExceptionally(ex);
          }
          return CompletableFutures.completedNull();
       }

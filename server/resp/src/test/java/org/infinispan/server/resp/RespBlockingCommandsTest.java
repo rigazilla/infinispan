@@ -14,10 +14,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.infinispan.commons.util.concurrent.CompletableFutures;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.notifications.Listener;
 import org.infinispan.notifications.cachelistener.CacheNotifier;
 import org.infinispan.notifications.cachelistener.CacheNotifierImpl;
+import org.infinispan.notifications.cachelistener.ListenerHolder;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryCreated;
+import org.infinispan.notifications.cachelistener.event.CacheEntryEvent;
 import org.infinispan.server.resp.commands.list.blocking.BLPOP;
 import org.infinispan.server.resp.test.RespTestingUtil;
 import org.infinispan.test.TestingUtil;
@@ -30,6 +35,7 @@ import io.lettuce.core.RedisCommandExecutionException;
 import io.lettuce.core.RedisFuture;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
+
 /**
  * Class for blocking commands tests.
  *
@@ -70,13 +76,14 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       }
    }
 
-   private RedisFuture<KeyValue<String, String>> registerBLPOPListener(RedisAsyncCommands<String, String> redis, long timeout, String ... keys) {
+   private RedisFuture<KeyValue<String, String>> registerBLPOPListener(RedisAsyncCommands<String, String> redis,
+         long timeout, String... keys) {
       RedisFuture<KeyValue<String, String>> rf = redis.blpop(timeout, keys);
       CacheNotifierImpl<?, ?> cni = (CacheNotifierImpl<?, ?>) TestingUtil.extractComponent(cache, CacheNotifier.class);
       // If there's a listener ok otherwise
       // if rf is done an error during listener registration has happend
       // no need to wait anymore. test will fail
-      eventually(() -> cni.getListeners().stream().anyMatch(l -> l instanceof BLPOP.PubSubListener) || rf.isDone());
+      eventually(() -> cni.getListeners().stream().anyMatch(l -> l instanceof BLPOP.PubSubListener || l instanceof RespBlockingCommandsTest.FailingListener) || rf.isDone());
       return rf;
    }
 
@@ -88,8 +95,8 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       redis.lpush("keyY", "firstY");
       redis.rpush("key1", "first", "second", "third");
       try {
-      var cf = registerBLPOPListener(redis1, 0, "keyZ");
-      // Ensure lpush is after blpop
+         var cf = registerBLPOPListener(redis1, 0, "keyZ");
+         // Ensure lpush is after blpop
          redis.lpush("keyZ", "firstZ");
          var response = cf.get(10, TimeUnit.SECONDS);
          assertThat(response.getKey()).isEqualTo("keyZ");
@@ -100,7 +107,8 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
    }
 
    @Test
-   public void testBlpop() throws InterruptedException, ExecutionException, TimeoutException, java.util.concurrent.TimeoutException {
+   public void testBlpop()
+         throws InterruptedException, ExecutionException, TimeoutException, java.util.concurrent.TimeoutException {
       RedisCommands<String, String> redis = redisConnection.sync();
       var client = createClient(30000, server.getPort());
       RedisAsyncCommands<String, String> redisBlock = client.connect().async();
@@ -144,7 +152,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       assertThat(res.get()).isNull();
 
       try {
-      var cf = registerBLPOPListener(redisAsync, 0, "keyY");
+         var cf = registerBLPOPListener(redisAsync, 0, "keyY");
          redis.lpush("keyY", "valueY");
          assertThat(cf.get().getKey()).isEqualTo("keyY");
          assertThat(cf.get().getValue()).isEqualTo("valueY");
@@ -153,8 +161,8 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       }
    }
 
-      @Test
-      public void testBlpopFailsInstallingListener() throws Exception {
+   @Test
+   public void testBlpopFailsInstallingListener() throws Exception {
       var client = createClient(30000, server.getPort());
       RedisAsyncCommands<String, String> redisAsync = client.connect().async();
 
@@ -167,17 +175,82 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
          return CompletableFuture.failedFuture(new RuntimeException("Injected failure"));
       };
 
-      if (simpleCache) doAnswer(listenerAnswer).when(spyCni).addListenerAsync(any(), any(), any());
-      else doAnswer(listenerAnswer).when(spyCni).addListenerAsync(any(), any(), any(), any());
+      if (simpleCache)
+         doAnswer(listenerAnswer).when(spyCni).addListenerAsync(any(), any(), any());
+      else
+         doAnswer(listenerAnswer).when(spyCni).addListenerAsync(any(), any(), any(), any());
 
       try {
          TestingUtil.replaceComponent(cache, CacheNotifier.class, spyCni, true);
-               assertThatThrownBy(() -> redisAsync.blpop(0, "my-nice-key").get(10, TimeUnit.SECONDS) )
-            .isInstanceOf(ExecutionException.class)
-            .hasMessageContaining("Injected failure");
+         assertThatThrownBy(() -> redisAsync.blpop(0, "my-nice-key").get(10, TimeUnit.SECONDS))
+               .isInstanceOf(ExecutionException.class)
+               .hasMessageContaining("Injected failure");
       } finally {
          RespTestingUtil.killClient(client);
          TestingUtil.replaceComponent(cache, CacheNotifier.class, cni, true);
+      }
+   }
+
+   @Test
+   public void testBlpopFailsListenerOnEvent() throws Exception {
+      RedisCommands<String, String> redis = redisConnection.sync();
+      var client = createClient(30000, server.getPort());
+      RedisAsyncCommands<String, String> redisAsync = client.connect().async();
+
+      CacheNotifierImpl<?, ?> cni = (CacheNotifierImpl<?, ?>) TestingUtil.extractComponent(cache, CacheNotifier.class);
+      CacheNotifierImpl<?, ?> spyCni = spy(cni);
+      CountDownLatch latch = new CountDownLatch(1);
+
+      Answer<CompletionStage<Void>> listenerAnswer = invocation -> {
+         Object[] args = invocation.getArguments();
+
+         args[0] = new FailingListener((BLPOP.PubSubListener) args[0]);
+         invocation.callRealMethod();
+         latch.countDown();
+         return CompletableFuture.completedFuture(null);
+      };
+
+      Answer<CompletionStage<Void>> listenerHolderAnswer = invocation -> {
+         Object[] args = invocation.getArguments();
+         var oldHolder = (ListenerHolder)args[0];
+         var holder = new ListenerHolder(new FailingListener((BLPOP.PubSubListener)oldHolder.getListener()) , oldHolder.getKeyDataConversion(), oldHolder.getValueDataConversion(), false);
+         args[0] = holder;
+         invocation.callRealMethod();
+         latch.countDown();
+         return CompletableFuture.completedFuture(null);
+      };
+
+      if (simpleCache)
+         doAnswer(listenerAnswer).when(spyCni).addListenerAsync(any(), any(), any());
+      else
+         doAnswer(listenerHolderAnswer).when(spyCni).addListenerAsync(any(), any(), any(), any());
+
+      try {
+         TestingUtil.replaceComponent(cache, CacheNotifier.class, spyCni, true);
+         var cf = registerBLPOPListener(redisAsync, 0, "keyY");
+         redis.lpush("keyY", "valueY");
+         assertThatThrownBy(() -> cf.get())
+               .isInstanceOf(ExecutionException.class)
+               .hasMessageContaining("Injected failure in OnEvent");
+      } finally {
+         RespTestingUtil.killClient(client);
+         TestingUtil.replaceComponent(cache, CacheNotifier.class, cni, true);
+      }
+   }
+
+   @Listener(clustered = true)
+   public static class FailingListener {
+      BLPOP.PubSubListener blpop;
+
+      public FailingListener(BLPOP.PubSubListener arg) {
+         blpop = arg;
+      }
+
+      @CacheEntryCreated
+      public CompletionStage<Void> onEvent(CacheEntryEvent<Object, Object> entryEvent) {
+         blpop.getFuture().completeExceptionally(
+               new RuntimeException("Injected failure in OnEvent"));
+         return CompletableFutures.completedNull();
       }
    }
 
