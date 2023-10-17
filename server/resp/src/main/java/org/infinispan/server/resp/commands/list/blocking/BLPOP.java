@@ -91,7 +91,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
       }
       AdvancedCache<Object, Object> cache = handler.cache().withMediaType(MediaType.APPLICATION_OCTET_STREAM, null);
       DataConversion vc = cache.getValueDataConversion();
-      PubSubListener pubSubListener = new PubSubListener(ctx.channel(), cache, listMultimap);
+      PubSubListener pubSubListener = new PubSubListener(ctx.channel(), handler, cache, listMultimap);
       EventListenerKeysFilter filter = new EventListenerKeysFilter(filterKeys.toArray(byte[][]::new));
       CacheEventConverter<Object, Object, Object> converter = (key, oldValue, oldMetadata, newValue, newMetadata,
             eventType) -> vc.fromStorage(newValue);
@@ -144,16 +144,18 @@ public class BLPOP extends RespCommand implements Resp3Command {
       private CompletableFuture<Collection<byte[]>> listnerFuture = new CompletableFuture<>();
       private CompletableFuture<Collection<byte[]>> pollFuture = new CompletableFuture<>();
       private CompletableFuture<Collection<byte[]>> future;
+      Resp3Handler handler;
 
       public void setListenerAdded(boolean listenerAdded) {
          this.listenerAdded = listenerAdded;
       }
 
-      public PubSubListener(Channel channel, AdvancedCache<Object, Object> cache,
+      public PubSubListener(Channel channel, Resp3Handler handler, AdvancedCache<Object, Object> cache,
             EmbeddedMultimapListCache<byte[], byte[]> mml) {
          this.channel = channel;
          this.multimapList = mml;
          this.cache = cache;
+         this.handler = handler;
          // This future sync poll thread and listener. It waits for the poll stage completion
          // and its value returned if available otherwise wait for events
          future = pollFuture.thenCompose((v) -> v != null ? CompletableFuture.completedFuture(v) : listnerFuture)
@@ -183,7 +185,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
 
       public void startTimer(long timeout) {
          deleteTimer();
-         scheduledTimer = (timeout > 0) ? channel.eventLoop().schedule(() -> {
+         scheduledTimer = (timeout > 0) ? handler.getScheduler().schedule(() -> {
             if (listenerAdded) {
                cache.removeListenerAsync(this);
             }
