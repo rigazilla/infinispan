@@ -83,8 +83,17 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       // If there's a listener ok otherwise
       // if rf is done an error during listener registration has happend
       // no need to wait anymore. test will fail
-      eventually(() -> cni.getListeners().stream().anyMatch(l -> l instanceof BLPOP.PubSubListener || l instanceof RespBlockingCommandsTest.FailingListener) || rf.isDone());
+      eventually(() -> cni.getListeners().stream()
+            .anyMatch(l -> l instanceof BLPOP.PubSubListener || l instanceof RespBlockingCommandsTest.FailingListener)
+            || rf.isDone());
       return rf;
+   }
+
+   private void verifyBLPOPListenerUnregistered() {
+      CacheNotifierImpl<?, ?> cni = (CacheNotifierImpl<?, ?>) TestingUtil.extractComponent(cache, CacheNotifier.class);
+      // Check listener is unregistered
+      eventually(() -> cni.getListeners().stream().noneMatch(
+            l -> l instanceof BLPOP.PubSubListener || l instanceof RespBlockingCommandsTest.FailingListener));
    }
 
    @Test
@@ -101,7 +110,9 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
          var response = cf.get(10, TimeUnit.SECONDS);
          assertThat(response.getKey()).isEqualTo("keyZ");
          assertThat(response.getValue()).isEqualTo("firstZ");
+         assertThat(redis.lpop("keyZ")).isNull();
       } finally {
+         verifyBLPOPListenerUnregistered();
          RespTestingUtil.killClient(client);
       }
    }
@@ -129,6 +140,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
          assertThat(res.getKey()).isEqualTo("key1");
          assertThat(res.getValue()).isEqualTo("second");
       } finally {
+         verifyBLPOPListenerUnregistered();
          RespTestingUtil.killClient(client);
       }
    }
@@ -157,6 +169,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
          assertThat(cf.get().getKey()).isEqualTo("keyY");
          assertThat(cf.get().getValue()).isEqualTo("valueY");
       } finally {
+         verifyBLPOPListenerUnregistered();
          RespTestingUtil.killClient(client);
       }
    }
@@ -186,6 +199,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
                .isInstanceOf(ExecutionException.class)
                .hasMessageContaining("Injected failure");
       } finally {
+         verifyBLPOPListenerUnregistered();
          RespTestingUtil.killClient(client);
          TestingUtil.replaceComponent(cache, CacheNotifier.class, cni, true);
       }
@@ -212,8 +226,9 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
 
       Answer<CompletionStage<Void>> listenerHolderAnswer = invocation -> {
          Object[] args = invocation.getArguments();
-         var oldHolder = (ListenerHolder)args[0];
-         var holder = new ListenerHolder(new FailingListener((BLPOP.PubSubListener)oldHolder.getListener()) , oldHolder.getKeyDataConversion(), oldHolder.getValueDataConversion(), false);
+         var oldHolder = (ListenerHolder) args[0];
+         var holder = new ListenerHolder(new FailingListener((BLPOP.PubSubListener) oldHolder.getListener()),
+               oldHolder.getKeyDataConversion(), oldHolder.getValueDataConversion(), false);
          args[0] = holder;
          invocation.callRealMethod();
          latch.countDown();
@@ -233,6 +248,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
                .isInstanceOf(ExecutionException.class)
                .hasMessageContaining("Injected failure in OnEvent");
       } finally {
+         verifyBLPOPListenerUnregistered();
          RespTestingUtil.killClient(client);
          TestingUtil.replaceComponent(cache, CacheNotifier.class, cni, true);
       }
@@ -248,6 +264,8 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
 
       @CacheEntryCreated
       public CompletionStage<Void> onEvent(CacheEntryEvent<Object, Object> entryEvent) {
+         blpop.setListenerAdded(true);
+         blpop.cache.removeListenerAsync(this);
          blpop.getFuture().completeExceptionally(
                new RuntimeException("Injected failure in OnEvent"));
          return CompletableFutures.completedNull();

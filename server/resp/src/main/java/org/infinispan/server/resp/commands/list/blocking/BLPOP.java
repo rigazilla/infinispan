@@ -31,7 +31,6 @@ import org.infinispan.server.resp.commands.ArgumentUtils;
 import org.infinispan.server.resp.commands.Resp3Command;
 import org.infinispan.server.resp.filter.EventListenerKeysFilter;
 import org.infinispan.server.resp.logging.Log;
-import org.infinispan.util.concurrent.CompletionStages;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -92,42 +91,34 @@ public class BLPOP extends RespCommand implements Resp3Command {
       }
       AdvancedCache<Object, Object> cache = handler.cache().withMediaType(MediaType.APPLICATION_OCTET_STREAM, null);
       DataConversion vc = cache.getValueDataConversion();
-      PubSubListener pubSubListener = new PubSubListener(ctx.channel(), listMultimap);
+      PubSubListener pubSubListener = new PubSubListener(ctx.channel(), cache, listMultimap);
       EventListenerKeysFilter filter = new EventListenerKeysFilter(filterKeys.toArray(byte[][]::new));
       CacheEventConverter<Object, Object, Object> converter = (key, oldValue, oldMetadata, newValue, newMetadata,
             eventType) -> vc.fromStorage(newValue);
       CompletionStage<Void> addListenerStage = cache.addListenerAsync(pubSubListener, filter, converter);
-      final var pubSubFuture = pubSubListener.getFuture();
-      return CompletionStages.handleAndCompose(addListenerStage, (ignore, t) -> {
+      addListenerStage.whenComplete((ignore, t) -> {
          // If listener fails to install, complete exceptionally pubSubFuture and return
          if (t != null) {
-            pubSubFuture.completeExceptionally(t);
-            return pubSubFuture;
+            pubSubListener.completeExceptionally(t);
          }
+         pubSubListener.setListenerAdded(true);
          // Listener can lose events during its install, so we need to poll again
          // and if we get values complete the listener future. In case of exception
          // completeExceptionally
-         return CompletionStages.handleAndCompose(pollAllKeys(listMultimap, filterKeys), (v, t2) -> {
+         pollAllKeys(listMultimap, filterKeys).whenComplete((v, t2) -> {
             // If second poll fails, remove listener and complete exceptionally
             if (t2 != null) {
-               cache.removeListenerAsync(pubSubListener);
-               pubSubFuture.completeExceptionally(t);
-               return pubSubFuture;
+               pubSubListener.completeExceptionally(t);
             }
-            if (v != null) {
-               // poll returns values, complete the listener future ...
-               pubSubFuture.complete(v);
-            } else {
-               // ... else wait for values with timeout if required
+            // Complete poll stage
+            pubSubListener.completePoll(v);
+            if (v == null) {
+               // If no value, start a timer if required
                pubSubListener.startTimer(timeout);
             }
-            pubSubFuture.thenRun(() -> {
-               pubSubListener.deleteTimer();
-               cache.removeListenerAsync(pubSubListener);
-            });
-            return pubSubFuture;
          });
       });
+      return pubSubListener.getFuture();
    }
 
    private CompletionStage<Collection<byte[]>> pollAllKeys(EmbeddedMultimapListCache<byte[], byte[]> listMultimap,
@@ -147,21 +138,55 @@ public class BLPOP extends RespCommand implements Resp3Command {
    public static class PubSubListener {
       private final Channel channel;
       EmbeddedMultimapListCache<byte[], byte[]> multimapList;
+      public AdvancedCache<Object, Object> cache;
       ScheduledFuture<?> scheduledTimer;
-      private CompletableFuture<Collection<byte[]>> future = new CompletableFuture<>();
+      private boolean listenerAdded = false;
+      private CompletableFuture<Collection<byte[]>> listnerFuture = new CompletableFuture<>();
+      private CompletableFuture<Collection<byte[]>> pollFuture = new CompletableFuture<>();
+      private CompletableFuture<Collection<byte[]>> future;
+
+      public void setListenerAdded(boolean listenerAdded) {
+         this.listenerAdded = listenerAdded;
+      }
+
+      public PubSubListener(Channel channel, AdvancedCache<Object, Object> cache,
+            EmbeddedMultimapListCache<byte[], byte[]> mml) {
+         this.channel = channel;
+         this.multimapList = mml;
+         this.cache = cache;
+         // This future sync poll thread and listener. It waits for the poll stage completion
+         // and its value returned if available otherwise wait for events
+         future = pollFuture.thenCompose((v) -> v != null ? CompletableFuture.completedFuture(v) : listnerFuture)
+               .whenComplete((ignore_v, ignore_t) -> {
+                  try {
+                     this.deleteTimer();
+                     if (listenerAdded) {
+                        cache.removeListenerAsync(this);
+                     }
+                  } catch (Exception ex) {
+                     System.out.println(ex.toString());
+                  }
+               });
+      }
 
       public CompletableFuture<Collection<byte[]>> getFuture() {
          return future;
       }
 
-      public PubSubListener(Channel channel, EmbeddedMultimapListCache<byte[], byte[]> mml) {
-         this.channel = channel;
-         this.multimapList = mml;
+      public void completePoll(Collection<byte[]> entry) {
+         pollFuture.complete(entry);
+      }
+
+      public void completeExceptionally(Throwable t) {
+         future.completeExceptionally(t);
       }
 
       public void startTimer(long timeout) {
          deleteTimer();
          scheduledTimer = (timeout > 0) ? channel.eventLoop().schedule(() -> {
+            if (listenerAdded) {
+               cache.removeListenerAsync(this);
+            }
             future.complete(null);
          }, timeout, TimeUnit.MILLISECONDS) : null;
       }
@@ -177,19 +202,19 @@ public class BLPOP extends RespCommand implements Resp3Command {
          try {
             if (entryEvent.getValue() instanceof ListBucket) {
                byte[] key = unwrapKey(entryEvent.getKey());
-               multimapList.pollFirst(key, 1).handle( (v,t) -> {
+               multimapList.pollFirst(key, 1).handle((v, t) -> {
                   if (t != null || v == null || v.size() == 0) {
-                                          future.completeExceptionally(
-                                                t != null ? t : new AssertionError("Unexpected empty or null ListBucket"));
-                                       } else {
-                                          byte[] value = v.iterator().next();
-                                          future.complete(Arrays.asList(key, value));
-                                       }
-                                       return null;
-                                    });
+                     this.completeExceptionally(
+                           t != null ? t : new AssertionError("Unexpected empty or null ListBucket"));
+                  } else {
+                     byte[] value = v.iterator().next();
+                     listnerFuture.complete(Arrays.asList(key, value));
+                  }
+                  return null;
+               });
             }
          } catch (Exception ex) {
-            future.completeExceptionally(ex);
+            this.completeExceptionally(ex);
          }
          return CompletableFutures.completedNull();
       }
