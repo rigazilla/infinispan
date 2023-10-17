@@ -92,7 +92,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
       }
       AdvancedCache<Object, Object> cache = handler.cache().withMediaType(MediaType.APPLICATION_OCTET_STREAM, null);
       DataConversion vc = cache.getValueDataConversion();
-      PubSubListener pubSubListener = new PubSubListener(ctx.channel());
+      PubSubListener pubSubListener = new PubSubListener(ctx.channel(), listMultimap);
       EventListenerKeysFilter filter = new EventListenerKeysFilter(filterKeys.toArray(byte[][]::new));
       CacheEventConverter<Object, Object, Object> converter = (key, oldValue, oldMetadata, newValue, newMetadata,
             eventType) -> vc.fromStorage(newValue);
@@ -146,6 +146,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
    @Listener(clustered = true)
    public static class PubSubListener {
       private final Channel channel;
+      EmbeddedMultimapListCache<byte[], byte[]> multimapList;
       ScheduledFuture<?> scheduledTimer;
       private CompletableFuture<Collection<byte[]>> future = new CompletableFuture<>();
 
@@ -153,8 +154,9 @@ public class BLPOP extends RespCommand implements Resp3Command {
          return future;
       }
 
-      public PubSubListener(Channel channel) {
+      public PubSubListener(Channel channel, EmbeddedMultimapListCache<byte[], byte[]> mml) {
          this.channel = channel;
+         this.multimapList = mml;
       }
 
       public void startTimer(long timeout) {
@@ -175,9 +177,16 @@ public class BLPOP extends RespCommand implements Resp3Command {
          try {
             if (entryEvent.getValue() instanceof ListBucket) {
                byte[] key = unwrapKey(entryEvent.getKey());
-               var bucket = (ListBucket<byte[]>) entryEvent.getValue();
-               byte[] value = bucket == null ? null : bucket.toDeque().peek();
-               future.complete(Arrays.asList(key, value));
+               multimapList.pollFirst(key, 1).handle( (v,t) -> {
+                  if (t != null || v == null || v.size() == 0) {
+                                          future.completeExceptionally(
+                                                t != null ? t : new AssertionError("Unexpected empty or null ListBucket"));
+                                       } else {
+                                          byte[] value = v.iterator().next();
+                                          future.complete(Arrays.asList(key, value));
+                                       }
+                                       return null;
+                                    });
             }
          } catch (Exception ex) {
             future.completeExceptionally(ex);
