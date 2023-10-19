@@ -105,16 +105,25 @@ public class BLPOP extends RespCommand implements Resp3Command {
          // Listener can lose events during its install, so we need to poll again
          // and if we get values complete the listener future. In case of exception
          // completeExceptionally
+         pubSubListener.startTimer(timeout);
          pollAllKeys(listMultimap, filterKeys).whenComplete((v, t2) -> {
             // If second poll fails, remove listener and complete exceptionally
             if (t2 != null) {
                pubSubListener.completeExceptionally(t);
             }
             // Complete poll stage
-            pubSubListener.completePoll(v);
             if (v == null) {
+               if (pubSubListener.eventKey!= null) {
+                     pubSubListener.multimapList.pollFirst(pubSubListener.eventKey, 1).thenApply(eventVal -> {
+                     pubSubListener.completePoll(eventVal);
+                     return null;
+                  });
+               } else {
+                  pubSubListener.pollComplete = true;
+               }
                // If no value, start a timer if required
-               pubSubListener.startTimer(timeout);
+            } else {
+                  pubSubListener.completePoll(v);
             }
          });
       });
@@ -137,13 +146,14 @@ public class BLPOP extends RespCommand implements Resp3Command {
    @Listener(clustered = true)
    public static class PubSubListener {
       private final Channel channel;
-      EmbeddedMultimapListCache<byte[], byte[]> multimapList;
+      public EmbeddedMultimapListCache<byte[], byte[]> multimapList;
       public AdvancedCache<Object, Object> cache;
       ScheduledFuture<?> scheduledTimer;
       private boolean listenerAdded = false;
-      private CompletableFuture<Collection<byte[]>> listnerFuture = new CompletableFuture<>();
       private CompletableFuture<Collection<byte[]>> pollFuture = new CompletableFuture<>();
       private CompletableFuture<Collection<byte[]>> future;
+      public boolean pollComplete = false;
+      public byte[] eventKey;
       Resp3Handler handler;
 
       public void setListenerAdded(boolean listenerAdded) {
@@ -156,9 +166,10 @@ public class BLPOP extends RespCommand implements Resp3Command {
          this.multimapList = mml;
          this.cache = cache;
          this.handler = handler;
-         // This future sync poll thread and listener. It waits for the poll stage completion
+         // This future sync poll thread and listener. It waits for the poll stage
+         // completion
          // and its value returned if available otherwise wait for events
-         future = pollFuture.thenCompose((v) -> v != null ? CompletableFuture.completedFuture(v) : listnerFuture)
+         future = pollFuture
                .whenComplete((ignore_v, ignore_t) -> {
                   try {
                      this.deleteTimer();
@@ -204,16 +215,22 @@ public class BLPOP extends RespCommand implements Resp3Command {
          try {
             if (entryEvent.getValue() instanceof ListBucket) {
                byte[] key = unwrapKey(entryEvent.getKey());
-               multimapList.pollFirst(key, 1).handle((v, t) -> {
-                  if (t != null || v == null || v.size() == 0) {
-                     this.completeExceptionally(
-                           t != null ? t : new AssertionError("Unexpected empty or null ListBucket"));
-                  } else {
-                     byte[] value = v.iterator().next();
-                     listnerFuture.complete(Arrays.asList(key, value));
+               if (pollComplete) {
+                  multimapList.pollFirst(key, 1).handle((v, t) -> {
+                     if (t != null || v == null || v.size() == 0) {
+                        this.completeExceptionally(
+                              t != null ? t : new AssertionError("Unexpected empty or null ListBucket"));
+                     } else {
+                        byte[] value = v.iterator().next();
+                        completePoll(Arrays.asList(key, value));
+                     }
+                     return null;
+                  });
+               } else {
+                  if (eventKey == null) {
+                     eventKey = key;
                   }
-                  return null;
-               });
+               }
             }
          } catch (Exception ex) {
             this.completeExceptionally(ex);
