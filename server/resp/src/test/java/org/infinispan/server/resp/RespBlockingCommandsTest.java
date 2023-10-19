@@ -125,17 +125,22 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       RedisAsyncCommands<String, String> redisBlock = client.connect().async();
       try {
          var cf = registerBLPOPListener(redisBlock, 0, "keyZ");
-         redis.lpush("keyZ", "firstZ");
+         redis.lpush("keyZ", "firstZ", "secondZ");
          var res = cf.get(10, TimeUnit.SECONDS);
          assertThat(res.getKey()).isEqualTo("keyZ");
          assertThat(res.getValue()).isEqualTo("firstZ");
+         // Check blpop (feeded by listener) removed just one element
+         assertThat(redis.lrange("keyZ", 0, -1))
+               .containsExactly("secondZ");
 
          redis.rpush("key1", "first", "second", "third");
          res = redis.blpop(0, "key1");
          assertThat(res.getKey()).isEqualTo("key1");
          assertThat(res.getValue()).isEqualTo("first");
+         // Check blpop (feeded by poll) removed just one element
          assertThat(redis.lrange("key1", 0, -1))
                .containsExactlyInAnyOrder("second", "third");
+
          res = redis.blpop(0, "key2", "key1");
          assertThat(res.getKey()).isEqualTo("key1");
          assertThat(res.getValue()).isEqualTo("second");
