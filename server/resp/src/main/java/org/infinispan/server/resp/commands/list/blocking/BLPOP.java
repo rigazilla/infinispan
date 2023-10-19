@@ -113,8 +113,8 @@ public class BLPOP extends RespCommand implements Resp3Command {
             }
             // Complete poll stage
             if (v == null) {
-               if (pubSubListener.eventKey!= null) {
-                     pubSubListener.multimapList.pollFirst(pubSubListener.eventKey, 1).thenApply(eventVal -> {
+               if (pubSubListener.eventKey  != null)
+                  SubListener.multimapList.pollFirst(pubSubListener.eventKey, 1).thenApply(eventVal -> {
                      pubSubListener.completePoll(eventVal);
                      return null;
                   });
@@ -123,7 +123,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
                }
                // If no value, start a timer if required
             } else {
-                  pubSubListener.completePoll(v);
+               SubListener.completePoll(v);
             }
          });
       });
@@ -171,13 +171,9 @@ public class BLPOP extends RespCommand implements Resp3Command {
          // and its value returned if available otherwise wait for events
          future = pollFuture
                .whenComplete((ignore_v, ignore_t) -> {
-                  try {
-                     this.deleteTimer();
-                     if (listenerAdded) {
-                        cache.removeListenerAsync(this);
-                     }
-                  } catch (Exception ex) {
-                     System.out.println(ex.toString());
+                  his.deleteTimer();
+                  if (listenerAdded) {
+                     cache.removeListenerAsync(this);
                   }
                });
       }
