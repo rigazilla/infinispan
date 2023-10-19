@@ -108,12 +108,12 @@ public class BLPOP extends RespCommand implements Resp3Command {
             }
             if (v != null) {
                // If got result complete poll stage
-               pubSubListener.completePoll(v);
+               pubSubListener.complete(v);
             } else {
                // Poll result is null. If got event from listener use it
                if (pubSubListener.getSavedKey() != null) {
                   pubSubListener.multimapList.pollFirst(pubSubListener.getSavedKey(), 1).thenApply(eventVal -> {
-                     pubSubListener.completePoll(eventVal);
+                     pubSubListener.complete(eventVal);
                      return null;
                   });
                } else {
@@ -153,7 +153,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
       public AdvancedCache<Object, Object> cache;
       ScheduledFuture<?> scheduledTimer;
       private boolean listenerAdded;
-      private CompletableFuture<Collection<byte[]>> pollFuture;
+      private CompletableFuture<Collection<byte[]>> resultFuture;
       public boolean pollComplete;
       private AtomicBoolean executed;
       public AtomicReference<byte[]> atomicSavedKey;
@@ -168,10 +168,10 @@ public class BLPOP extends RespCommand implements Resp3Command {
          this.multimapList = mml;
          this.cache = cache;
          this.handler = handler;
-         pollFuture = new CompletableFuture<Collection<byte[]>>();
+         resultFuture = new CompletableFuture<Collection<byte[]>>();
          executed = new AtomicBoolean();
          atomicSavedKey = new AtomicReference<byte[]>();
-         pollFuture.whenComplete((ignore_v, ignore_t) -> {
+         resultFuture.whenComplete((ignore_v, ignore_t) -> {
             this.deleteTimer();
             if (listenerAdded) {
                cache.removeListenerAsync(this);
@@ -184,15 +184,15 @@ public class BLPOP extends RespCommand implements Resp3Command {
       }
 
       public CompletableFuture<Collection<byte[]>> getFuture() {
-         return pollFuture;
+         return resultFuture;
       }
 
-      public void completePoll(Collection<byte[]> entry) {
-         pollFuture.complete(entry);
+      public void complete(Collection<byte[]> entry) {
+         resultFuture.complete(entry);
       }
 
       public void completeExceptionally(Throwable t) {
-         pollFuture.completeExceptionally(t);
+         resultFuture.completeExceptionally(t);
       }
 
       public void startTimer(long timeout) {
@@ -201,7 +201,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
             if (listenerAdded) {
                cache.removeListenerAsync(this);
             }
-            pollFuture.complete(null);
+            resultFuture.complete(null);
          }, timeout, TimeUnit.MILLISECONDS) : null;
       }
 
@@ -234,7 +234,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
                                  t != null ? t : new AssertionError("Unexpected empty or null ListBucket"));
                         } else {
                            byte[] value = v.iterator().next();
-                           completePoll(Arrays.asList(key, value));
+                           complete(Arrays.asList(key, value));
                         }
                         return null;
                      });
