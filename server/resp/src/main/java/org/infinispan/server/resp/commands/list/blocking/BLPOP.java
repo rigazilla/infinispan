@@ -94,6 +94,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
          // If listener fails to install, complete exceptionally pubSubFuture and return
          if (t != null) {
             pubSubListener.completeExceptionally(t);
+            return;
          }
          pubSubListener.setListenerAdded(true);
          // Listener can lose events during its install, so we need to poll again
