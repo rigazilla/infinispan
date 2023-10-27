@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.infinispan.AdvancedCache;
-import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.commons.logging.LogFactory;
 import org.infinispan.commons.marshall.WrappedByteArray;
 import org.infinispan.commons.util.concurrent.CompletableFutures;
@@ -83,7 +82,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
          log.tracef("Subscriber for keys: " +
                filterKeys.toString());
       }
-      AdvancedCache<Object, Object> cache = handler.cache().withMediaType(MediaType.APPLICATION_OCTET_STREAM, null);
+      AdvancedCache<byte[], Object> cache = handler.typedCache(null);
       DataConversion vc = cache.getValueDataConversion();
       PubSubListener pubSubListener = new PubSubListener(handler, cache, listMultimap);
       EventListenerKeysFilter filter = new EventListenerKeysFilter(filterKeys.toArray(byte[][]::new));
@@ -137,7 +136,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
    @Listener(clustered = true)
    public static class PubSubListener {
       public EmbeddedMultimapListCache<byte[], byte[]> multimapList;
-      public AdvancedCache<Object, Object> cache;
+      public AdvancedCache<byte[], Object> cache;
       ScheduledFuture<?> scheduledTimer;
       private boolean listenerAdded;
       Resp3Handler handler;
@@ -147,7 +146,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
          this.listenerAdded = listenerAdded;
       }
 
-      public PubSubListener(Resp3Handler handler, AdvancedCache<Object, Object> cache,
+      public PubSubListener(Resp3Handler handler, AdvancedCache<byte[], Object> cache,
             EmbeddedMultimapListCache<byte[], byte[]> mml) {
          this.multimapList = mml;
          this.cache = cache;
