@@ -7,9 +7,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.infinispan.AdvancedCache;
@@ -93,7 +93,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
       addListenerStage.whenComplete((ignore, t) -> {
          // If listener fails to install, complete exceptionally pubSubFuture and return
          if (t != null) {
-            pubSubListener.completeExceptionally(t);
+            pubSubListener.synchronizer.completeExceptionally(t);
             return;
          }
          pubSubListener.setListenerAdded(true);
@@ -105,27 +105,13 @@ public class BLPOP extends RespCommand implements Resp3Command {
          pollAllKeys(listMultimap, filterKeys).whenComplete((v, t2) -> {
             // If second poll fails, remove listener and complete exceptionally
             if (t2 != null) {
-               pubSubListener.completeExceptionally(t);
+               pubSubListener.synchronizer.completeExceptionally(t);
+               return;
             }
-            if (v != null) {
-               // If got result complete poll stage
-               pubSubListener.complete(v);
-            } else {
-               // Poll result is null. If got event from listener use it
-               if (pubSubListener.getSavedKey() != null) {
-                  pubSubListener.multimapList.pollFirst(pubSubListener.getSavedKey(), 1).thenApply(eventVal -> {
-                     pubSubListener.complete(eventVal);
-                     return null;
-                  });
-               } else {
-                  // Poll phase completed, allow listener to continue the work
-                  pubSubListener.pollComplete = true;
-               }
-            }
+            pubSubListener.synchronizer.onPollComplete(v);
          });
       });
       return pubSubListener.getFuture();
-
    }
 
    private CompletionStage<Collection<byte[]>> pollAllKeys(EmbeddedMultimapListCache<byte[], byte[]> listMultimap,
@@ -154,12 +140,9 @@ public class BLPOP extends RespCommand implements Resp3Command {
       public AdvancedCache<Object, Object> cache;
       ScheduledFuture<?> scheduledTimer;
       private boolean listenerAdded;
-      private CompletableFuture<Collection<byte[]>> resultFuture;
-      public boolean pollComplete;
-      private AtomicBoolean executed;
-      public AtomicReference<byte[]> atomicSavedKey;
       Resp3Handler handler;
-
+      PollListenerSynchronizer synchronizer;
+      Runnable operation;
       public void setListenerAdded(boolean listenerAdded) {
          this.listenerAdded = listenerAdded;
       }
@@ -169,10 +152,20 @@ public class BLPOP extends RespCommand implements Resp3Command {
          this.multimapList = mml;
          this.cache = cache;
          this.handler = handler;
-         resultFuture = new CompletableFuture<Collection<byte[]>>();
-         executed = new AtomicBoolean();
-         atomicSavedKey = new AtomicReference<byte[]>();
-         resultFuture.whenComplete((ignore_v, ignore_t) -> {
+         this.synchronizer = new PollListenerSynchronizer();
+         this.synchronizer.operation = () -> {
+               multimapList.pollFirst(synchronizer.getSavedKey(), 1)
+                     .whenComplete( (eventVal,t3) -> {
+                     if (t3 != null || eventVal == null || eventVal.size() == 0) {
+                        synchronizer.completeExceptionally(
+                              t3 != null ? t3 : new AssertionError("Unexpected empty or null ListBucket"));
+                     } else {
+                        byte[] value = eventVal.iterator().next();
+                        synchronizer.complete(Arrays.asList(synchronizer.getSavedKey(), value));
+                     }});
+            };
+
+         synchronizer.resultFuture.whenComplete((ignore_v, ignore_t) -> {
             this.deleteTimer();
             if (listenerAdded) {
                cache.removeListenerAsync(this);
@@ -180,20 +173,8 @@ public class BLPOP extends RespCommand implements Resp3Command {
          });
       }
 
-      public byte[] getSavedKey() {
-         return atomicSavedKey.get();
-      }
-
       public CompletableFuture<Collection<byte[]>> getFuture() {
-         return resultFuture;
-      }
-
-      public void complete(Collection<byte[]> entry) {
-         resultFuture.complete(entry);
-      }
-
-      public void completeExceptionally(Throwable t) {
-         resultFuture.completeExceptionally(t);
+         return synchronizer.resultFuture;
       }
 
       public void startTimer(long timeout) {
@@ -202,7 +183,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
             if (listenerAdded) {
                cache.removeListenerAsync(this);
             }
-            resultFuture.complete(null);
+            synchronizer.complete(null);
          }, timeout, TimeUnit.MILLISECONDS) : null;
       }
 
@@ -217,33 +198,10 @@ public class BLPOP extends RespCommand implements Resp3Command {
          try {
             if (entryEvent.getValue() instanceof ListBucket) {
                byte[] key = unwrapKey(entryEvent.getKey());
-               if (!pollComplete) {
-                  // `addSubscriber` is still executing `pollAllKeys`, just save
-                  // the key `addSubscriber` will eventually use it
-                  atomicSavedKey.compareAndExchange(null, key);
-               } else {
-                  // poll thread is completed, listener can execute the operation
-                  // Execute just once
-                  if (executed.compareAndSet(false, true)) {
-                     // It's possible that an event has been received, stored in eventKey and not
-                     // processed by `addSubscriber` code. If this is the case use eventKey in place
-                     // of the received one
-                     final byte[] finalKey = getSavedKey() != null ? getSavedKey() : key;
-                     multimapList.pollFirst(finalKey, 1).handle((v, t) -> {
-                        if (t != null || v == null || v.size() == 0) {
-                           this.completeExceptionally(
-                                 t != null ? t : new AssertionError("Unexpected empty or null ListBucket"));
-                        } else {
-                           byte[] value = v.iterator().next();
-                           complete(Arrays.asList(key, value));
-                        }
-                        return null;
-                     });
-                  }
-               }
+               synchronizer.onEvent(key);
             }
          } catch (Exception ex) {
-            this.completeExceptionally(ex);
+            this.synchronizer.completeExceptionally(ex);
          }
          return CompletableFutures.completedNull();
       }
@@ -252,6 +210,80 @@ public class BLPOP extends RespCommand implements Resp3Command {
          return key instanceof WrappedByteArray
                ? ((WrappedByteArray) key).getBytes()
                : (byte[]) key;
+      }
+   }
+
+   /**
+    * PollListenerSynchronizer
+    *
+    * This class synchronizes the access to a CompletableFuture `resultFuture` so
+    * that its final value will be completed either
+    * - with value v by an onPollComplete(v,r) call with v!=null;
+    * - by `opEv.apply(k)`, if `onPollComplete(null, opPoll)` and then `onEvent(k, opEv)` are called;
+    * - by `opPoll.apply(k)`, if `onEvent(k, opEv)` and then `onPollComplete(null, opPoll)` are called.
+    *
+    */
+   public static class PollListenerSynchronizer {
+      public CountDownLatch eventReceivedLatch;
+      public CountDownLatch pollGotNullResultLatch;
+      private AtomicReference<byte[]> atomicSavedKey;
+      private CompletableFuture<Collection<byte[]>> resultFuture;
+      public Runnable operation;
+
+      public enum State {
+         POLL_ACTIVE,
+         DO,
+         COMPLETE,
+      }
+
+      private volatile AtomicReference<State> state;
+
+      public PollListenerSynchronizer() {
+         atomicSavedKey = new AtomicReference<byte[]>();
+         resultFuture = new CompletableFuture<Collection<byte[]>>();
+         eventReceivedLatch = new CountDownLatch(1);
+         pollGotNullResultLatch = new CountDownLatch(1);
+         state = new AtomicReference<BLPOP.PollListenerSynchronizer.State>(State.POLL_ACTIVE);
+      }
+
+      public CompletableFuture<Collection<byte[]>> getResultFuture() {
+         return resultFuture;
+      }
+
+      public void complete(Collection<byte[]> entry) {
+         resultFuture.complete(entry);
+      }
+
+      public void completeExceptionally(Throwable t) {
+         resultFuture.completeExceptionally(t);
+      }
+
+      public byte[] getSavedKey() {
+         return atomicSavedKey.get();
+      }
+
+      public void onEvent(byte[] key) {
+         eventReceivedLatch.countDown();
+         this.atomicSavedKey.compareAndSet(null, key);
+         if (state.compareAndSet(State.DO, State.COMPLETE)) {
+            operation.run();
+         }
+      }
+
+      public void onPollComplete(Collection<byte[]> v) {
+         if (v != null) {
+            // If got result complete poll stage
+            state.set(State.COMPLETE);
+            complete(v);
+         } else {
+            pollGotNullResultLatch.countDown();
+            state.set(State.DO);
+            // Poll result is null. If got event from listener use it
+            if (getSavedKey() != null && state.compareAndSet(State.DO, State.COMPLETE)) {
+               operation.run();
+            }
+         }
+
       }
    }
 }

@@ -276,5 +276,4 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
          return CompletableFutures.completedNull();
       }
    }
-
 }
