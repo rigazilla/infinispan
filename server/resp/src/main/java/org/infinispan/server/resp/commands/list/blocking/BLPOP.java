@@ -219,8 +219,8 @@ public class BLPOP extends RespCommand implements Resp3Command {
     * This class synchronizes the access to a CompletableFuture `resultFuture` so
     * that its final value will be completed either
     * - with value v by an onPollComplete(v,r) call with v!=null;
-    * - by `opEv.apply(k)`, if `onPollComplete(null, opPoll)` and then `onEvent(k, opEv)` are called;
-    * - by `opPoll.apply(k)`, if `onEvent(k, opEv)` and then `onPollComplete(null, opPoll)` are called.
+    * - by `this.operator(k)`, if `onPollComplete(null, opPoll)` and then `onEvent(k, opEv)` are called;
+    * - by `this.operator(k)`, if `onEvent(k, opEv)` and then `onPollComplete(null, opPoll)` are called.
     *
     */
    public static class PollListenerSynchronizer {
