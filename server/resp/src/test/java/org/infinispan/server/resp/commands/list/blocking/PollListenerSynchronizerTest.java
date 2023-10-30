@@ -1,27 +1,29 @@
 package org.infinispan.server.resp.commands.list.blocking;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Test(groups = "unit", testName = "server.resp.commands.list.blocking.PollListenerSynchronizerTest")
 public class PollListenerSynchronizerTest {
 
    @DataProvider
    private Object[] getSynchronizer() {
-      var synchronizer = new BLPOP.PollListenerSynchronizer();
-      synchronizer.operation = () -> {
+      TestableListenerSynchronizer synchronizer = new TestableListenerSynchronizer();
+      synchronizer.setPerform(() -> {
          synchronizer.complete(Arrays.asList(synchronizer.getSavedKey(), "test-val".getBytes()));
-      };
+      });
+
       return new Object[] { synchronizer };
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void onEventThenNullPollTest(BLPOP.PollListenerSynchronizer synchronizer)
+   public void onEventThenNullPollTest(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       synchronizer.onEvent("key1".getBytes());
       synchronizer.onPollComplete(null);
@@ -30,7 +32,7 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void onNullPollThenEventTest(BLPOP.PollListenerSynchronizer synchronizer)
+   public void onNullPollThenEventTest(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       synchronizer.onPollComplete(null);
       synchronizer.onEvent("key1".getBytes());
@@ -39,14 +41,14 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void onPollTest(BLPOP.PollListenerSynchronizer synchronizer) throws InterruptedException, ExecutionException {
+   public void onPollTest(TestableListenerSynchronizer synchronizer) throws InterruptedException, ExecutionException {
       synchronizer.onPollComplete(Arrays.asList("key1".getBytes(), "val1".getBytes()));
       assertThat(synchronizer.getResultFuture().get())
             .containsExactlyElementsOf(Arrays.asList("key1".getBytes(), "val1".getBytes()));
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void onPollAndEventTest(BLPOP.PollListenerSynchronizer synchronizer)
+   public void onPollAndEventTest(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       synchronizer.onPollComplete(Arrays.asList("poll-key1".getBytes(), "poll-val1".getBytes()));
       synchronizer.onEvent("key1".getBytes());
@@ -55,7 +57,7 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void onEventAndPollTest(BLPOP.PollListenerSynchronizer synchronizer)
+   public void onEventAndPollTest(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       synchronizer.onEvent("key1".getBytes());
       synchronizer.onPollComplete(Arrays.asList("poll-key1".getBytes(), "poll-val1".getBytes()));
@@ -64,7 +66,7 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void onMultipleEventsAndNullPollTest(BLPOP.PollListenerSynchronizer synchronizer)
+   public void onMultipleEventsAndNullPollTest(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       synchronizer.onEvent("key1".getBytes());
       synchronizer.onEvent("key2".getBytes());
@@ -74,7 +76,7 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void onMultipleEventsAndPollTest(BLPOP.PollListenerSynchronizer synchronizer)
+   public void onMultipleEventsAndPollTest(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       synchronizer.onEvent("key1".getBytes());
       synchronizer.onEvent("key2".getBytes());
@@ -84,7 +86,7 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void onEventAndPollAndEventTest(BLPOP.PollListenerSynchronizer synchronizer)
+   public void onEventAndPollAndEventTest(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       synchronizer.onEvent("key1".getBytes());
       synchronizer.onPollComplete(Arrays.asList("poll-key1".getBytes(), "poll-val1".getBytes()));
@@ -94,7 +96,7 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void onEventNullPollThenEventTest(BLPOP.PollListenerSynchronizer synchronizer)
+   public void onEventNullPollThenEventTest(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       synchronizer.onEvent("key1".getBytes());
       synchronizer.onPollComplete(null);
@@ -104,7 +106,7 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void raceEventAndPoll(BLPOP.PollListenerSynchronizer synchronizer)
+   public void raceEventAndPoll(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       var l = new CountDownLatch(1);
       new Thread(() -> {
@@ -130,7 +132,7 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void raceEventsAndPoll(BLPOP.PollListenerSynchronizer synchronizer)
+   public void raceEventsAndPoll(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       var l = new CountDownLatch(1);
       new Thread(() -> {
@@ -165,7 +167,7 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void concurrentEventAndPollGotNullResult(BLPOP.PollListenerSynchronizer synchronizer)
+   public void concurrentEventAndPollGotNullResult(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       new Thread(() -> {
          try {
@@ -184,7 +186,7 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void concurrentNullPollAndEventReceived(BLPOP.PollListenerSynchronizer synchronizer)
+   public void concurrentNullPollAndEventReceived(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       new Thread(() -> {
          try {
@@ -203,7 +205,7 @@ public class PollListenerSynchronizerTest {
    }
 
    @Test(dataProvider = "getSynchronizer")
-   public void concurrentPollAndEventReceived(BLPOP.PollListenerSynchronizer synchronizer)
+   public void concurrentPollAndEventReceived(TestableListenerSynchronizer synchronizer)
          throws InterruptedException, ExecutionException {
       new Thread(() -> {
          try {
@@ -218,6 +220,34 @@ public class PollListenerSynchronizerTest {
       }).start();
       assertThat(synchronizer.getResultFuture().get())
             .containsExactlyElementsOf(Arrays.asList("poll-key1".getBytes(), "poll-val1".getBytes()));
+   }
+}
+
+class TestableListenerSynchronizer extends BLPOP.PollListenerSynchronizer {
+      public CountDownLatch eventReceivedLatch = new CountDownLatch(1);
+      public CountDownLatch pollGotNullResultLatch = new CountDownLatch(1);
+
+   public TestableListenerSynchronizer() {
+      super(null);
+   }
+   private Runnable perform;
+
+   public void setPerform(Runnable perform) {
+      this.perform = perform;
+   }
+   @Override
+   protected void performPollFirst() {
+      perform.run();
+   }
+   @Override
+   public void onEvent(byte[] key) {
+      eventReceivedLatch.countDown();
+      super.onEvent(key);
+   }
+   @Override
+   protected void pollCompleteWithNull() {
+      pollGotNullResultLatch.countDown();
+      super.pollCompleteWithNull();
    }
 
 }

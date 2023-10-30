@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -145,19 +144,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
          this.multimapList = mml;
          this.cache = cache;
          this.handler = handler;
-         this.synchronizer = new PollListenerSynchronizer();
-         this.synchronizer.operation = () -> {
-            multimapList.pollFirst(synchronizer.getSavedKey(), 1)
-                  .whenComplete((eventVal, t) -> {
-                     if (t != null) {
-                        synchronizer.completeExceptionally(
-                              t != null ? t : new AssertionError("Unexpected empty or null ListBucket"));
-                     } else if (eventVal != null && eventVal.size() > 0) {
-                        byte[] value = eventVal.iterator().next();
-                        synchronizer.complete(Arrays.asList(synchronizer.getSavedKey(), value));
-                     }
-                  });
-         };
+         this.synchronizer = new PollListenerSynchronizer(multimapList);
 
          synchronizer.resultFuture.whenComplete((ignore_v, ignore_t) -> {
             deleteTimer();
@@ -216,11 +203,9 @@ public class BLPOP extends RespCommand implements Resp3Command {
     *
     */
    public static class PollListenerSynchronizer {
-      public CountDownLatch eventReceivedLatch;
-      public CountDownLatch pollGotNullResultLatch;
       private AtomicReference<byte[]> atomicSavedKey;
       private CompletableFuture<Collection<byte[]>> resultFuture;
-      public Runnable operation;
+      private final EmbeddedMultimapListCache<byte[], byte[]> multimapList;
 
       public enum State {
          POLL_ACTIVE,
@@ -230,12 +215,11 @@ public class BLPOP extends RespCommand implements Resp3Command {
 
       private volatile AtomicReference<State> state;
 
-      public PollListenerSynchronizer() {
+      public PollListenerSynchronizer(EmbeddedMultimapListCache<byte[], byte[]> multimapList) {
          atomicSavedKey = new AtomicReference<byte[]>();
          resultFuture = new CompletableFuture<Collection<byte[]>>();
-         eventReceivedLatch = new CountDownLatch(1);
-         pollGotNullResultLatch = new CountDownLatch(1);
          state = new AtomicReference<BLPOP.PollListenerSynchronizer.State>(State.POLL_ACTIVE);
+         this.multimapList = multimapList;
       }
 
       public CompletableFuture<Collection<byte[]>> getResultFuture() {
@@ -255,10 +239,9 @@ public class BLPOP extends RespCommand implements Resp3Command {
       }
 
       public void onEvent(byte[] key) {
-         eventReceivedLatch.countDown();
          this.atomicSavedKey.compareAndSet(null, key);
          if (state.compareAndSet(State.DO, State.COMPLETE)) {
-            operation.run();
+            performPollFirst();
          }
       }
 
@@ -268,14 +251,29 @@ public class BLPOP extends RespCommand implements Resp3Command {
             state.set(State.COMPLETE);
             complete(v);
          } else {
-            pollGotNullResultLatch.countDown();
-            state.set(State.DO);
-            // Poll result is null. If got event from listener use it
-            if (getSavedKey() != null && state.compareAndSet(State.DO, State.COMPLETE)) {
-               operation.run();
-            }
+            pollCompleteWithNull();
          }
-
       }
+
+      protected void pollCompleteWithNull() {
+         state.set(State.DO);
+         // Poll result is null. If got event from listener use it
+         if (getSavedKey() != null && state.compareAndSet(State.DO, State.COMPLETE)) {
+            performPollFirst();
+         }
+      }
+
+      protected void performPollFirst() {
+            multimapList.pollFirst(this.getSavedKey(), 1)
+                  .whenComplete((eventVal, t) -> {
+                     if (t != null) {
+                        completeExceptionally(
+                              t != null ? t : new AssertionError("Unexpected exception calling EmbeddedMultimapListCache.pollFirst()"));
+                     } else if (eventVal != null && eventVal.size() > 0) {
+                        byte[] value = eventVal.iterator().next();
+                        complete(Arrays.asList(getSavedKey(), value));
+                     }
+                  });
+         }
    }
 }
