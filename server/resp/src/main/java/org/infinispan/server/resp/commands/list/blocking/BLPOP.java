@@ -148,11 +148,11 @@ public class BLPOP extends RespCommand implements Resp3Command {
          this.synchronizer = new PollListenerSynchronizer();
          this.synchronizer.operation = () -> {
             multimapList.pollFirst(synchronizer.getSavedKey(), 1)
-                  .whenComplete((eventVal, t3) -> {
-                     if (t3 != null || eventVal == null) {
+                  .whenComplete((eventVal, t) -> {
+                     if (t != null) {
                         synchronizer.completeExceptionally(
-                              t3 != null ? t3 : new AssertionError("Unexpected empty or null ListBucket"));
-                     } else if (eventVal.size() > 0) {
+                              t != null ? t : new AssertionError("Unexpected empty or null ListBucket"));
+                     } else if (eventVal != null && eventVal.size() > 0) {
                         byte[] value = eventVal.iterator().next();
                         synchronizer.complete(Arrays.asList(synchronizer.getSavedKey(), value));
                      }

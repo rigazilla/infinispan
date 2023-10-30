@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
@@ -78,13 +79,19 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
 
    private RedisFuture<KeyValue<String, String>> registerBLPOPListener(RedisAsyncCommands<String, String> redis,
          long timeout, String... keys) {
+      return registerBLPOPListener(redis, 1, timeout, keys);
+   }
+
+   private RedisFuture<KeyValue<String, String>> registerBLPOPListener(RedisAsyncCommands<String, String> redis,
+         int count,
+         long timeout, String... keys) {
       RedisFuture<KeyValue<String, String>> rf = redis.blpop(timeout, keys);
       CacheNotifierImpl<?, ?> cni = (CacheNotifierImpl<?, ?>) TestingUtil.extractComponent(cache, CacheNotifier.class);
       // If there's a listener ok otherwise
       // if rf is done an error during listener registration has happend
       // no need to wait anymore. test will fail
       eventually(() -> cni.getListeners().stream()
-            .anyMatch(l -> l instanceof BLPOP.PubSubListener || l instanceof RespBlockingCommandsTest.FailingListener)
+            .filter(l -> l instanceof BLPOP.PubSubListener || l instanceof RespBlockingCommandsTest.FailingListener).count() == count
             || rf.isDone());
       return rf;
    }
@@ -180,6 +187,55 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
    }
 
    @Test
+   public void testBlpopTwoListenersWithValues()
+         throws InterruptedException, ExecutionException, TimeoutException, java.util.concurrent.TimeoutException {
+      RedisCommands<String, String> redis = redisConnection.sync();
+      var client = createClient(30000, server.getPort());
+      RedisAsyncCommands<String, String> redisBlock = client.connect().async();
+      RedisAsyncCommands<String, String> redisBlock2 = client.connect().async();
+      try {
+         var cf = registerBLPOPListener(redisBlock, 0, "key");
+         var cf2 = registerBLPOPListener(redisBlock2,2, 0, "key");
+         redis.lpush("key", "first", "second","third");
+         var res = cf.get(10, TimeUnit.SECONDS);
+         var res2 = cf2.get(10, TimeUnit.SECONDS);
+         assertThat(res.getKey()).isEqualTo("key");
+         assertThat(res.getValue()).isEqualTo("first");
+         assertThat(res2.getKey()).isEqualTo("key");
+         assertThat(res2.getValue()).isEqualTo("second");
+         // Check blpop (feeded by events) removed two events
+         assertThat(redis.lrange("key", 0, -1))
+               .containsExactlyInAnyOrder("third");
+      } finally {
+         verifyBLPOPListenerUnregistered();
+         RespTestingUtil.killClient(client);
+      }
+   }
+
+   @Test
+   public void testBlpopTwoListenersOneTimeout()
+         throws InterruptedException, ExecutionException, TimeoutException, java.util.concurrent.TimeoutException {
+      RedisCommands<String, String> redis = redisConnection.sync();
+      var client = createClient(30000, server.getPort());
+      RedisAsyncCommands<String, String> redisBlock = client.connect().async();
+      RedisAsyncCommands<String, String> redisBlock2 = client.connect().async();
+      try {
+         var cf = registerBLPOPListener(redisBlock, 3, "key");
+         var cf2 = registerBLPOPListener(redisBlock2,2, 3, "key");
+         redis.lpush("key", "first");
+         var res = cf.get(10, TimeUnit.SECONDS);
+         var res2 = cf2.get(10, TimeUnit.SECONDS);
+
+         assertThat(res.getKey()).isEqualTo("key");
+         assertThat(res.getValue()).isEqualTo("first");
+         assertThat(res2).isNull();
+      } finally {
+         verifyBLPOPListenerUnregistered();
+         RespTestingUtil.killClient(client);
+      }
+   }
+
+   @Test
    public void testBlpopFailsInstallingListener() throws Exception {
       var client = createClient(30000, server.getPort());
       RedisAsyncCommands<String, String> redisAsync = client.connect().async();
@@ -209,7 +265,8 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
          TestingUtil.replaceComponent(cache, CacheNotifier.class, cni, true);
       }
    }
-      FailingListener failingListener;
+
+   FailingListener failingListener;
 
    @Test
    public void testBlpopFailsListenerOnEvent() throws Exception {
@@ -251,7 +308,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
 
       if (simpleCache)
          doAnswer(listenerAnswer).when(spyCni).addListenerAsync(any(), any(), any());
-       else
+      else
          doAnswer(listenerHolderAnswer).when(spyCni).addListenerAsync(any(), any(), any(), any());
       doAnswer(listenerHolderRemove).when(spyCni).removeListenerAsync(any());
 
