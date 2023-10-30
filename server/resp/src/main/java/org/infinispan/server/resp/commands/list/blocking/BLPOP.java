@@ -70,14 +70,13 @@ public class BLPOP extends RespCommand implements Resp3Command {
          // as error
          var retStage = (v != null && !v.isEmpty())
                ? CompletableFuture.completedFuture(v)
-               : addSubscriber(listMultimap, filterKeys, timeout, handler, ctx);
+               : addSubscriber(listMultimap, filterKeys, timeout, handler);
          return retStage;
       }), ctx, Consumers.COLLECTION_BULK_BICONSUMER);
    }
 
    CompletionStage<Collection<byte[]>> addSubscriber(EmbeddedMultimapListCache<byte[], byte[]> listMultimap,
-         List<byte[]> filterKeys, long timeout, Resp3Handler handler,
-         ChannelHandlerContext ctx) {
+         List<byte[]> filterKeys, long timeout, Resp3Handler handler) {
       if (log.isTraceEnabled()) {
          log.tracef("Subscriber for keys: " +
                filterKeys.toString());
@@ -95,7 +94,6 @@ public class BLPOP extends RespCommand implements Resp3Command {
             pubSubListener.synchronizer.completeExceptionally(t);
             return;
          }
-         pubSubListener.setListenerAdded(true);
          // Listener can lose events during its install, so we need to poll again
          // and if we get values complete the listener future. In case of exception
          // completeExceptionally
@@ -135,16 +133,12 @@ public class BLPOP extends RespCommand implements Resp3Command {
 
    @Listener(clustered = true)
    public static class PubSubListener {
-      public EmbeddedMultimapListCache<byte[], byte[]> multimapList;
-      public AdvancedCache<byte[], Object> cache;
-      ScheduledFuture<?> scheduledTimer;
-      private boolean listenerAdded;
-      Resp3Handler handler;
-      PollListenerSynchronizer synchronizer;
+      private final EmbeddedMultimapListCache<byte[], byte[]> multimapList;
+      private final AdvancedCache<byte[], Object> cache;
+      private volatile ScheduledFuture<?> scheduledTimer;
+      private final Resp3Handler handler;
+      private final PollListenerSynchronizer synchronizer;
       Runnable operation;
-      public void setListenerAdded(boolean listenerAdded) {
-         this.listenerAdded = listenerAdded;
-      }
 
       public PubSubListener(Resp3Handler handler, AdvancedCache<byte[], Object> cache,
             EmbeddedMultimapListCache<byte[], byte[]> mml) {
@@ -153,22 +147,21 @@ public class BLPOP extends RespCommand implements Resp3Command {
          this.handler = handler;
          this.synchronizer = new PollListenerSynchronizer();
          this.synchronizer.operation = () -> {
-               multimapList.pollFirst(synchronizer.getSavedKey(), 1)
-                     .whenComplete( (eventVal,t3) -> {
-                     if (t3 != null || eventVal == null || eventVal.size() == 0) {
+            multimapList.pollFirst(synchronizer.getSavedKey(), 1)
+                  .whenComplete((eventVal, t3) -> {
+                     if (t3 != null || eventVal == null) {
                         synchronizer.completeExceptionally(
                               t3 != null ? t3 : new AssertionError("Unexpected empty or null ListBucket"));
-                     } else {
+                     } else if (eventVal.size() > 0) {
                         byte[] value = eventVal.iterator().next();
                         synchronizer.complete(Arrays.asList(synchronizer.getSavedKey(), value));
-                     }});
-            };
+                     }
+                  });
+         };
 
          synchronizer.resultFuture.whenComplete((ignore_v, ignore_t) -> {
-            this.deleteTimer();
-            if (listenerAdded) {
-               cache.removeListenerAsync(this);
-            }
+            deleteTimer();
+            cache.removeListenerAsync(this);
          });
       }
 
@@ -179,9 +172,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
       public void startTimer(long timeout) {
          deleteTimer();
          scheduledTimer = (timeout > 0) ? handler.getScheduler().schedule(() -> {
-            if (listenerAdded) {
-               cache.removeListenerAsync(this);
-            }
+            cache.removeListenerAsync(this);
             synchronizer.complete(null);
          }, timeout, TimeUnit.MILLISECONDS) : null;
       }
@@ -200,7 +191,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
                synchronizer.onEvent(key);
             }
          } catch (Exception ex) {
-            this.synchronizer.completeExceptionally(ex);
+            synchronizer.completeExceptionally(ex);
          }
          return CompletableFutures.completedNull();
       }
@@ -218,8 +209,10 @@ public class BLPOP extends RespCommand implements Resp3Command {
     * This class synchronizes the access to a CompletableFuture `resultFuture` so
     * that its final value will be completed either
     * - with value v by an onPollComplete(v,r) call with v!=null;
-    * - by `this.operator(k)`, if `onPollComplete(null, opPoll)` and then `onEvent(k, opEv)` are called;
-    * - by `this.operator(k)`, if `onEvent(k, opEv)` and then `onPollComplete(null, opPoll)` are called.
+    * - by `this.operator(k)`, if `onPollComplete(null, opPoll)` and then
+    * `onEvent(k, opEv)` are called;
+    * - by `this.operator(k)`, if `onEvent(k, opEv)` and then `onPollComplete(null,
+    * opPoll)` are called.
     *
     */
    public static class PollListenerSynchronizer {

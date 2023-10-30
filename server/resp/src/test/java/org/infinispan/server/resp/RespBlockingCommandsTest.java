@@ -209,6 +209,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
          TestingUtil.replaceComponent(cache, CacheNotifier.class, cni, true);
       }
    }
+      FailingListener failingListener;
 
    @Test
    public void testBlpopFailsListenerOnEvent() throws Exception {
@@ -222,8 +223,8 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
 
       Answer<CompletionStage<Void>> listenerAnswer = invocation -> {
          Object[] args = invocation.getArguments();
-
-         args[0] = new FailingListener((BLPOP.PubSubListener) args[0]);
+         failingListener = new FailingListener((BLPOP.PubSubListener) args[0]);
+         args[0] = failingListener;
          invocation.callRealMethod();
          latch.countDown();
          return CompletableFuture.completedFuture(null);
@@ -232,7 +233,8 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       Answer<CompletionStage<Void>> listenerHolderAnswer = invocation -> {
          Object[] args = invocation.getArguments();
          var oldHolder = (ListenerHolder) args[0];
-         var holder = new ListenerHolder(new FailingListener((BLPOP.PubSubListener) oldHolder.getListener()),
+         failingListener = new FailingListener((BLPOP.PubSubListener) oldHolder.getListener());
+         var holder = new ListenerHolder(failingListener,
                oldHolder.getKeyDataConversion(), oldHolder.getValueDataConversion(), false);
          args[0] = holder;
          invocation.callRealMethod();
@@ -240,10 +242,18 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
          return CompletableFuture.completedFuture(null);
       };
 
+      Answer<CompletionStage<Void>> listenerHolderRemove = invocation -> {
+         Object[] args = invocation.getArguments();
+         args[0] = failingListener;
+         invocation.callRealMethod();
+         return CompletableFuture.completedFuture(null);
+      };
+
       if (simpleCache)
          doAnswer(listenerAnswer).when(spyCni).addListenerAsync(any(), any(), any());
-      else
+       else
          doAnswer(listenerHolderAnswer).when(spyCni).addListenerAsync(any(), any(), any(), any());
+      doAnswer(listenerHolderRemove).when(spyCni).removeListenerAsync(any());
 
       try {
          TestingUtil.replaceComponent(cache, CacheNotifier.class, spyCni, true);
@@ -269,8 +279,6 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
 
       @CacheEntryCreated
       public CompletionStage<Void> onEvent(CacheEntryEvent<Object, Object> entryEvent) {
-         blpop.setListenerAdded(true);
-         blpop.cache.removeListenerAsync(this);
          blpop.getFuture().completeExceptionally(
                new RuntimeException("Injected failure in OnEvent"));
          return CompletableFutures.completedNull();
