@@ -137,7 +137,6 @@ public class BLPOP extends RespCommand implements Resp3Command {
       private volatile ScheduledFuture<?> scheduledTimer;
       private final Resp3Handler handler;
       private final PollListenerSynchronizer synchronizer;
-      Runnable operation;
 
       public PubSubListener(Resp3Handler handler, AdvancedCache<byte[], Object> cache,
             EmbeddedMultimapListCache<byte[], byte[]> mml) {
@@ -166,7 +165,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
 
       public void deleteTimer() {
          if (scheduledTimer != null)
-            scheduledTimer.cancel(true);
+            scheduledTimer.cancel(false);
          scheduledTimer = null;
       }
 

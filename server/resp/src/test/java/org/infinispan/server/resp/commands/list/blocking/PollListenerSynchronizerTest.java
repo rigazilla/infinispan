@@ -162,6 +162,7 @@ public class PollListenerSynchronizerTest {
          synchronizer.onPollComplete(Arrays.asList("poll-key1".getBytes(), "poll-val1".getBytes()));
       }).start();
       l.countDown();
+      // Synchronizer should guarantee that poll value is returned and not the event one
       assertThat(synchronizer.getResultFuture().get())
             .containsExactlyElementsOf(Arrays.asList("poll-key1".getBytes(), "poll-val1".getBytes()));
    }
