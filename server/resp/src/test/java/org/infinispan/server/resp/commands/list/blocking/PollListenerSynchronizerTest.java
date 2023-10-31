@@ -16,7 +16,7 @@ public class PollListenerSynchronizerTest {
    private Object[] getSynchronizer() {
       TestableListenerSynchronizer synchronizer = new TestableListenerSynchronizer();
       synchronizer.setPerform(() -> {
-         synchronizer.complete(Arrays.asList(synchronizer.getSavedKey(), "test-val".getBytes()));
+         synchronizer.complete(Arrays.asList(synchronizer.getKeyQueue().poll(), "test-val".getBytes()));
       });
 
       return new Object[] { synchronizer };
@@ -237,7 +237,7 @@ class TestableListenerSynchronizer extends BLPOP.PollListenerSynchronizer {
       this.perform = perform;
    }
    @Override
-   protected void performPollFirst() {
+   protected void operateOnList() {
       perform.run();
    }
    @Override

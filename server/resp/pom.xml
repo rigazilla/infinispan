@@ -4,7 +4,6 @@
    <modelVersion>4.0.0</modelVersion>
    <parent>
       <?m2e execute onConfiguration,onIncremental?>
-      <?m2e execute onConfiguration?>
       <groupId>org.infinispan</groupId>
       <artifactId>infinispan-server-parent</artifactId>
       <version>15.0.0-SNAPSHOT</version>

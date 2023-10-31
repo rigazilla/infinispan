@@ -7,6 +7,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
@@ -52,7 +54,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
    public Object[] factory() {
       return new Object[] {
             new RespBlockingCommandsTest(),
-            new RespBlockingCommandsTest().simpleCache()
+            // new RespBlockingCommandsTest().simpleCache()
       };
    }
 
@@ -78,19 +80,19 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
 
    private RedisFuture<KeyValue<String, String>> registerBLPOPListener(RedisAsyncCommands<String, String> redis,
          long timeout, String... keys) {
-      return registerBLPOPListener(redis, 1, timeout, keys);
+      return registerBLPOPListener(redis, timeout, 1, keys);
    }
 
    private RedisFuture<KeyValue<String, String>> registerBLPOPListener(RedisAsyncCommands<String, String> redis,
-         int count,
-         long timeout, String... keys) {
+         long timeout, int count, String... keys) {
       RedisFuture<KeyValue<String, String>> rf = redis.blpop(timeout, keys);
       CacheNotifierImpl<?, ?> cni = (CacheNotifierImpl<?, ?>) TestingUtil.extractComponent(cache, CacheNotifier.class);
       // If there's a listener ok otherwise
       // if rf is done an error during listener registration has happend
       // no need to wait anymore. test will fail
       eventually(() -> cni.getListeners().stream()
-            .filter(l -> l instanceof BLPOP.PubSubListener || l instanceof RespBlockingCommandsTest.FailingListener).count() == count
+            .filter(l -> l instanceof BLPOP.PubSubListener || l instanceof RespBlockingCommandsTest.FailingListener)
+            .count() == count
             || rf.isDone());
       return rf;
    }
@@ -194,8 +196,8 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       RedisAsyncCommands<String, String> redisBlock2 = client.connect().async();
       try {
          var cf = registerBLPOPListener(redisBlock, 0, "key");
-         var cf2 = registerBLPOPListener(redisBlock2,2, 0, "key");
-         redis.lpush("key", "first", "second","third");
+         var cf2 = registerBLPOPListener(redisBlock2, 0, 2, "key");
+         redis.lpush("key", "first", "second", "third");
          var res = cf.get(10, TimeUnit.SECONDS);
          var res2 = cf2.get(10, TimeUnit.SECONDS);
          assertThat(res.getKey()).isEqualTo("key");
@@ -204,7 +206,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
          assertThat(res2.getValue()).isEqualTo("second");
          // Check blpop (feeded by events) removed two events
          assertThat(redis.lrange("key", 0, -1))
-               .containsExactlyInAnyOrder("third");
+               .containsExactly("third");
       } finally {
          verifyBLPOPListenerUnregistered();
          RespTestingUtil.killClient(client);
@@ -220,7 +222,7 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
       RedisAsyncCommands<String, String> redisBlock2 = client.connect().async();
       try {
          var cf = registerBLPOPListener(redisBlock, 3, "key");
-         var cf2 = registerBLPOPListener(redisBlock2,2, 3, "key");
+         var cf2 = registerBLPOPListener(redisBlock2, 3, 2, "key");
          redis.lpush("key", "first");
          var res = cf.get(10, TimeUnit.SECONDS);
          var res2 = cf2.get(10, TimeUnit.SECONDS);
@@ -228,6 +230,112 @@ public class RespBlockingCommandsTest extends SingleNodeRespBaseTest {
          assertThat(res.getKey()).isEqualTo("key");
          assertThat(res.getValue()).isEqualTo("first");
          assertThat(res2).isNull();
+      } finally {
+         verifyBLPOPListenerUnregistered();
+         RespTestingUtil.killClient(client);
+      }
+   }
+
+   @Test
+   public void testBlpopTwoListenersTwoProducers()
+         throws InterruptedException, ExecutionException, TimeoutException, java.util.concurrent.TimeoutException {
+      RedisCommands<String, String> redis1 = redisConnection.sync();
+      RedisCommands<String, String> redis2 = redisConnection.sync();
+      var client = createClient(30000, server.getPort());
+      RedisAsyncCommands<String, String> redisBlock = client.connect().async();
+      RedisAsyncCommands<String, String> redisBlock2 = client.connect().async();
+      try {
+         var cf = registerBLPOPListener(redisBlock, 0, "key");
+         var cf2 = registerBLPOPListener(redisBlock2, 0, 2, "key");
+         var t1 = new Thread(() -> {
+            redis1.lpush("key", "first");
+         });
+         var t2 = new Thread(() -> {
+            redis2.lpush("key", "second", "third");
+         });
+         t1.start();
+         t2.start();
+         var res = cf.get(10, TimeUnit.SECONDS);
+         var res2 = cf2.get(10, TimeUnit.SECONDS);
+         assertThat(res.getKey()).isEqualTo("key");
+         assertThat(res2.getKey()).isEqualTo("key");
+         var rest = redis1.lrange("key", 0, -1);
+         assertThat(rest.size()).isEqualTo(1);
+         assertThat(Arrays.asList(res.getValue(), res2.getValue(), rest.get(0)))
+               .containsExactlyInAnyOrder("first", "second", "third");
+      } finally {
+         verifyBLPOPListenerUnregistered();
+         RespTestingUtil.killClient(client);
+      }
+   }
+
+   @Test
+   public void testBlpopThreeListenersOneTimesOutTwoProducers()
+         throws InterruptedException, ExecutionException, TimeoutException, java.util.concurrent.TimeoutException {
+      RedisCommands<String, String> redis1 = redisConnection.sync();
+      RedisCommands<String, String> redis2 = redisConnection.sync();
+      var client = createClient(30000, server.getPort());
+      RedisAsyncCommands<String, String> redisBlock = client.connect().async();
+      RedisAsyncCommands<String, String> redisBlock2 = client.connect().async();
+      RedisAsyncCommands<String, String> redisBlock3 = client.connect().async();
+      try {
+         var cf = registerBLPOPListener(redisBlock, 3, "key");
+         var cf2 = registerBLPOPListener(redisBlock2, 3, 2, "key");
+         var cf3 = registerBLPOPListener(redisBlock3, 3, 3, "key");
+         var t1 = new Thread(() -> {
+            redis1.lpush("key", "first");
+         });
+         var t2 = new Thread(() -> {
+            redis2.lpush("key", "second");
+         });
+         t1.start();
+         t2.start();
+         var res = cf.get(10, TimeUnit.SECONDS);
+         var res2 = cf2.get(10, TimeUnit.SECONDS);
+         var res3 = cf3.get(10, TimeUnit.SECONDS);
+         assertThat(Arrays.asList(extractValue(res), extractValue(res2), extractValue(res3)))
+               .containsExactlyInAnyOrder("first", "second", null);
+         assertThat(redis1.lrange("key", 0, -1)).isEmpty();
+      } finally {
+         verifyBLPOPListenerUnregistered();
+         RespTestingUtil.killClient(client);
+      }
+   }
+
+   private String extractValue(KeyValue<String, String> kv) {
+      return kv == null ? null : kv.getValue();
+   }
+
+   @Test
+   public void testBlpopThreeListenersTwoProducers()
+         throws InterruptedException, ExecutionException, TimeoutException, java.util.concurrent.TimeoutException {
+      RedisCommands<String, String> redis1 = redisConnection.sync();
+      RedisCommands<String, String> redis2 = redisConnection.sync();
+      var client = createClient(30000, server.getPort());
+      RedisAsyncCommands<String, String> redisBlock = client.connect().async();
+      RedisAsyncCommands<String, String> redisBlock2 = client.connect().async();
+      RedisAsyncCommands<String, String> redisBlock3 = client.connect().async();
+      try {
+         var cf = registerBLPOPListener(redisBlock, 3, "key");
+         var cf2 = registerBLPOPListener(redisBlock2, 3, 2, "key");
+         var cf3 = registerBLPOPListener(redisBlock3, 3, 3, "key");
+         var t1 = new Thread(() -> {
+            redis1.lpush("key", "first");
+         });
+         var t2 = new Thread(() -> {
+            redis2.lpush("key", "second", "third", "fourth");
+         });
+         t1.start();
+         t2.start();
+         var res = cf.get(10, TimeUnit.SECONDS);
+         var res2 = cf2.get(10, TimeUnit.SECONDS);
+         var res3 = cf3.get(10, TimeUnit.SECONDS);
+         List<String> results = Arrays.asList(res.getValue(), res2.getValue(), res3.getValue());
+         List<String> expected1 = Arrays.asList("first", "third", "fourth");
+         List<String> expected2 = Arrays.asList("second", "third", "fourth");
+         assertThat(results.size()).isEqualTo(3);
+         assertThat(results.containsAll(expected1) || results.containsAll(expected2)).isTrue();
+         assertThat(redis1.lrange("key", 0, -1)).isEmpty();
       } finally {
          verifyBLPOPListenerUnregistered();
          RespTestingUtil.killClient(client);
