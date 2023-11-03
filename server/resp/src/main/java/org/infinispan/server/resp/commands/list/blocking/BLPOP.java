@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 
 import org.infinispan.AdvancedCache;
 import org.infinispan.commons.logging.LogFactory;
@@ -20,6 +21,8 @@ import org.infinispan.multimap.impl.EmbeddedMultimapListCache;
 import org.infinispan.multimap.impl.ListBucket;
 import org.infinispan.notifications.Listener;
 import org.infinispan.notifications.cachelistener.annotation.CacheEntryCreated;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryModified;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryRemoved;
 import org.infinispan.notifications.cachelistener.event.CacheEntryEvent;
 import org.infinispan.notifications.cachelistener.filter.CacheEventConverter;
 import org.infinispan.server.resp.Consumers;
@@ -172,13 +175,25 @@ public class BLPOP extends RespCommand implements Resp3Command {
       @CacheEntryCreated
       public void onEvent(CacheEntryEvent<Object, Object> entryEvent) {
          try {
+            System.out.println(""+this+" OnEvent RECEIVED");
             if (entryEvent.getValue() instanceof ListBucket) {
                byte[] key = unwrapKey(entryEvent.getKey());
+               System.out.println(""+this+" OnEvent RECEIVED "+key);
                synchronizer.onEvent(key);
             }
          } catch (Exception ex) {
             synchronizer.completeExceptionally(ex);
          }
+      }
+
+      @CacheEntryRemoved
+      public void onEventRemove(CacheEntryEvent<Object, Object> entryEvent) {
+            System.out.println(""+this+" OnEvent REMOVE");
+      }
+
+      @CacheEntryModified
+      public void onEventModi(CacheEntryEvent<Object, Object> entryEvent) {
+            System.out.println(""+this+" OnEvent Modi");
       }
 
       private byte[] unwrapKey(Object key) {
@@ -205,6 +220,7 @@ public class BLPOP extends RespCommand implements Resp3Command {
       private final ConcurrentLinkedQueue<byte[]> keyQueue;
       private final CompletableFuture<Collection<byte[]>> resultFuture;
       private final EmbeddedMultimapListCache<byte[], byte[]> multimapList;
+      private static final Logger logger = Logger.getLogger(PollListenerSynchronizer.class.getName());
 
       public enum State {
          POLL_ACTIVE,
@@ -239,33 +255,70 @@ public class BLPOP extends RespCommand implements Resp3Command {
       }
 
       public void onEvent(byte[] key) {
+         System.out.println(""+this+" OnEvent RECEIVED");
          this.keyQueue.offer(key);
          if (state.compareAndSet(State.DO, State.DO)) {
+         System.out.println(""+this+" OnEvent operator on list");
             operateOnList();
          }
       }
 
       public void onPollComplete(Collection<byte[]> v) {
+         System.out.println(""+this+" OnPollComplete RECEIVED");
          if (v != null) {
+         System.out.println(""+this+" OnPollComplete complete");
             // If got result complete poll stage
             state.set(State.COMPLETE);
             complete(v);
          } else {
+         System.out.println(""+this+" OnPollComplete null");
             pollCompleteWithNull();
          }
       }
 
       protected void pollCompleteWithNull() {
-         state.set(State.DO);
          // Poll result is null. If got event from listener use it
-         if (!keyQueue.isEmpty() && state.compareAndSet(State.DO, State.DO)) {
-            operateOnList();
+         if (!keyQueue.isEmpty()) {
+            operateOnPoll();
          }
+         state.compareAndSet(State.POLL_ACTIVE, State.DO);
+      }
+
+      private CompletionStage<Collection<byte[]>> processQueue(Collection<byte[]> eventVal, byte[] currKey,
+            Throwable t) {
+         if (t != null) {
+            completeExceptionally(
+                  t != null ? t
+                        : new AssertionError(
+                              "Unexpected exception calling EmbeddedMultimapListCache.pollFirst()"));
+            return CompletableFuture.completedFuture(null);
+         }
+         if (eventVal != null && eventVal.size() > 0) {
+            byte[] value = eventVal.iterator().next();
+            if (state.compareAndSet(State.POLL_ACTIVE, State.COMPLETE)) {
+               complete(Arrays.asList(currKey, value));
+               return CompletableFuture.completedFuture(null);
+            }
+         }
+         if (keyQueue.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+         }
+         final var newKey = keyQueue.poll();
+         return multimapList.pollFirst(currKey, 1).whenComplete((eventVal1 , t1) -> this.processQueue(eventVal1, newKey, t1));
+      }
+
+      protected void operateOnPoll() {
+         if (!keyQueue.isEmpty()) {
+            var currKey = keyQueue.poll();
+            multimapList.pollFirst(currKey, 1).whenComplete((eventVal , t) -> this.processQueue(eventVal, currKey, t));
+         }
+         state.compareAndSet(State.POLL_ACTIVE, State.DO);
       }
 
       protected void operateOnList() {
          if (!keyQueue.isEmpty()) {
             var currKey = keyQueue.poll();
+            System.out.println(""+this+" OnEvent operateonlist currKey="+currKey);
             multimapList.pollFirst(currKey, 1)
                   .whenComplete((eventVal, t) -> {
                      if (t != null) {
@@ -274,10 +327,16 @@ public class BLPOP extends RespCommand implements Resp3Command {
                                     : new AssertionError(
                                           "Unexpected exception calling EmbeddedMultimapListCache.pollFirst()"));
                      } else if (eventVal != null && eventVal.size() > 0) {
+                        System.out.println(""+this+" OnEvent operateonlist size="+eventVal.size());
+                        System.out.println(""+this+" OnEvent operateonlist val="+new String(eventVal.iterator().next()));
                         byte[] value = eventVal.iterator().next();
+                           System.out.println(""+this+" OnEvent operateonlist DO");
                         if (state.compareAndSet(State.DO, State.COMPLETE)) {
+                           System.out.println(""+this+" OnEvent operateonlist COMPLETE");
                            complete(Arrays.asList(currKey, value));
                         }
+                     } else {
+                           System.out.println(""+this+" OnEvent operateonlist Empty val "+eventVal);
                      }
                   });
          }

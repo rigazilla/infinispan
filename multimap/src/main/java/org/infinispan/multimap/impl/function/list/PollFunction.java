@@ -45,6 +45,7 @@ public final class PollFunction<K, V> implements ListBucketBaseFunction<K, V, Co
 
          ListBucket<V>.ListBucketResult result = existing.get().poll(first, count);
          if (result.bucketValue().isEmpty()) {
+            System.out.println("Removing entry");
             entryView.remove();
          } else {
             entryView.set(result.bucketValue());
