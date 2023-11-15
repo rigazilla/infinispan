@@ -173,4 +173,14 @@ public class RespTwoNodeTest extends BaseMultipleRespTest {
 
       return handOffQueue;
    }
+
+   @Test
+   public void testRpushLrange() throws InterruptedException, ExecutionException {
+      var redisCmd1 = redisConnection1.sync();
+      var redisCmd2 = redisConnection2.sync();
+      redisCmd1.rpush("keyA", "val1");
+      redisCmd2.rpush("keyA", "val2");
+      assertThat(redisCmd1.lrange("keyA", 0,-1)).containsExactlyInAnyOrder("val1","val2");
+      assertThat(redisCmd2.lrange("keyA", 0,-1)).containsExactlyInAnyOrder("val1","val2");
+   }
 }
