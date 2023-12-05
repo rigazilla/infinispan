@@ -63,6 +63,7 @@ public class HashOperationsTest extends SingleNodeRespBaseTest {
       assertWrongType(() -> redis.set("plain", "string"), () -> redis.hlen("plain"));
    }
 
+   @Test
    public void testHScanOperation() {
       RedisCommands<String, String> redis = redisConnection.sync();
       Map<String, String> content = new HashMap<>();
@@ -90,6 +91,7 @@ public class HashOperationsTest extends SingleNodeRespBaseTest {
       assertThat(empty)
             .satisfies(v -> assertThat(v.isFinished()).isTrue())
             .satisfies(v -> assertThat(v.getMap()).isEmpty());
+      assertWrongType(() -> redis.set("another", "tristan"), () ->  redis.hscan("another"));
    }
 
    public void testHScanCount() {

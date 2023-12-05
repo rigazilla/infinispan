@@ -384,13 +384,15 @@ public class RespSetCommandsTest extends SingleNodeRespBaseTest {
 
       Set<String> scanned = new HashSet<>();
       ScanArgs args = ScanArgs.Builder.matches("v1*");
-      for (ValueScanCursor<String> cursor = redis.sscan("sscan-match-test", args); ; cursor = redis.sscan("sscan-match-test", cursor, args)) {
+      for (ValueScanCursor<String> cursor = redis.sscan("sscan-match-test", args);; cursor = redis
+            .sscan("sscan-match-test", cursor, args)) {
          scanned.addAll(cursor.getValues());
          for (String key : cursor.getValues()) {
             assertThat(key).startsWith("v1");
          }
 
-         if (cursor.isFinished()) break;
+         if (cursor.isFinished())
+            break;
       }
 
       assertThat(scanned)
@@ -399,7 +401,7 @@ public class RespSetCommandsTest extends SingleNodeRespBaseTest {
    }
 
    @Test
-   public void testHScanOperation() {
+   public void testSscanOperation() {
       RedisCommands<String, String> redis = redisConnection.sync();
       Set<String> content = new HashSet<>();
 
@@ -412,9 +414,10 @@ public class RespSetCommandsTest extends SingleNodeRespBaseTest {
       assertThat(redis.sadd("sscan-test", content.toArray(String[]::new))).isEqualTo(dataSize);
 
       Set<String> scanned = new HashSet<>();
-      for (ValueScanCursor<String> cursor = redis.sscan("sscan-test"); ; cursor = redis.sscan("sscan-test", cursor)) {
+      for (ValueScanCursor<String> cursor = redis.sscan("sscan-test");; cursor = redis.sscan("sscan-test", cursor)) {
          scanned.addAll(cursor.getValues());
-         if (cursor.isFinished()) break;
+         if (cursor.isFinished())
+            break;
       }
 
       assertThat(scanned)
@@ -425,6 +428,7 @@ public class RespSetCommandsTest extends SingleNodeRespBaseTest {
       assertThat(empty)
             .satisfies(v -> assertThat(v.isFinished()).isTrue())
             .satisfies(v -> assertThat(v.getValues()).isEmpty());
+      assertWrongType(() -> redis.set("another", "tristan"), () -> redis.sscan("another"));
    }
 
    @Test
@@ -442,9 +446,11 @@ public class RespSetCommandsTest extends SingleNodeRespBaseTest {
       int count = 5;
       Set<String> scanned = new HashSet<>();
       ScanArgs args = ScanArgs.Builder.limit(count);
-      for (ValueScanCursor<String> cursor = redis.sscan("sscan-count-test", args); ; cursor = redis.sscan("sscan-count-test", cursor, args)) {
+      for (ValueScanCursor<String> cursor = redis.sscan("sscan-count-test", args);; cursor = redis
+            .sscan("sscan-count-test", cursor, args)) {
          scanned.addAll(cursor.getValues());
-         if (cursor.isFinished()) break;
+         if (cursor.isFinished())
+            break;
 
          assertThat(cursor.getValues()).hasSize(count);
       }

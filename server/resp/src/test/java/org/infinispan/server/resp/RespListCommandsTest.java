@@ -251,6 +251,7 @@ public class RespListCommandsTest extends SingleNodeRespBaseTest {
       assertWrongType(() -> redis.set("another", "tristan"), () -> redis.lpos("another", "tristan"));
    }
 
+   @Test
    public void testLINSERT() {
       redis.rpush("leads", "william", "jose", "ryan", "pedro", "jose");
       assertThat(redis.linsert("not_exsiting", true, "william", "fabio")).isEqualTo(0);

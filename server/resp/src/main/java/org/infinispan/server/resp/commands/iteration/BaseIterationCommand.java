@@ -6,6 +6,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
+import javax.management.RuntimeErrorException;
+
 import org.infinispan.AdvancedCache;
 import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.container.entries.CacheEntry;
@@ -44,7 +46,7 @@ public abstract class BaseIterationCommand extends RespCommand implements Resp3C
       if (INITIAL_CURSOR.equals(cursor)) {
          CompletionStage<IterationInitializationContext> initialization = initializeIteration(handler, arguments);
          if (initialization != null) {
-            return handler.stageToReturn(initialization.thenCompose(iic -> initializeAndIterate(handler, ctx, manager, args, iic)), ctx);
+            return handler.stageToReturn(initialization.thenCompose(iic -> initializeAndIterate(handler, ctx, manager, args, iic))/* .exceptionally( t -> { throw new RuntimeException(t);})*/, ctx);
          }
          return initializeAndIterate(handler, ctx, manager, args, null);
       }
