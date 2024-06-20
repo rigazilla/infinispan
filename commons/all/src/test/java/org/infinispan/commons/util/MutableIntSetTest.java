@@ -55,7 +55,7 @@ public class MutableIntSetTest {
    @Test
    public void testFlaky1() {
         double r = Math.random();
-        if (r < 0.3) {
+        if (r < 0) {
             fail("oops");
         }
     }
@@ -63,7 +63,7 @@ public class MutableIntSetTest {
    @Test
    public void testFlaky2() {
       double r = Math.random();
-      if (r < 0.3) {
+      if (r < 0) {
             fail("oops2");
       }
    }
