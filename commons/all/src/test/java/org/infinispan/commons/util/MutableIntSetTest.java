@@ -6,6 +6,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 import org.junit.After;
+import org.junit.AssumptionViolatedException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -49,6 +51,27 @@ public class MutableIntSetTest {
       assertEquals(2, intSet.size());
       intSet.add(4);
       assertEquals(2, intSet.size());
+   }
+
+   @Test
+   public void testFlaky1() {
+        double r = Math.random();
+        if (r < 0.3) {
+            fail("oops");
+        }
+    }
+
+   @Test
+   public void testFlaky2() {
+      double r = Math.random();
+      if (r < 0.3) {
+            fail("oops2");
+      }
+   }
+
+   @Test
+   public void Fail() {
+      fail("always fails");
    }
 
    @Test
