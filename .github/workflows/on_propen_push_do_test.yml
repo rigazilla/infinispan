@@ -13,6 +13,9 @@ jobs:
     env:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
       GH_TOKEN: ${{ github.token }}
+    outputs:
+      server-distro-name-branch: ${{ steps.properties.outputs.infinispan_brand_prefix }}-server-${{ steps.properties.outputs.infinispan_brand_version }}
+      server-distro-name-pr: ${{ steps.properties.outputs.infinispan_brand_prefix }}-server-${{ steps.properties.outputs.infinispan_brand_version }}-${{ github.event.pull_request.number }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,9 +35,14 @@ jobs:
 
       - run: ./mvnw --version
 
+      - name: Getting project properties
+        run: |
+            ./mvnw properties:write-project-properties -Dproperties.outputFile=mvn-write-project.properties
+            cat mvn-write-project.properties | while IFS='=' read a b; do echo ${a//[-.]/_}=$b; done >> "$GITHUB_OUTPUT"
+        id: properties
       - name: Maven build
         run: >
-            ./mvnw -s maven-settings.xml clean install -DskipTests -Pnative
+            ./mvnw -s maven-settings.xml clean install -B -e -DskipTests -Pnative
 
       - name: Maven Test
         run: >
@@ -95,3 +103,52 @@ jobs:
             target-branch.txt
             event_name.txt
             event_number.txt
+
+      - name: Archive server distro ${{ steps.properties.outputs.infinispan_brand_version }}
+        if: ${{github.event_name == 'push'}}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.properties.outputs.infinispan_brand_prefix }}-server-${{ steps.properties.outputs.infinispan_brand_version }}
+          overwrite: true
+          path: |
+            distribution/target/distribution/infinispan-server*.zip
+
+      - name: Archive PR server distro ${{ steps.properties.outputs.infinispan_brand_version }}-${{ github.event.pull_request.number }}
+        if: ${{github.event_name == 'pull_request'}}
+        uses: actions/upload-artifact@v4
+        with:
+            name: ${{ steps.properties.outputs.infinispan_brand_prefix }}-server-${{ steps.properties.outputs.infinispan_brand_version }}-${{ github.event.pull_request.number }}
+            overwrite: true
+            path: |
+               distribution/target/distribution/infinispan-server*.zip
+
+      - uses: ncipollo/release-action@v1
+        if: ${{ github.event_name}} == 'push'
+        id: create-release
+        with:
+          name: ${{ steps.properties.outputs.infinispan_brand_version }}-devel
+          allowUpdates: true
+          artifacts: distribution/target/distribution/infinispan*.zip
+          tag: ${{ github.ref_name }}-devel
+  images-branch:
+      name: Build branch image ${{ needs.ci-build-test-pr.outputs.server-distro-name-branch }} using infinispan-image
+      if: github.event_name == 'push'
+      needs: ci-build-test-pr
+      uses: rigazilla/infinispan-images/.github/workflows/ci-release.yml@main
+      secrets: inherit
+      with:
+         repository: ${{ github.repository }}
+         run-id: ${{ github.run_id }}
+         name: ${{ needs.ci-build-test-pr.outputs.server-distro-name-branch }}
+         art-name: ${{ needs.ci-build-test-pr.outputs.server-distro-name-branch }}
+  images-pr:
+      name: Build PR image ${{ needs.ci-build-test-pr.outputs.server-distro-name-branch }} using infinispan-image
+      if: github.event_name == 'pull_request'
+      needs: ci-build-test-pr
+      uses: rigazilla/infinispan-images/.github/workflows/ci-release.yml@main
+      secrets: inherit
+      with:
+         repository: ${{ github.repository }}
+         run-id: ${{ github.run_id }}
+         name: ${{ needs.ci-build-test-pr.outputs.server-distro-name-branch }}
+         art-name: ${{ needs.ci-build-test-pr.outputs.server-distro-name-pr }}
