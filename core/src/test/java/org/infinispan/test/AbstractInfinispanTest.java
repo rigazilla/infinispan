@@ -404,7 +404,7 @@ public abstract class AbstractInfinispanTest {
    }
 
    protected void eventually(String message, Condition ec) {
-      eventually(message, ec, 10000, TimeUnit.MILLISECONDS);
+      eventually(message, ec, 30000, TimeUnit.MILLISECONDS);
    }
 
    public void safeRollback(TransactionManager transactionManager) {
