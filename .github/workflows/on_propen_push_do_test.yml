@@ -41,8 +41,7 @@ jobs:
 
       - name: Maven Test
         run: >
-            ./mvnw verify -s maven-settings.xml -B -e -DrerunFailingTestsCount=2
-            -Dmaven.test.failure.ignore=true -Dansi.strip=true -pl core
+            ./mvnw test -s maven-settings.xml -pl core
 
       - name: Archive commit sha PR
         if: >
