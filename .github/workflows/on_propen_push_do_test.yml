@@ -27,6 +27,12 @@ jobs:
           distribution: temurin
           cache: maven
 
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: 21
+          distribution: 'graalvm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - run: ./mvnw --version
 
       - name: Getting project properties
@@ -36,12 +42,13 @@ jobs:
         id: properties
       - name: Maven build
         run: >
-            ./mvnw -s maven-settings.xml clean install -B -e -DskipTests
+            ./mvnw -s maven-settings.xml clean install -B -e -DskipTests -Pnative
 #            -pl :infinispan-component-annotations,:infinispan-logging-annotations,:infinispan-checkstyle,commons,:infinispan-defaults-maven-plugin,:infinispan-logging-processor,:infinispan-commons-spi,:infinispan-component-processor,:infinispan-commons-test,:infinispan-api,:infinispan-commons,core
 
       - name: Maven Test
         run: >
-            ./mvnw test -s maven-settings.xml -pl core
+            ./mvnw -s maven-settings.xml verify -B -e -DrerunFailingTestsCount=2 -Pnative
+            -fae -Dansi.strip=true -pl core
 
       - name: Archive commit sha PR
         if: >
