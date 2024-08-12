@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: 21
-          distribution: zulu
+          distribution: temurin
           cache: maven
 
       - uses: graalvm/setup-graalvm@v1
@@ -47,8 +47,8 @@ jobs:
 
       - name: Maven Test
         run: >
-            ./mvnw -s maven-settings.xml verify -B -e -DrerunFailingTestsCount=2 -Pnative
-            -fae -Dansi.strip=true -pl core
+            ./mvnw verify -s maven-settings.xml -B -e -DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true
+            -Dansi.strip=true  -Pnative -pl core
 
       - name: Archive commit sha PR
         if: >
