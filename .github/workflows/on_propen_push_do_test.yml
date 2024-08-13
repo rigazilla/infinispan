@@ -49,7 +49,7 @@ jobs:
       - name: Maven build distribution
         if: github.event_name == 'push'
         run: >
-            ./mvnw -s maven-settings.xml clean install -B -e -DskipTests -Pnative
+            ./mvnw clean install -B -e -DskipTests -Pnative
 #            -pl :infinispan-component-annotations,:infinispan-logging-annotations,:infinispan-checkstyle,commons,:infinispan-defaults-maven-plugin,:infinispan-logging-processor,:infinispan-commons-spi,:infinispan-component-processor,:infinispan-commons-test,:infinispan-api,:infinispan-commons,core
 
       - name: Maven Test
