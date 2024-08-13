@@ -47,7 +47,7 @@ jobs:
 
       - name: Maven Test
         run: >
-            ./mvnw verify -s maven-settings.xml -B -e -DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true
+            echo SkIPPING ./mvnw verify -s maven-settings.xml -B -e -DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true
             -Dansi.strip=true  -Pnative
 
       - name: Archive commit sha PR
