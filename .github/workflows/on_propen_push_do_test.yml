@@ -40,9 +40,16 @@ jobs:
             ./mvnw properties:write-project-properties -Dproperties.outputFile=mvn-write-project.properties
             cat mvn-write-project.properties | while IFS='=' read a b; do echo ${a//[-.]/_}=$b; done >> "$GITHUB_OUTPUT"
         id: properties
+
       - name: Maven build
+        if: github.event_name == 'pull_request'
         run: >
             ./mvnw -s maven-settings.xml clean install -B -e -DskipTests -Pnative
+
+      - name: Maven build distribution
+        if: github.event_name == 'push'
+        run: >
+            ./mvnw -s maven-settings.xml clean install -B -e -DskipTests -Pnative -Pdistribution
 #            -pl :infinispan-component-annotations,:infinispan-logging-annotations,:infinispan-checkstyle,commons,:infinispan-defaults-maven-plugin,:infinispan-logging-processor,:infinispan-commons-spi,:infinispan-component-processor,:infinispan-commons-test,:infinispan-api,:infinispan-commons,core
 
       - name: Maven Test
