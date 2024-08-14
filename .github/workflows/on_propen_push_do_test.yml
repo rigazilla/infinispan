@@ -44,12 +44,12 @@ jobs:
       - name: Maven build
         if: github.event_name == 'pull_request'
         run: >
-            ./mvnw clean install -s maven-settings.xml -B -e -DskipTests -Pnative
+            echo ./mvnw clean install -s maven-settings.xml -B -e -DskipTests -Pnative
 
       - name: Maven build distribution
         if: github.event_name == 'push'
         run: >
-            ./mvnw clean install -s maven-settings.xml -B -e -DskipTests -Pnative
+            echo ./mvnw clean install -s maven-settings.xml -B -e -DskipTests -Pnative
 #            -pl :infinispan-component-annotations,:infinispan-logging-annotations,:infinispan-checkstyle,commons,:infinispan-defaults-maven-plugin,:infinispan-logging-processor,:infinispan-commons-spi,:infinispan-component-processor,:infinispan-commons-test,:infinispan-api,:infinispan-commons,core
 
       - name: Maven Test
@@ -109,8 +109,8 @@ jobs:
           path: |
             **/target/*-reports*/**/TEST-*FLAKY.xml
             target-branch.txt
-            event_name.txt
-            event_number.txt
+            event-name.txt
+            event-number.txt
 
       - name: Archive server distro ${{ steps.properties.outputs.infinispan_brand_version }}
         if: ${{github.event_name == 'push'}}
