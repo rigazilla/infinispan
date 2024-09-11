@@ -24,7 +24,7 @@ jobs:
       secrets: inherit
       with:
         repository: ${{ github.repository }}
-        run-id: ${{ github.event.workflow_run }}
+        run-id: ${{ github.event.workflow_run.id }}
         art-name: infinispan-server
         tags: quay.io/rigazilla/server-test:gh-${{ needs.get-workflow-info.outputs.targetBranch }}
    images-pr:
@@ -34,6 +34,6 @@ jobs:
       secrets: inherit
       with:
         repository: ${{ github.repository }}
-        run-id: ${{ github.event.workflow_run }}
+        run-id: ${{ github.event.workflow_run.id }}
         art-name: infinispan-server
         tags: quay.io/rigazilla/server-test:gh-PR-${{ needs.get-workflow-info.outputs.pullRequestNumber }}
