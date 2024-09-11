@@ -9,6 +9,7 @@ jobs:
       outputs:
          pullRequestNumber: ${{ steps.source-run-info.outputs.pullRequestNumber }}
          targetBranch: ${{ steps.source-run-info.outputs.targetBranch }}
+         sourceEvent: ${{ steps.source-run-info.outputs.sourceEvent }}
       steps:
          - name: "Get information about the origin 'CI' run"
            uses: potiuk/get-workflow-origin@v1_1
@@ -17,7 +18,7 @@ jobs:
             token: ${{ secrets.GITHUB_TOKEN }}
             sourceRunId: ${{ github.event.workflow_run.id }}
    images-branch:
-      if: github.event_name == 'push'
+      if: ${{ needs.get-workflow-info.outputs.sourceEvent }} == 'push'
       needs: get-workflow-info
       uses: infinispan/infinispan-images/.github/workflows/ci-release.yml@rz-publish-image
       secrets: inherit
@@ -25,9 +26,9 @@ jobs:
         repository: ${{ github.repository }}
         run-id: ${{ github.event.workflow_run }}
         art-name: infinispan-server
-        tags: quay.io/infinispan-test/server:gh-${{ needs.get-workflow-info.outputs.targetBranch }}
+        tags: quay.io/rigazilla/server-test:gh-${{ needs.get-workflow-info.outputs.targetBranch }}
    images-pr:
-      if: github.event_name == 'pull_request'
+      if: ${{ needs.get-workflow-info.outputs.sourceEvent }} == 'pull_request'
       needs: get-workflow-info
       uses: infinispan/infinispan-images/.github/workflows/ci-release.yml@rz-publish-image
       secrets: inherit
@@ -35,4 +36,4 @@ jobs:
         repository: ${{ github.repository }}
         run-id: ${{ github.event.workflow_run }}
         art-name: infinispan-server
-        tags: quay.io/infinispan-test/server:gh-${{ needs.get-workflow-info.outputs.pullRequestNumber }}
+        tags: quay.io/rigazilla/server-test:gh-PR-${{ needs.get-workflow-info.outputs.pullRequestNumber }}
