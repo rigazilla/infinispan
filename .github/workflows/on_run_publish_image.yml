@@ -8,7 +8,7 @@ jobs:
       runs-on: ubuntu-latest
       outputs:
          pullRequestNumber: ${{ steps.source-run-info.outputs.pullRequestNumber }}
-         sourceBranch: ${{ steps.source-run-info.outputs.sourceBranch }}
+         sourceBranch: ${{ steps.source-run-info.outputs.sourceHeadBranch }}
          sourceEvent: ${{ steps.source-run-info.outputs.sourceEvent }}
       steps:
          - name: "Get information about the origin 'CI' run"
