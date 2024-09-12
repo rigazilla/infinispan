@@ -18,7 +18,7 @@ jobs:
             token: ${{ secrets.GITHUB_TOKEN }}
             sourceRunId: ${{ github.event.workflow_run.id }}
    images-branch:
-      if: ${{ needs.get-workflow-info.outputs.sourceEvent }} == 'push'
+      if: needs.get-workflow-info.outputs.sourceEvent == 'push'
       needs: get-workflow-info
       uses: infinispan/infinispan-images/.github/workflows/ci-release.yml@rz-publish-image
       secrets:
@@ -31,7 +31,7 @@ jobs:
         art-name: infinispan-server
         tags: quay.io/rigazilla/server-test:gh-${{ needs.get-workflow-info.outputs.targetBranch }}
    images-pr:
-      if: ${{ needs.get-workflow-info.outputs.sourceEvent }} == 'pull_request'
+      if: needs.get-workflow-info.outputs.sourceEvent == 'pull_request'
       needs: get-workflow-info
       uses: infinispan/infinispan-images/.github/workflows/ci-release.yml@rz-publish-image
       secrets:
