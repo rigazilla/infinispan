@@ -8,7 +8,7 @@ jobs:
       runs-on: ubuntu-latest
       outputs:
          pullRequestNumber: ${{ steps.source-run-info.outputs.pullRequestNumber }}
-         targetBranch: ${{ steps.source-run-info.outputs.targetBranch }}
+         sourceBranch: ${{ steps.source-run-info.outputs.sourceBranch }}
          sourceEvent: ${{ steps.source-run-info.outputs.sourceEvent }}
       steps:
          - name: "Get information about the origin 'CI' run"
@@ -29,7 +29,7 @@ jobs:
         repository: ${{ github.repository }}
         run-id: ${{ github.event.workflow_run.id }}
         art-name: infinispan-server
-        tags: quay.io/rigazilla/server-test:gh-${{ needs.get-workflow-info.outputs.targetBranch }}
+        tags: quay.io/rigazilla/server-test:gh-${{ needs.get-workflow-info.outputs.sourceBranch }}
    images-pr:
       if: needs.get-workflow-info.outputs.sourceEvent == 'pull_request'
       needs: get-workflow-info
