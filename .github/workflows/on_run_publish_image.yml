@@ -21,7 +21,10 @@ jobs:
       if: ${{ needs.get-workflow-info.outputs.sourceEvent }} == 'push'
       needs: get-workflow-info
       uses: infinispan/infinispan-images/.github/workflows/ci-release.yml@rz-publish-image
-      secrets: inherit
+      secrets:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        quay_user: ${{ secrets.QUAY_IO_USERNAME }}
+        quay_pass: ${{ secrets.QUAY_IO_PASSWORD }}
       with:
         repository: ${{ github.repository }}
         run-id: ${{ github.event.workflow_run.id }}
@@ -31,7 +34,10 @@ jobs:
       if: ${{ needs.get-workflow-info.outputs.sourceEvent }} == 'pull_request'
       needs: get-workflow-info
       uses: infinispan/infinispan-images/.github/workflows/ci-release.yml@rz-publish-image
-      secrets: inherit
+      secrets:
+         token: ${{ secrets.GITHUB_TOKEN }}
+         quay_user: ${{ secrets.QUAY_IO_USERNAME }}
+         quay_pass: ${{ secrets.QUAY_IO_PASSWORD }}
       with:
         repository: ${{ github.repository }}
         run-id: ${{ github.event.workflow_run.id }}
