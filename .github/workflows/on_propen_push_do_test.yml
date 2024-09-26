@@ -21,7 +21,7 @@ jobs:
        with:
          result-encoding: string
          script: |
-            echo context.payload.workflow_run
+            core.info('{$context.payload.workflow_run}')
             core.setOutput("run_id", context.payload.workflow_run.id)
             core.setOutput("sha", context.payload.workflow_run.sha)
 
