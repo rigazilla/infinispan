@@ -8,7 +8,7 @@ runs:
   using: composite
   steps:
     - name: Download Infinispan Maven artifacts with run_id
-      if: ${{ inputs.run_id != '' }}
+      if: inputs.run_id != ''
       uses: actions/download-artifact@v4
       with:
         name: m2-infinispan.tzts
@@ -16,7 +16,7 @@ runs:
         github-token: ${{ github.token }}
 
     - name: Download Infinispan Maven artifacts
-      if: ${{ inputs.run_id == '' }}
+      if: inputs.run_id == ''
       uses: actions/download-artifact@v4
       with:
         name: m2-infinispan.tzts
