@@ -17,9 +17,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-#      - uses: actions/checkout@v4
-#
-#      - name: Build Infinispan
-#        uses: ./.github/actions/build-infinispan
+      - uses: actions/checkout@v4
+
+      - name: Build Infinispan
+        uses: ./.github/actions/build-infinispan
 
       - run: echo Build Completed ${{ github.run_id }}
