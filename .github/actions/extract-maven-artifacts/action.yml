@@ -13,7 +13,7 @@ runs:
       with:
         name: m2-infinispan.tzts
         run-id: ${{ inputs.run_id }}
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ github.token }}
 
     - name: Download Infinispan Maven artifacts
       if: ${{ inputs.run_id }} == ""
