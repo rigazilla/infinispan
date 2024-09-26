@@ -1,4 +1,4 @@
-name: On PR Open or Push Do Test
+name: On Build Do Test
 on:
    workflow_run:
       workflows: [On PR Open or Push Do Build]
