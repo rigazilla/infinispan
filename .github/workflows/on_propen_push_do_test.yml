@@ -23,6 +23,7 @@ jobs:
          script: return context.payload.workflow_run.id
 
   ci-build-test-pr:
+    needs: get-info
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     name: Maven Build and Test
     runs-on: ubuntu-latest
@@ -30,6 +31,7 @@ jobs:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
       GH_TOKEN: ${{ github.token }}
     steps:
+      - run: echo ${{needs.get-info.outputs.build_run_id}}
       - name: Checkout
         uses: actions/checkout@v4
 
