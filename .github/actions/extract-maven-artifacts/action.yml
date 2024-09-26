@@ -11,14 +11,14 @@ runs:
       if: ${{ inputs.run_id }} != ""
       uses: actions/download-artifact@v4
       with:
-        name: m2-infinispan.tzts
+        name: m2-infinispan.tzts.zip
         run-id: ${{ inputs.run_id }}
 
     - name: Download Infinispan Maven artifacts
       if: ${{ inputs.run_id }} == ""
       uses: actions/download-artifact@v4
       with:
-        name: m2-infinispan.tzts
+        name: m2-infinispan.tzts.zip
 
     - name: Extract Infinispan Maven artifacts
       shell: bash
