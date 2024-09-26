@@ -16,7 +16,7 @@ jobs:
       - if: ${{ github.event_name != 'pull_request' }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: main
           repository: infinispan/infinispan-images
 
       - if: ${{ github.event_name == 'pull_request' }}
