@@ -3,12 +3,10 @@ name: Operator Upgrade Tests
 on:
   push:
     branches:
-      - main
-      - '*.0.x'
+      - test-cekit
   pull_request:
     branches:
-      - main
-      - '*.0.x'
+      - test-cekit
 
 jobs:
   image:
