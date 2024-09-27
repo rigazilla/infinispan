@@ -1,7 +1,7 @@
-name: On Run Create Jira for Flaky Test
+name: On Test Jira Flaky
 on:
    workflow_run:
-     workflows: [On PR Open or Push Do Build and Test]
+     workflows: [On Build Do Test]
      types: [completed]
 jobs:
    jiraForFlakyTest:
