@@ -64,14 +64,14 @@ jobs:
       - name: Archive commit sha PR
         if: >
           (success() || failure()) &&
-          github.event_name == 'pull_request'
+          needs.get-info.outputs.event == 'pull_request'
         run: |
            echo -n ${{ needs.get-info.outputs.run_id }} > github-sha.txt
 
       - name: Archive commit sha push
         if: >
           (success() || failure()) &&
-          github.event_name == 'push'
+          needs.get-info.outputs.event  == 'push'
         run: |
            echo -n $GITHUB_SHA > github-sha.txt
 
