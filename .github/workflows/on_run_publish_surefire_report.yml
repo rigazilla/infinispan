@@ -1,7 +1,7 @@
-name: On Run Publish Surefire Report
+name: On Test Publish Surefire Report
 on:
    workflow_run:
-     workflows: [On PR Open or Push Do Build and Test]
+     workflows: [On Build Do Test]
      types: [completed]
 jobs:
    publish:
