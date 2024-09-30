@@ -81,7 +81,7 @@ jobs:
           id: pr_number
           uses: juliangruber/read-file-action@v1
           with:
-            path: ./event-number.txt
+            path: ./pr-number.txt
 
         - if: >
             steps.download-artifact.outputs.result == 'Flaky Found' &&

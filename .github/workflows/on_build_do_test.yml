@@ -11,24 +11,45 @@ concurrency:
 
 jobs:
   get-info:
-   runs-on: ubuntu-latest
-   outputs:
-      run_id: ${{ steps.get-info.outputs.run_id }}
-      head_sha: ${{ steps.get-info.outputs.head_sha }}
-      event: ${{ steps.get-info.outputs.event }}
-      head_branch: ${{ steps.get-info.outputs.head_branch }}
-   steps:
-     - name: Get Info
-       id: get-info
-       uses: actions/github-script@v7
-       with:
-         result-encoding: string
-         script: |
-            core.info(JSON.stringify(context.payload.workflow_run))
-            core.setOutput("run_id", context.payload.workflow_run.id)
-            core.setOutput("head_sha", context.payload.workflow_run.head_sha)
-            core.setOutput("event", context.payload.workflow_run.event)
-            core.setOutput("head_branch", context.payload.workflow_run.head_branch)
+    name: "Get information about the source run"
+    runs-on: ubuntu-latest
+    outputs:
+      sourceHeadRepo: ${{ steps.workflow-run-info.outputs.sourceHeadRepo }}
+      sourceHeadBranch: ${{ steps.workflow-run-info.outputs.sourceHeadBranch }}
+      sourceHeadSha: ${{ steps.workflow-run-info.outputs.sourceHeadSha }}
+      mergeCommitSha: ${{ steps.workflow-run-info.outputs.mergeCommitSha }}
+      targetCommitSha: ${{ steps.workflow-run-info.outputs.targetCommitSha }}
+      pullRequestNumber: ${{ steps.workflow-run-info.outputs.pullRequestNumber }}
+      pullRequestLabels: ${{ steps.workflow-run-info.outputs.pullRequestLabels }}
+      targetBranch: ${{ steps.source-run-info.outputs.targetBranch }}
+      sourceEvent: ${{ steps.workflow-run-info.outputs.sourceEvent }}
+    steps:
+      - name: "Get information about the current run"
+        uses: potiuk/get-workflow-origin@v1_1
+        id: workflow-run-info
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sourceRunId: ${{ github.event.workflow_run.id }}
+
+#   get-info:
+#    runs-on: ubuntu-latest
+#    outputs:
+#       run_id: ${{ steps.get-info.outputs.run_id }}
+#       head_sha: ${{ steps.get-info.outputs.head_sha }}
+#       event: ${{ steps.get-info.outputs.event }}
+#       head_branch: ${{ steps.get-info.outputs.head_branch }}
+#    steps:
+#      - name: Get Info
+#        id: get-info
+#        uses: actions/github-script@v7
+#        with:
+#          result-encoding: string
+#          script: |
+#             core.info(JSON.stringify(context.payload.workflow_run))
+#             core.setOutput("run_id", context.payload.workflow_run.id)
+#             core.setOutput("head_sha", context.payload.workflow_run.head_sha)
+#             core.setOutput("event", context.payload.workflow_run.event)
+#             core.setOutput("head_branch", context.payload.workflow_run.head_branch)
 
   ci-build-test-pr:
     needs: get-info
@@ -54,7 +75,7 @@ jobs:
       - name: Extract Maven Artifacts
         uses: ./.github/actions/extract-maven-artifacts
         with:
-         run_id: ${{ needs.get-info.outputs.run_id }}
+         run_id: ${{ github.event.workflow_run.id }}
 
       - name: Maven Test
         run: >
@@ -64,14 +85,14 @@ jobs:
       - name: Archive commit sha PR
         if: >
           (success() || failure()) &&
-          needs.get-info.outputs.event == 'pull_request'
+          needs.get-info.outputs.sourceEvent == 'pull_request'
         run: |
-           echo -n ${{ needs.get-info.outputs.run_id }} > github-sha.txt
+           echo -n ${{ github.event.workflow_run.id }} > github-sha.txt
 
       - name: Archive commit sha push
         if: >
           (success() || failure()) &&
-          needs.get-info.outputs.event  == 'push'
+          needs.get-info.outputs.sourceEvent  == 'push'
         run: |
            echo -n $GITHUB_SHA > github-sha.txt
 
@@ -98,13 +119,15 @@ jobs:
       - name: Archive base_ref
         if: (success() || failure()) && steps.check_flaky_report.outputs.files_exists == 'true'
         env:
-          TARGET_BRANCH: ${{ needs.get-info.outputs.head_branch }}
-          EVENT_NAME: ${{ needs.get-info.outputs.event }}
-          EVENT_NUMBER: ${{ needs.get-info.outputs.run_id }}
+          TARGET_BRANCH: ${{ needs.get-info.outputs.sourceHeadSha }}
+          EVENT_NAME: ${{ needs.get-info.outputs.sourceEvent }}
+          PR_NUMBER: ${{ needs.get-info.outputs.pullRequestNumber }}
+          EVENT_NUMBER: ${{ github.event.workflow_run.id }}
         run: |
           echo -n $TARGET_BRANCH > target-branch.txt
           echo -n $EVENT_NAME > event-name.txt
           echo -n $EVENT_NUMBER > event-number.txt
+          echo -n $PR_NUMBER > pr-number.txt
 
       - name: Archive flaky test report
         if: (success() || failure()) && steps.check_flaky_report.outputs.files_exists == 'true'
@@ -116,6 +139,7 @@ jobs:
             target-branch.txt
             event-name.txt
             event-number.txt
+            pr-number.txt
 
   db:
     needs: get-info
@@ -136,7 +160,7 @@ jobs:
       - name: Extract Maven Artifacts
         uses: ./.github/actions/extract-maven-artifacts
         with:
-         run_id: ${{ needs.get-info.outputs.run_id }}
+         run_id: ${{ github.event.workflow_run.id }}
 
       - name: Infinispan Version
         run: echo "ISPN_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV
@@ -145,7 +169,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: infinispan-dist
-          run-id: ${{ needs.get-info.outputs.run_id }}
+          run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
 
       - name: Extract Infinispan Server
