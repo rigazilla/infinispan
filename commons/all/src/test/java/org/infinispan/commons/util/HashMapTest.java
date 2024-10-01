@@ -85,6 +85,7 @@ public class HashMapTest {
    }
 
    public static int i = 0;
+   public static int j = 0;
    @Test
    public void testFlaky() {
       if (i == 0) {
@@ -92,4 +93,12 @@ public class HashMapTest {
          assertEquals(1,2);
       }
    }
+
+   @Test
+   public void test1Eq3() {
+      if (j == 0) {
+         assertEquals(1,3);
+      }
+   }
+
 }
