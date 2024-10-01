@@ -62,6 +62,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+         ref: ${{ needs.get-info.outputs.sourceHeadSha }}
 
       - name: Setup Java
         uses: ./.github/actions/setup-java
