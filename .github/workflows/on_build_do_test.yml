@@ -31,26 +31,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           sourceRunId: ${{ github.event.workflow_run.id }}
 
-#   get-info:
-#    runs-on: ubuntu-latest
-#    outputs:
-#       run_id: ${{ steps.get-info.outputs.run_id }}
-#       head_sha: ${{ steps.get-info.outputs.head_sha }}
-#       event: ${{ steps.get-info.outputs.event }}
-#       head_branch: ${{ steps.get-info.outputs.head_branch }}
-#    steps:
-#      - name: Get Info
-#        id: get-info
-#        uses: actions/github-script@v7
-#        with:
-#          result-encoding: string
-#          script: |
-#             core.info(JSON.stringify(context.payload.workflow_run))
-#             core.setOutput("run_id", context.payload.workflow_run.id)
-#             core.setOutput("head_sha", context.payload.workflow_run.head_sha)
-#             core.setOutput("event", context.payload.workflow_run.event)
-#             core.setOutput("head_branch", context.payload.workflow_run.head_branch)
-
   ci-build-test-pr:
     needs: get-info
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
@@ -74,14 +54,10 @@ jobs:
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # - name: Extract Maven Artifacts
-      #   uses: ./.github/actions/extract-maven-artifacts
-      #   with:
-      #    run_id: ${{ github.event.workflow_run.id }}
-
-      - name: Maven Build
-        run: >
-                ./mvnw install -Pdistribution -s maven-settings.xml
+      - name: Extract Maven Artifacts
+        uses: ./.github/actions/extract-maven-artifacts
+        with:
+         run_id: ${{ github.event.workflow_run.id }}
 
       - name: Maven Test
         run: >
