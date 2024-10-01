@@ -87,14 +87,14 @@ jobs:
           (success() || failure()) &&
           needs.get-info.outputs.sourceEvent == 'pull_request'
         run: |
-           echo -n $GITHUB_SHA > github-sha.txt
+           echo -n ${{ needs.get-info.outputs.sourceHeadSha }} > github-sha.txt
 
       - name: Archive commit sha push
         if: >
           (success() || failure()) &&
           needs.get-info.outputs.sourceEvent  == 'push'
         run: |
-           echo -n $GITHUB_SHA > github-sha.txt
+           echo -n ${{ needs.get-info.outputs.sourceHeadSha }} > github-sha.txt
 
       - name: Archive surefire test report
         if: (success() || failure())
