@@ -72,10 +72,10 @@ jobs:
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Maven Artifacts
-        uses: ./.github/actions/extract-maven-artifacts
-        with:
-         run_id: ${{ github.event.workflow_run.id }}
+      # - name: Extract Maven Artifacts
+      #   uses: ./.github/actions/extract-maven-artifacts
+      #   with:
+      #    run_id: ${{ github.event.workflow_run.id }}
 
       - name: Maven Test
         run: >
