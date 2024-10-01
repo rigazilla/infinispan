@@ -77,6 +77,10 @@ jobs:
       #   with:
       #    run_id: ${{ github.event.workflow_run.id }}
 
+      - name: Maven Build
+        run: >
+                ./mvnw install -Pdistribution -s maven-settings.xml
+
       - name: Maven Test
         run: >
             ./mvnw verify -s maven-settings.xml -V -B -e -DrerunFailingTestsCount=2
