@@ -55,7 +55,7 @@ jobs:
       with:
          repository: ${{ github.repository }}
          runId: ${{ github.event.workflow_run.id }}
-         serverArtifact: infinispan-disp
+         serverArtifact: infinispan-dist
          push: false
 #         name: ${{ needs.get-info.outputs.sourceHeadBranch }}
 #         art-name: ${{ needs.get-info.outputs.sourceHeadBranch }}
@@ -71,7 +71,7 @@ jobs:
       with:
          repository: ${{ github.repository }}
          runId: ${{ github.event.workflow_run.id }}
-         serverArtifact: infinispan-disp
+         serverArtifact: infinispan-dist
          push: false
 #         name: ${{ needs.get-info.outputs.sourceHeadBranch }}
 #         art-name: ${{ needs.get-info.outputs.pullRequestNumber }}
