@@ -48,7 +48,10 @@ jobs:
          - get-info
          - get-server-version
       uses: infinispan/infinispan-images/.github/workflows/publish_image.yml@main
-      secrets: inherit
+      secrets:
+         token: ${{ secrets.GITHUB_TOKEN }}
+         quayUser: ${{ secrets.QUAY_USERNAME }}
+         quayPass: ${{ secrets.QUAY_PASSWORD }}
       with:
          repository: ${{ github.repository }}
          runId: ${{ github.event.workflow_run.id }}
@@ -61,7 +64,10 @@ jobs:
       if: needs.get-info.outputs.sourceEvent == 'pull_request'
       needs: get-info
       uses: infinispan/infinispan-images/.github/workflows/publish_image.yml@main
-      secrets: inherit
+      secrets:
+         token: ${{ secrets.GITHUB_TOKEN }}
+         quayUser: ${{ secrets.QUAY_USERNAME }}
+         quayPass: ${{ secrets.QUAY_PASSWORD }}
       with:
          repository: ${{ github.repository }}
          runId: ${{ github.event.workflow_run.id }}
