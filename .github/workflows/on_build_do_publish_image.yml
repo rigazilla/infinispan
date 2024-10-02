@@ -1,0 +1,71 @@
+name: On Build Do Publish Image
+on:
+   workflow_run:
+      workflows: [On PR Open or Push Do Build]
+      types: [completed]
+
+concurrency:
+  # Only cancel jobs for PR updates
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  get-info:
+    name: "Get information about the source run"
+    runs-on: ubuntu-latest
+    outputs:
+      sourceHeadRepo: ${{ steps.workflow-run-info.outputs.sourceHeadRepo }}
+      sourceHeadBranch: ${{ steps.workflow-run-info.outputs.sourceHeadBranch }}
+      sourceHeadSha: ${{ steps.workflow-run-info.outputs.sourceHeadSha }}
+      mergeCommitSha: ${{ steps.workflow-run-info.outputs.mergeCommitSha }}
+      targetCommitSha: ${{ steps.workflow-run-info.outputs.targetCommitSha }}
+      pullRequestNumber: ${{ steps.workflow-run-info.outputs.pullRequestNumber }}
+      pullRequestLabels: ${{ steps.workflow-run-info.outputs.pullRequestLabels }}
+      targetBranch: ${{ steps.workflow-run-info.outputs.targetBranch }}
+      sourceEvent: ${{ steps.workflow-run-info.outputs.sourceEvent }}
+    steps:
+      - name: "Get information about the current run"
+        uses: potiuk/get-workflow-origin@v1_1
+        id: workflow-run-info
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sourceRunId: ${{ github.event.workflow_run.id }}
+
+  get-server-version:
+   name: "Get server version"
+   runs-on: ubuntu-latest
+   steps:
+      - name: Download Server version
+        uses: actions/download-artifact@v4
+        with:
+         name: server-version
+         run-id: ${{ github.event.workflow_run.id }}
+         github-token: ${{ github.token }}
+
+  images-branch:
+      if: needs.get-info.outputs.sourceEvent == 'push'
+      needs:
+         - get-info
+         - get-server-version
+      uses: infinispan/infinispan-images/.github/workflows/publish_image.yml@main
+      secrets: inherit
+      with:
+         repository: ${{ github.repository }}
+         runId: ${{ github.event.workflow_run.id }}
+         serverArtifact: infinispan-disp
+         push: false
+#         name: ${{ needs.get-info.outputs.sourceHeadBranch }}
+#         art-name: ${{ needs.get-info.outputs.sourceHeadBranch }}
+
+  images-pr:
+      if: needs.get-info.outputs.sourceEvent == 'pull_request'
+      needs: get-info
+      uses: infinispan/infinispan-images/.github/workflows/publish_image.yml@main
+      secrets: inherit
+      with:
+         repository: ${{ github.repository }}
+         runId: ${{ github.event.workflow_run.id }}
+         serverArtifact: infinispan-disp
+         push: false
+#         name: ${{ needs.get-info.outputs.sourceHeadBranch }}
+#         art-name: ${{ needs.get-info.outputs.pullRequestNumber }}

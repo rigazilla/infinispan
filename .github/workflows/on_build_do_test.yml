@@ -21,7 +21,7 @@ jobs:
       targetCommitSha: ${{ steps.workflow-run-info.outputs.targetCommitSha }}
       pullRequestNumber: ${{ steps.workflow-run-info.outputs.pullRequestNumber }}
       pullRequestLabels: ${{ steps.workflow-run-info.outputs.pullRequestLabels }}
-      targetBranch: ${{ steps.source-run-info.outputs.targetBranch }}
+      targetBranch: ${{ steps.workflow-run-info.outputs.targetBranch }}
       sourceEvent: ${{ steps.workflow-run-info.outputs.sourceEvent }}
     steps:
       - name: "Get information about the current run"
