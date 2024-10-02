@@ -83,13 +83,4 @@ public class HashMapTest {
       }
       assertEquals(map, testedMap);
    }
-
-   public static int i = 0;
-   @Test
-   public void testFlaky() {
-      if (i == 0) {
-         i=1;
-         assertEquals(1,2);
-      }
-   }
 }
