@@ -56,7 +56,7 @@ jobs:
          repository: ${{ github.repository }}
          runId: ${{ github.event.workflow_run.id }}
          serverArtifact: infinispan-dist
-         tags: quay.io/rigazilla/infinispan-server:${{ needs.get-info.outputs.sourceHeadBranch }}
+         tags: quay.io/infinispan-test/server:gh-${{ needs.get-info.outputs.sourceHeadBranch }}
 
   images-pr:
       if: needs.get-info.outputs.sourceEvent == 'pull_request'
@@ -70,4 +70,4 @@ jobs:
          repository: ${{ github.repository }}
          runId: ${{ github.event.workflow_run.id }}
          serverArtifact: infinispan-dist
-         tags: quay.io/rigazilla/infinispan-server:${{ needs.get-info.outputs.sourceHeadBranch }}
+         tags: quay.io/infinispan-test/server:gh-${{ needs.get-info.outputs.pullRequestNumber }}
