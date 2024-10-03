@@ -4,7 +4,7 @@ on:
       workflows: [On PR Open or Push Do Build]
       types: [completed]
 env:
-   IMAGE_NAME: ${{ vars.QUAY_IMAGE_NAME  || quay.io/infinispan-test/server }}
+   IMAGE_NAME: ${{ vars.QUAY_IMAGE_NAME  || "quay.io/infinispan-test/server" }}
 
 concurrency:
   # Only cancel jobs for PR updates
