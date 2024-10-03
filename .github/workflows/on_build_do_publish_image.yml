@@ -36,6 +36,8 @@ jobs:
   get-server-version:
    name: "Get server version"
    runs-on: ubuntu-latest
+   outputs:
+      imageName: ${{ steps.step1.outputs.imageName }}
    steps:
       - name: Download Server version
         uses: actions/download-artifact@v4
@@ -43,6 +45,9 @@ jobs:
          name: server-version
          run-id: ${{ github.event.workflow_run.id }}
          github-token: ${{ github.token }}
+      - name: Propagate env vars
+        id: step1
+        run: echo "imageName=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
   images-branch:
       if: needs.get-info.outputs.sourceEvent == 'push'
@@ -58,11 +63,13 @@ jobs:
          repository: ${{ github.repository }}
          runId: ${{ github.event.workflow_run.id }}
          serverArtifact: infinispan-dist
-         tags:  $IMAGE_NAME:gh-${{ needs.get-info.outputs.sourceHeadBranch }}
+         tags:  ${{ needs.get-server-version.outputs.imageName }}:gh-${{ needs.get-info.outputs.sourceHeadBranch }}
 
   images-pr:
       if: needs.get-info.outputs.sourceEvent == 'pull_request'
-      needs: get-info
+      needs:
+         - get-info
+         - get-server-version
       uses: infinispan/infinispan-images/.github/workflows/publish_image.yml@main
       secrets:
          token: ${{ secrets.GITHUB_TOKEN }}
@@ -72,4 +79,4 @@ jobs:
          repository: ${{ github.repository }}
          runId: ${{ github.event.workflow_run.id }}
          serverArtifact: infinispan-dist
-         tags: $IMAGE_NAME:gh-${{ needs.get-info.outputs.pullRequestNumber }}
+         tags: ${{ needs.get-server-version.outputs.imageName }}:gh-${{ needs.get-info.outputs.pullRequestNumber }}
