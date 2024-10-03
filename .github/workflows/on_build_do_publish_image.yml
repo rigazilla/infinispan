@@ -3,6 +3,8 @@ on:
    workflow_run:
       workflows: [On PR Open or Push Do Build]
       types: [completed]
+env:
+   IMAGE_NAME: ${{ vars.QUAY_IMAGE_NAME  || quay.io/infinispan-test/server }}
 
 concurrency:
   # Only cancel jobs for PR updates
@@ -56,7 +58,7 @@ jobs:
          repository: ${{ github.repository }}
          runId: ${{ github.event.workflow_run.id }}
          serverArtifact: infinispan-dist
-         tags: quay.io/infinispan-test/server:gh-${{ needs.get-info.outputs.sourceHeadBranch }}
+         tags:  $IMAGE_NAME:gh-${{ needs.get-info.outputs.sourceHeadBranch }}
 
   images-pr:
       if: needs.get-info.outputs.sourceEvent == 'pull_request'
@@ -70,4 +72,4 @@ jobs:
          repository: ${{ github.repository }}
          runId: ${{ github.event.workflow_run.id }}
          serverArtifact: infinispan-dist
-         tags: quay.io/infinispan-test/server:gh-${{ needs.get-info.outputs.pullRequestNumber }}
+         tags: $IMAGE_NAME:gh-${{ needs.get-info.outputs.pullRequestNumber }}
