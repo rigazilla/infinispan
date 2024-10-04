@@ -4,9 +4,6 @@ inputs:
   head_sha:
     description: Head sha related to the origin workflow
     required: true
-  head_branch:
-    description: Head branch related to the origin workflow
-    required: true
   event:
     description: Event type related to the origin workflow
     required: true
