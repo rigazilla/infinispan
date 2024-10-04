@@ -30,13 +30,14 @@ jobs:
             EVENT: ${{ github.event.workflow_run.name }}
            with:
             script: |
+               const { HEAD_SHA, EVENT } = process.env
                console.log(JSON.stringify(context, null, 4))
-               headBranch = $HEAD_SHA
+               headBranch = ${HEAD_SHA}
                for (const pullRequest of context.payload.workflow_run.pull_requests) {
-                   if (pullRequest.head.sha === $HEAD_SHA ) {
+                   if (pullRequest.head.sha === ${HEAD_SHA} ) {
                      core.setOutput("pullRequestNumber", pullRequest.number)
                    }
-                   if ( $EVENT === 'pull_request' || $EVENT === 'pull_request_target') {
+                   if ( ${EVENT} === 'pull_request' || ${EVENT} === 'pull_request_target') {
                      headBranch= pullRequest.ref.head
                    }
                    break;
