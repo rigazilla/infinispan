@@ -24,7 +24,7 @@ jobs:
          sourceEvent: ${{ github.event.workflow_run.name }}
       steps:
          - id: workflow-run-info
-           uses: .github/actions/get-origin-info
+           uses: ./.github/actions/get-origin-info
            with:
             head_sha: $ {{ github.event.workflow_run.head_sha }}
             event: $ {{ github.event.workflow_run.name }}
