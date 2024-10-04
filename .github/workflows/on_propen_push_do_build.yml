@@ -21,7 +21,7 @@ jobs:
 
 #      - name: Build Infinispan
 #        uses: ./.github/actions/build-infinispan
-
+#
       - run: echo Build Completed ${{ github.run_id }} > server-version.txt
 
 #      - name: Server version
