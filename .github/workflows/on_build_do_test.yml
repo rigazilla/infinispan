@@ -17,11 +17,31 @@ jobs:
   get-info-js:
       name: "js source run"
       runs-on: ubuntu-latest
+      outputs:
+         sourceHeadSha: ${{ github.event.workflow_run.head_sha }}
+         pullRequestNumber: ${{ steps.workflow-run-info.outputs.pullRequestNumber }}
+         sourceHeadBranch: ${{ steps.workflow-run-info.outputs.pullRequestLabels }}
+         sourceEvent: ${{ github.event.workflow_run.name }}
       steps:
          - uses: actions/github-script@v7.0.1
+           id: workflow-run-info
+           env:
+            HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+            EVENT: ${{ github.event.workflow_run.name }}
            with:
             script: |
                console.log(JSON.stringify(context, null, 4))
+               headBranch = ${HEAD_SHA}
+               for (const pullRequest of context.payload.workflow_run.pull_requests) {
+                   if (pullRequest.head.sha === ${HEAD_SHA} ) {
+                     core.setOutput("pullRequestNumber", pullRequest.number)
+                   }
+                   if ( ${EVENT} === 'pull_request' || ${EVENT} === 'pull_request_target') {
+                     headBranch= pullRequest.ref.head
+                   }
+                   break;
+               }
+               core.setOutput("sourceHeadBranch", headBranch)
 
   get-info:
     name: "Get information about the source run"
@@ -45,7 +65,7 @@ jobs:
           sourceRunId: ${{ github.event.workflow_run.id }}
 
   ci-build-test-pr:
-    needs: get-info
+    needs: get-info-js
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     name: Maven Build and Test
     runs-on: ubuntu-latest
@@ -56,7 +76,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-         ref: ${{ needs.get-info.outputs.sourceHeadSha }}
+         ref: ${{ needs.get-info-js.outputs.sourceHeadSha }}
 
       - name: Setup Java
         uses: ./.github/actions/setup-java
@@ -78,16 +98,16 @@ jobs:
       - name: Archive commit sha PR
         if: >
           (success() || failure()) &&
-          needs.get-info.outputs.sourceEvent == 'pull_request'
+          needs.get-info-js.outputs.sourceEvent == 'pull_request'
         run: |
-           echo -n ${{ needs.get-info.outputs.sourceHeadSha }} > github-sha.txt
+           echo -n ${{ needs.get-info-js.outputs.sourceHeadSha }} > github-sha.txt
 
       - name: Archive commit sha push
         if: >
           (success() || failure()) &&
-          needs.get-info.outputs.sourceEvent  == 'push'
+          needs.get-info-js.outputs.sourceEvent  == 'push'
         run: |
-           echo -n ${{ needs.get-info.outputs.sourceHeadSha }} > github-sha.txt
+           echo -n ${{ needs.get-info-js.outputs.sourceHeadSha }} > github-sha.txt
 
       - name: Archive surefire test report
         if: (success() || failure())
@@ -112,9 +132,9 @@ jobs:
       - name: Archive base_ref
         if: (success() || failure()) && steps.check_flaky_report.outputs.files_exists == 'true'
         env:
-          TARGET_BRANCH: ${{ needs.get-info.outputs.sourceHeadSha }}
-          EVENT_NAME: ${{ needs.get-info.outputs.sourceEvent }}
-          PR_NUMBER: ${{ needs.get-info.outputs.pullRequestNumber }}
+          TARGET_BRANCH: ${{ needs.get-info-js.outputs.sourceHeadSha }}
+          EVENT_NAME: ${{ needs.get-info-js.outputs.sourceEvent }}
+          PR_NUMBER: ${{ needs.get-info-js.outputs.pullRequestNumber }}
           EVENT_NUMBER: ${{ github.event.workflow_run.id }}
         run: |
           echo -n $TARGET_BRANCH > target-branch.txt
@@ -135,7 +155,7 @@ jobs:
             pr-number.txt
 
   db:
-    needs: get-info
+    needs: get-info-js
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     strategy:
