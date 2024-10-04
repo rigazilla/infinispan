@@ -4,6 +4,11 @@ on:
       workflows: [On PR Open or Push Do Build]
       types: [completed]
 
+permissions:
+  contents: read
+  metadata: read
+  packages: read
+
 concurrency:
   # Only cancel jobs for PR updates
   group: ci-test-${{ github.ref }}
