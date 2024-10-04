@@ -27,18 +27,19 @@ jobs:
            id: workflow-run-info
            env:
             HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+            HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
             EVENT: ${{ github.event.workflow_run.name }}
            with:
             script: |
-               const { HEAD_SHA, EVENT } = process.env
+               const { HEAD_SHA, HEAD_BRANCH, EVENT } = process.env
                console.log(JSON.stringify(context, null, 4))
-               headBranch = HEAD_SHA
+               headBranch = HEAD_BRANCH
                for (const pullRequest of context.payload.workflow_run.pull_requests) {
                    if (pullRequest.head.sha === HEAD_SHA ) {
                      core.setOutput("pullRequestNumber", pullRequest.number)
                    }
                    if ( EVENT === 'pull_request' || EVENT === 'pull_request_target') {
-                     headBranch= pullRequest.ref.head
+                     headBranch= pullRequest.head.ref
                    }
                    break;
                }
