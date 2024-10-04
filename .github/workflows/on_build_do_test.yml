@@ -23,28 +23,11 @@ jobs:
          sourceHeadBranch: ${{ steps.workflow-run-info.outputs.pullRequestLabels }}
          sourceEvent: ${{ github.event.workflow_run.name }}
       steps:
-         - uses: actions/github-script@v7.0.1
-           id: workflow-run-info
-           env:
-            HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-            HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-            EVENT: ${{ github.event.workflow_run.name }}
+         - id: workflow-run-info
+           uses: .github/actions/get-origin-info
            with:
-            script: |
-               const { HEAD_SHA, HEAD_BRANCH, EVENT } = process.env
-               console.log(JSON.stringify(context, null, 4))
-               headBranch = HEAD_BRANCH
-               for (const pullRequest of context.payload.workflow_run.pull_requests) {
-                   if (pullRequest.head.sha === HEAD_SHA ) {
-                     core.setOutput("pullRequestNumber", pullRequest.number)
-                   }
-                   if ( EVENT === 'pull_request' || EVENT === 'pull_request_target') {
-                     headBranch= pullRequest.head.ref
-                   }
-                   break;
-               }
-               core.setOutput("sourceHeadBranch", headBranch)
-
+            head_sha: $ {{ github.event.workflow_run.head_sha }}
+            event: $ {{ github.event.workflow_run.name }}
   get-info:
     name: "Get information about the source run"
     runs-on: ubuntu-latest
