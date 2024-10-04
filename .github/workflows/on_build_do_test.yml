@@ -14,6 +14,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  get-info-js:
+      name: "js source run"
+      runs-on: ubuntu-latest
+      steps:
+         - uses: actions/github-script@v7.0.1
+           with:
+            script: |
+               console.log(JSON.stringify(context, null, 4))
+
   get-info:
     name: "Get information about the source run"
     runs-on: ubuntu-latest
