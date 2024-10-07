@@ -26,9 +26,9 @@ jobs:
          - id: workflow-run-info
            uses: rigazilla/infinispan/.github/actions/get-origin-info@main
            with:
-            head_sha: $ {{ github.event.workflow_run.head_sha }}
-            head_branch: $ {{ github.event.workflow_run.head_branch }}
-            event: $ {{ github.event.workflow_run.name }}
+            head_sha: ${{ github.event.workflow_run.head_sha }}
+            head_branch: ${{ github.event.workflow_run.head_branch }}
+            event: ${{ github.event.workflow_run.name }}
   get-info:
     name: "Get information about the source run"
     runs-on: ubuntu-latest
