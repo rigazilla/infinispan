@@ -3,12 +3,16 @@ description: |
     Test Infinispan.
     This action runs untrusted code (i.e. PRs) for testing: consider
     security implication if you need to change it.
-
+inputs:
+  path:
+    description: Relative path under workspace where to run tests
+    default: .
 runs:
   using: composite
   steps:
       - name: Maven Test
         shell: bash
         run: >
+            cd ${{ input.path }}
             ./mvnw verify -s maven-settings.xml -V -B -e -DrerunFailingTestsCount=2
             -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all

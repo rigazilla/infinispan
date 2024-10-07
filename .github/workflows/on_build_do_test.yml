@@ -24,7 +24,7 @@ jobs:
          sourceEvent: ${{ github.event.workflow_run.name }}
       steps:
          - id: workflow-run-info
-           uses: ${{ GITHUB_REPOSITORY }}/.github/actions/get-origin-info@main
+           uses: ./.github/actions/get-origin-info
            with:
             head_sha: $ {{ github.event.workflow_run.head_sha }}
             event: $ {{ github.event.workflow_run.name }}
@@ -58,13 +58,10 @@ jobs:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-         ref: ${{ needs.get-info-js.outputs.sourceHeadSha }}
+      - uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: ${{ github.repository }}}}/.github/actions/setup-java
+        uses: ./.github/actions/setup-java
 
       - uses: graalvm/setup-graalvm@v1
         with:
@@ -77,8 +74,16 @@ jobs:
         with:
          run_id: ${{ github.event.workflow_run.id }}
 
+      - name: Extract Infinispan Source
+        run: |
+          mkdir test_dir && cd test_dir
+          unzip ${GITHUB_WORKSPACE}/infinispan-*-src.zip
+          mv infinispan-*-src infinispan
+
       - name: Maven Test
-        uses: ${{ GITHUB_REPOSITORY }}/.github/actions/test-infinispan
+        uses: ./.github/actions/test-infinispan
+        with:
+         path: test_dir/infinispan
 
       - name: Archive commit sha PR
         if: >
@@ -160,9 +165,6 @@ jobs:
         with:
          run_id: ${{ github.event.workflow_run.id }}
 
-      - name: Infinispan Version
-        run: echo "ISPN_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV
-
       - name: Download Infinispan Server
         uses: actions/download-artifact@v4
         with:
@@ -173,10 +175,22 @@ jobs:
       - name: Extract Infinispan Server
         run: |
           cd /tmp
-          unzip ${GITHUB_WORKSPACE}/infinispan-server-${ISPN_VERSION}.zip
+          unzip ${GITHUB_WORKSPACE}/infinispan-server-*.zip
+
+      - name: Extract Infinispan Source
+        run: |
+          mkdir test_dir && cd test_dir
+          unzip ${GITHUB_WORKSPACE}/infinispan-*-src.zip
+          mv infinispan-*-src infinispan
+
+      - name: Infinispan Version
+        run: |
+            cd test_dir/infinispan
+            echo "ISPN_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV
 
       - name: Test
         run: |
+          cd test_dir/infinispan
           ./mvnw verify -s maven-settings.xml -B -e -pl server/tests --fail-at-end \
             -Dansi.strip=true \
             -DdefaultTestGroup=database \
