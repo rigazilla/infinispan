@@ -95,9 +95,6 @@ jobs:
             ./mvnw verify -s maven-settings.xml -V -B -e -DrerunFailingTestsCount=2
             -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
 
-      - name: Maven Test
-        uses: ./.github/actions/test-infinispan
-
       - name: Archive commit sha PR
         if: >
           (success() || failure()) &&
@@ -118,11 +115,11 @@ jobs:
         with:
           name: surefire-test-report
           path: |
-            **/surefire-reports/TEST-*.xml
-            **/*.dump*
-            **/hs_err_*
+            test_dir/infinispan/**/surefire-reports/TEST-*.xml
+            test_dir/infinispan/**/*.dump*
+            test_dir/infinispan/**/hs_err_*
             github-sha.txt
-            !**/target/*-reports*/**/TEST-*FLAKY.xml
+            !test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml
 
 # Create artifact with branch name and surefile flaky test report
       - name: Check flaky report existence
@@ -130,7 +127,7 @@ jobs:
         id: check_flaky_report
         uses: andstor/file-existence-action@v3
         with:
-          files: "**/target/*-reports*/**/TEST-*FLAKY.xml"
+          files: "test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml"
 
       - name: Archive base_ref
         if: (success() || failure()) && steps.check_flaky_report.outputs.files_exists == 'true'
@@ -151,7 +148,7 @@ jobs:
         with:
           name: flaky-test-report
           path: |
-            **/target/*-reports*/**/TEST-*FLAKY.xml
+            test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml
             target-branch.txt
             event-name.txt
             event-number.txt
