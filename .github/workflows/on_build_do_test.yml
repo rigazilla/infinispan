@@ -52,16 +52,13 @@ jobs:
   ci-build-test-pr:
     needs: get-info-js
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    name: Maven Build and Test
+    name: Maven Test
     runs-on: ubuntu-latest
     env:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-         ref: ${{ needs.get-info-js.outputs.sourceHeadSha }}
+      - uses: actions/checkout@v4
 
       - name: Setup Java
         uses: ./.github/actions/setup-java
