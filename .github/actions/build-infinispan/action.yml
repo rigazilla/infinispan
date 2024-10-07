@@ -10,6 +10,8 @@ runs:
     - name: Build Infinispan
       shell: bash
       run: |
+        echo HEY RUNNING PR!
+        git rev-parse HEAD
         # Ensure this plugin is built first to avoid warnings in the build
         ./mvnw install -Pdistribution -s maven-settings.xml
         # By using "dependency:resolve", it will download all dependencies used in later stages for running the tests
