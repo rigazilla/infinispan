@@ -5,7 +5,7 @@ runs:
   using: composite
   steps:
     - name: Setup Java
-      uses: ./.github/actions/setup-java
+      uses: $GITHUB_REPOSITORY/.github/actions/setup-java
 
     - name: Build Infinispan
       shell: bash
