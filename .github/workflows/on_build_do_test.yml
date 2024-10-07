@@ -58,6 +58,7 @@ jobs:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
       GH_TOKEN: ${{ github.token }}
     steps:
+      - run: echo RUNNING PR!
       - uses: actions/checkout@v4
 
       - name: Setup Java
