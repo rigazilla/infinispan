@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build Infinispan
-        uses: ./.github/actions/build-infinispan
+        uses: ${{ github.repository }}/.github/actions/build-infinispan
 
       - run: echo Build Completed ${{ github.run_id }} > server-version.txt
 
