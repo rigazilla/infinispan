@@ -75,6 +75,26 @@ jobs:
         with:
          run_id: ${{ github.event.workflow_run.id }}
 
+      - name: Download Infinispan Server
+        uses: actions/download-artifact@v4
+        with:
+          name: infinispan-dist
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Extract Infinispan Source
+        run: |
+          mkdir test_dir && cd test_dir
+          unzip ${GITHUB_WORKSPACE}/infinispan-*-src.zip
+          mv infinispan-*-src infinispan
+
+      - name: Maven Test
+        shell: bash
+        run: >
+            cd test_dir/infinispan &&
+            ./mvnw verify -s maven-settings.xml -V -B -e -DrerunFailingTestsCount=2
+            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
+
       - name: Maven Test
         uses: ./.github/actions/test-infinispan
 
