@@ -24,6 +24,7 @@ runs:
       id: workflow-run-info
       env:
        HEAD_SHA: ${{ inputs.head_sha }}
+       HEAD_BRANCH: ${{ inputs.head_branch }}
        EVENT: ${{ inputs.event }}
       with:
        script: |
