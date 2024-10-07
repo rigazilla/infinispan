@@ -64,7 +64,7 @@ jobs:
          ref: ${{ needs.get-info-js.outputs.sourceHeadSha }}
 
       - name: Setup Java
-        uses: ${{ GITHUB_REPOSITORY }}/.github/actions/setup-java
+        uses: ${{ env.GITHUB_REPOSITORY }}/.github/actions/setup-java
 
       - uses: graalvm/setup-graalvm@v1
         with:
