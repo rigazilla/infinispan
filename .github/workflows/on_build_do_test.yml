@@ -21,14 +21,14 @@ jobs:
          sourceHeadSha: ${{ github.event.workflow_run.head_sha }}
          pullRequestNumber: ${{ steps.workflow-run-info.outputs.pullRequestNumber }}
          sourceHeadBranch: ${{ steps.workflow-run-info.outputs.pullRequestLabels }}
-         sourceEvent: ${{ github.event.workflow_run.name }}
+         sourceEvent: ${{ github.event.workflow_run.event }}
       steps:
          - id: workflow-run-info
            uses: rigazilla/infinispan/.github/actions/get-origin-info@main
            with:
             head_sha: ${{ github.event.workflow_run.head_sha }}
             head_branch: ${{ github.event.workflow_run.head_branch }}
-            event: ${{ github.event.workflow_run.name }}
+            event: ${{ github.event.workflow_run.event }}
   get-info:
     name: "Get information about the source run"
     runs-on: ubuntu-latest
