@@ -99,8 +99,8 @@ jobs:
       - name: Extract Infinispan Source
         run: |
           mkdir test_dir && cd test_dir
-          unzip ${GITHUB_WORKSPACE}/infinispan-${steps.server_version.outputs.content}-src.zip
-          mv infinispan-${steps.server_version.outputs.content}-src infinispan
+          unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.server_version.outputs.content }}-src.zip
+          mv infinispan-${{ steps.server_version.outputs.content }}-src infinispan
 
       - name: Maven Test
         shell: bash
@@ -212,13 +212,13 @@ jobs:
       - name: Extract Infinispan Server
         run: |
           cd /tmp
-          unzip ${GITHUB_WORKSPACE}/infinispan-server-${steps.server_version.outputs.content}.zip
+          unzip ${GITHUB_WORKSPACE}/infinispan-server-${{ steps.server_version.outputs.content }}.zip
 
       - name: Extract Infinispan Source
         run: |
           mkdir test_dir && cd test_dir
-          unzip ${GITHUB_WORKSPACE}/infinispan-${steps.server_version.outputs.content}-src.zip
-          mv infinispan-${steps.server_version.outputs.content}-src infinispan
+          unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.server_version.outputs.content }}-src.zip
+          mv infinispan-${{ steps.server_version.outputs.content }}-src infinispan
 
       - name: Test
         run: |
