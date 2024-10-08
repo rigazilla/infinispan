@@ -1,4 +1,4 @@
-name: On Test Jira Flaky
+name: On Test Update Jira Flaky
 on:
    workflow_run:
      workflows: [On Build Do Test]
@@ -6,7 +6,7 @@ on:
 jobs:
    jiraForFlakyTest:
       if: ${{ github.event.workflow_run.conclusion == 'success' }}
-      name: Downloading Flaky test report
+      name: Flaky Test To Jira
       runs-on: ubuntu-latest
       steps:
         - name: Checkout

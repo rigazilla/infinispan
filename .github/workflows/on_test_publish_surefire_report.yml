@@ -6,7 +6,7 @@ on:
 jobs:
    publish:
       if: ${{ github.event.workflow_run.conclusion == 'success' }}
-      name: Downloading Surefire report
+      name: Publish Surefire Report
       runs-on: ubuntu-latest
       steps:
         - name: Install xmlstarlet tool
