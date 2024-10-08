@@ -29,10 +29,6 @@ runs:
       with:
        script: |
           const { HEAD_SHA, HEAD_BRANCH, EVENT } = process.env
-          console.log("sha"+HEAD_SHA)
-          console.log("branch"+HEAD_BRANCH)
-          console.log("event"+EVENT)
-          console.log(JSON.stringify(context, null, 4))
           headBranch = HEAD_BRANCH
           for (const pullRequest of context.payload.workflow_run.pull_requests) {
               if (pullRequest.head.sha === HEAD_SHA ) {
