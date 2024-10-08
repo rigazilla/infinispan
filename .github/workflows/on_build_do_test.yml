@@ -83,11 +83,17 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
 
+      - name: Get server version
+        id: server_version
+        uses: juliangruber/read-file-action@v1
+        with:
+           path: ./server-version.txt
+
       - name: Extract Infinispan Source
         run: |
           mkdir test_dir && cd test_dir
-          unzip ${GITHUB_WORKSPACE}/infinispan-*-src.zip
-          mv infinispan-*-src infinispan
+          unzip ${GITHUB_WORKSPACE}/infinispan-${steps.server_version.outputs.content}-src.zip
+          mv infinispan-${steps.server_version.outputs.content}-src infinispan
 
       - name: Maven Test
         shell: bash
@@ -176,9 +182,6 @@ jobs:
         with:
          run_id: ${{ github.event.workflow_run.id }}
 
-      - name: Infinispan Version
-        run: echo "ISPN_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV
-
       - name: Download Infinispan Server
         uses: actions/download-artifact@v4
         with:
@@ -186,15 +189,28 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
 
+      - name: Get server version
+        id: server_version
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: ./server-version.txt
+
       - name: Extract Infinispan Server
         run: |
           cd /tmp
-          unzip ${GITHUB_WORKSPACE}/infinispan-server-${ISPN_VERSION}.zip
+          unzip ${GITHUB_WORKSPACE}/infinispan-server-${steps.server_version.outputs.content}.zip
+
+      - name: Extract Infinispan Source
+        run: |
+          mkdir test_dir && cd test_dir
+          unzip ${GITHUB_WORKSPACE}/infinispan-${steps.server_version.outputs.content}-src.zip
+          mv infinispan-${steps.server_version.outputs.content}-src infinispan
 
       - name: Test
         run: |
+          cd test_dir/infinispan &&
           ./mvnw verify -s maven-settings.xml -B -e -pl server/tests --fail-at-end \
             -Dansi.strip=true \
             -DdefaultTestGroup=database \
             -Dorg.infinispan.test.database.types=${{ matrix.dbs }} \
-            -Dorg.infinispan.test.server.dir=/tmp/infinispan-server-${ISPN_VERSION}
+            -Dorg.infinispan.test.server.dir=/tmp/infinispan-server-${steps.server_version.outputs.content}
