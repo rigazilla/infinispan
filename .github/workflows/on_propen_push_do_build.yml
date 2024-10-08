@@ -26,7 +26,7 @@ jobs:
 
       - name: Server version
         run: >
-          mvn -q -Dexec.executable=echo -Dexec.args='${project.version}'
+          mvn -q -Dexec.executable=echo -Dexec.args='-n ${project.version}'
           --non-recursive exec:exec > server-version.txt
 
       - name: Archive server version
