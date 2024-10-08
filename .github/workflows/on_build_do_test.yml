@@ -227,4 +227,4 @@ jobs:
             -Dansi.strip=true \
             -DdefaultTestGroup=database \
             -Dorg.infinispan.test.database.types=${{ matrix.dbs }} \
-            -Dorg.infinispan.test.server.dir=/tmp/infinispan-server-${steps.server_version.outputs.content}
+            -Dorg.infinispan.test.server.dir=/tmp/infinispan-server-${{ steps.server_version.outputs.content }}
