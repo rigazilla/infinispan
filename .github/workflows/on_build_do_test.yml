@@ -83,6 +83,13 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
 
+      - name: Download Server Version
+        uses: actions/download-artifact@v4
+        with:
+          name: server-version
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
       - name: Get server version
         id: server_version
         uses: juliangruber/read-file-action@v1
@@ -186,6 +193,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: infinispan-dist
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Download Server Version
+        uses: actions/download-artifact@v4
+        with:
+          name: server-version
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
 
