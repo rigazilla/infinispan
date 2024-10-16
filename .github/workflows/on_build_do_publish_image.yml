@@ -68,3 +68,17 @@ jobs:
          runId: ${{ github.event.workflow_run.id }}
          serverArtifact: infinispan-dist
          tags:  ${{ needs.get-image-name.outputs.image-name }}:gh-${{ needs.get-info.outputs.image-tag }}
+
+  report-status:
+      runs-on: ubuntu-latest
+      needs:
+         - get-info
+         - publish-image
+      steps:
+      - uses: LouisBrunner/checks-action@v2.0.0
+        if: always()
+        with:
+           token: ${{ secrets.GITHUB_TOKEN }}
+           name: Publish Image
+           conclusion: ${{ needs.publish-image.result }}
+           sha: ${{ needs.get-info.outputs.source-head-sha }}
