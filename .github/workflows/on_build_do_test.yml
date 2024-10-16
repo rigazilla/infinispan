@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   # Only cancel jobs for PR updates
-  group: ci-test-${{ github.ref }}
+  group: ci-test-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 jobs:
