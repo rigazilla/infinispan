@@ -11,6 +11,12 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.junit.Test;
 
 public class HashMapTest {
+
+   @Test
+   public void testFail() {
+      assertEquals(1,2);
+   }
+
    @Test
    public void testCreateHopscotch() {
       testCreate(new HopscotchHashMap<>(32));
