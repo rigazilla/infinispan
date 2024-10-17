@@ -111,7 +111,7 @@ jobs:
             test_dir/infinispan/**/hs_err_*
             github-sha.txt
             !test_dir/infinispan/**/*-reports*/**/TEST-*FLAKY.xml
-            !test_dir/infinispan/**/*-reports*/TEST-*RocksDBReaderTest*.xml
+            !test_dir/infinispan/**/*-reports*/TEST-*RocksDB*.xml
 
 # Create artifact with branch name and surefile flaky test report
       - name: Check flaky report existence
