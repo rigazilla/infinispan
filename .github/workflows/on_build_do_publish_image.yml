@@ -68,9 +68,9 @@ jobs:
       needs:
          - get-info
          - publish-image
+      if: always()
       steps:
       - uses: LouisBrunner/checks-action@v2.0.0
-        if: always()
         with:
            token: ${{ secrets.GITHUB_TOKEN }}
            name: Publish Image

@@ -41,6 +41,13 @@ jobs:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
       GH_TOKEN: ${{ github.token }}
     steps:
+      - uses: LouisBrunner/checks-action@v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Test Report Result
+          status: in_progress
+          sha: ${{ needs.get-info.outputs.source-head-sha }}
+
       - uses: actions/checkout@v4
 
       - name: Setup Java
@@ -75,7 +82,7 @@ jobs:
         run: >
             cd test_dir/infinispan &&
             ./mvnw verify -s maven-settings.xml -V -B -e -DrerunFailingTestsCount=2
-            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative
+            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
 
       - name: Archive commit sha PR
         if: >
