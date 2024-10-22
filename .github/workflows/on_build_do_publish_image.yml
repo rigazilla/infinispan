@@ -17,6 +17,7 @@ jobs:
      runs-on: ubuntu-latest
      outputs:
         source-head-sha: ${{ github.event.workflow_run.head_sha }}
+        source-head-branch: ${{ steps.workflow-run-info.outputs.source-head-branch }}
         pull-request-number: ${{ steps.workflow-run-info.outputs.pull-request-number }}
         sourceEvent: ${{ github.event.workflow_run.event }}
         image-tag: ${{ steps.workflow-run-info.outputs.image-tag }}
@@ -26,7 +27,7 @@ jobs:
         - uses: actions/checkout@v4
 
         - id: workflow-run-info
-          uses: ./.github/actions/get-origin-info
+          uses: infinispan/infinispan/.github/actions/get-origin-info@main
           with:
            head-sha: ${{ github.event.workflow_run.head_sha }}
            head-branch: ${{ github.event.workflow_run.head_branch }}
@@ -62,6 +63,7 @@ jobs:
          runId: ${{ github.event.workflow_run.id }}
          serverArtifact: infinispan-dist
          tags:  ${{ needs.get-info.outputs.image-name }}:gh-${{ needs.get-info.outputs.image-tag }}
+         branch: ${{ needs.get-info.outputs.source-head-branch }}
 
   report-status:
       runs-on: ubuntu-latest
