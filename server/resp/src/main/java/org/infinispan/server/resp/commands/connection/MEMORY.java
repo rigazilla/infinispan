@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
+import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.security.AuthorizationPermission;
 import org.infinispan.server.resp.Resp3Handler;
 import org.infinispan.server.resp.RespCommand;
@@ -49,6 +50,8 @@ public class MEMORY extends RespCommand implements Resp3Command {
                                                       List<byte[]> arguments) {
       handler.checkPermission(AuthorizationPermission.ADMIN);
       String subcommand = new String(arguments.get(0), StandardCharsets.US_ASCII).toUpperCase();
+      MediaType vmt = handler.cache().getValueDataConversion().getStorageMediaType();
+      var advCache = handler.cache().getAdvancedCache().withMediaType(MediaType.APPLICATION_OCTET_STREAM, vmt);
       switch (subcommand) {
          case "STATS":
             // Map mixes integer and double values.
@@ -60,8 +63,8 @@ public class MEMORY extends RespCommand implements Resp3Command {
                return handler.myStage();
             } else {
                byte[] key = arguments.get(1);
-               return handler.stageToReturn(handler.cache().getAsync(key).thenApply(v ->
-                           v == null ? null : (long) (key.length + v.length + 14) / 8 * 8),
+               return handler.stageToReturn(advCache.getAsync(key).thenApply(v ->
+                           v == null ? null : (long) (MemoryUtils.length(key) + MemoryUtils.length(v)) / 8 * 8),
                      ctx, Resp3Response.INTEGER);
             }
          case "DOCTOR":
