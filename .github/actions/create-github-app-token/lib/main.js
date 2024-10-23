@@ -154,6 +154,7 @@ async function getTokenFromRepository(request, auth, parsedOwner, parsedReposito
     },
   });
   core.info(response);
+
   // Get token for given repositories
   const authentication = await auth({
     type: "installation",
