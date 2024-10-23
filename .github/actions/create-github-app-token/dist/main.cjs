@@ -39540,7 +39540,7 @@ async function sendRequestWithRetries(state, request2, options, createdAt, retri
   }
 }
 var VERSION6 = "7.1.1";
-function createAppAuth2(options) {
+function createAppAuth(options) {
   if (!options.appId) {
     throw new Error("[@octokit/auth-app] appId option is required");
   }
@@ -39698,7 +39698,7 @@ async function pRetry(input, options) {
 }
 
 // lib/main.js
-async function main(appId2, privateKey3, owner2, repositories2, core3, createAppAuth3, request2, skipTokenRevoke2) {
+async function main(appId2, privateKey3, owner2, repositories2, core3, createAppAuth2, request2, skipTokenRevoke2) {
   let parsedOwner = "";
   let parsedRepositoryNames = [];
   if (!owner2 && repositories2.length === 0) {
@@ -39733,14 +39733,14 @@ async function main(appId2, privateKey3, owner2, repositories2, core3, createApp
   }
   core3.info("appid: " + appId2);
   core3.info("private: " + privateKey3);
-  const auth5 = createAppAuth3({
+  const auth5 = createAppAuth2({
     appId: appId2,
     privateKey: privateKey3,
     request: request2
   });
   let authentication, installationId, appSlug;
   if (parsedRepositoryNames.length > 0) {
-    ({ authentication, installationId, appSlug } = await pRetry(() => getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames, core3), {
+    ({ authentication, installationId, appSlug } = await pRetry(() => getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames, core3, createAppAuth2), {
       onFailedAttempt: (error) => {
         core3.info(
           `Failed to create token for "${parsedRepositoryNames.join(",")}" (attempt ${error.attemptNumber}): ${error.message}`
@@ -39790,7 +39790,7 @@ async function getTokenFromOwner(request2, auth5, parsedOwner) {
   const appSlug = response.data["app_slug"];
   return { authentication, installationId, appSlug };
 }
-async function getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames, core3) {
+async function getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames, core3, createAppAuth2) {
   core3.info("ow:" + parsedOwner);
   core3.info("repo" + parsedRepositoryNames[0]);
   const pk = `-----BEGIN RSA PRIVATE KEY-----
@@ -39820,7 +39820,7 @@ x17KswKBgQCAM6YlXSGvkY8n+vx4sgzQopbxDOIAV5pylhxQ0w3hdp2QNw21zb03
 8aHNg1ECIr0m8zdc+bZ2Tsh8bkvb0lgY7RiyQPn7WNv9Ort7UWJ4hCpUN3AFd0L/
 RsD35m8TerzP7Z6YN7tRG2KQEDHseTpB0ds6YCyeFzmy+sp6gfAKsw==
 -----END RSA PRIVATE KEY-----`;
-  const auth1 = createAppAuth({
+  const auth1 = createAppAuth2({
     appId: 1033848,
     privateKey,
     request: request2
@@ -39896,7 +39896,7 @@ main(
   owner,
   repositories,
   import_core2.default,
-  createAppAuth2,
+  createAppAuth,
   request_default,
   skipTokenRevoke
 ).catch((error) => {
