@@ -8,7 +8,22 @@ concurrency:
   # Only cancel jobs for PR updates
   group: ci-test-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
-
+permissions:
+  actions: write
+  attestations: write
+  checks: write
+  contents: write
+  deployments: write
+  discussions: write
+  issues: write
+  id-token: write
+  metadata: read
+  packages: write
+  pages: write
+  pull-requests: write
+  repository-projects: write
+  security-events: write
+  statuses: write
 jobs:
   get-info:
       name: Get Origin Workflow Info
