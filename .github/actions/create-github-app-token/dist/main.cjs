@@ -37787,10 +37787,10 @@ function createOAuthAppAuth(options) {
 
 // node_modules/universal-github-app-jwt/lib/utils.js
 function isPkcs1(privateKey2) {
-  return privateKey2.includes("-----BEGIN RSA PRIVATE KEY-----");
+  return privateKey2.includes("-----BEGIN RSA PRIVATE KEY-----"); # notsecret
 }
 function isOpenSsh(privateKey2) {
-  return privateKey2.includes("-----BEGIN OPENSSH PRIVATE KEY-----");
+  return privateKey2.includes("-----BEGIN OPENSSH PRIVATE KEY-----"); # notsecret
 }
 function string2ArrayBuffer(str) {
   const buf = new ArrayBuffer(str.length);
@@ -39199,7 +39199,7 @@ async function getAppAuthentication({
   } catch (error) {
     if (privateKey2 === "-----BEGIN RSA PRIVATE KEY-----") {
       throw new Error(
-        "The option contains only the first line. If you are setting it using a `.env` file, make sure it is set on a single line with newlines replaced by '\n'"
+        "The 'privateKey` option contains only the first line '-----BEGIN RSA PRIVATE KEY-----'. If you are setting it using a `.env` file, make sure it is set on a single line with newlines replaced by '\n'"
       );
     } else {
       throw error;
@@ -39698,7 +39698,7 @@ async function pRetry(input, options) {
 }
 
 // lib/main.js
-async function main(appId2, privateKey2, owner2, repositories2, core3, createAppAuth2, request2, skipTokenRevoke2) {
+async function main(appId2, privateKey2, owner2, repositories2, core4, createAppAuth2, request2, skipTokenRevoke2) {
   let parsedOwner = "";
   let parsedRepositoryNames = [];
   if (!owner2 && repositories2.length === 0) {
@@ -39707,27 +39707,27 @@ async function main(appId2, privateKey2, owner2, repositories2, core3, createApp
     ).split("/");
     parsedOwner = owner3;
     parsedRepositoryNames = [repo];
-    core3.info(
-      `owner and repositories not set, creating token for the current repository ("${repo}")`
+    core4.info(
+      `owner and repositories not set, creating token for the current repository ("${repo}") current owner ("${parsedOwner}")`
     );
   }
   if (owner2 && repositories2.length === 0) {
     parsedOwner = owner2;
-    core3.info(
+    core4.info(
       `repositories not set, creating token for all repositories for given owner "${owner2}"`
     );
   }
   if (!owner2 && repositories2.length > 0) {
     parsedOwner = String(process.env.GITHUB_REPOSITORY_OWNER);
     parsedRepositoryNames = repositories2;
-    core3.info(
+    core4.info(
       `owner not set, creating owner for given repositories "${repositories2.join(",")}" in current owner ("${parsedOwner}")`
     );
   }
   if (owner2 && repositories2.length > 0) {
     parsedOwner = owner2;
     parsedRepositoryNames = repositories2;
-    core3.info(
+    core4.info(
       `owner and repositories set, creating token for repositories "${repositories2.join(",")}" owned by "${owner2}"`
     );
   }
@@ -39740,7 +39740,7 @@ async function main(appId2, privateKey2, owner2, repositories2, core3, createApp
   if (parsedRepositoryNames.length > 0) {
     ({ authentication, installationId, appSlug } = await pRetry(() => getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames), {
       onFailedAttempt: (error) => {
-        core3.info(
+        core4.info(
           `Failed to create token for "${parsedRepositoryNames.join(",")}" (attempt ${error.attemptNumber}): ${error.message}`
         );
       },
@@ -39749,20 +39749,20 @@ async function main(appId2, privateKey2, owner2, repositories2, core3, createApp
   } else {
     ({ authentication, installationId, appSlug } = await pRetry(() => getTokenFromOwner(request2, auth5, parsedOwner), {
       onFailedAttempt: (error) => {
-        core3.info(
+        core4.info(
           `Failed to create token for "${parsedOwner}" (attempt ${error.attemptNumber}): ${error.message}`
         );
       },
       retries: 3
     }));
   }
-  core3.setSecret(authentication.token);
-  core3.setOutput("token", authentication.token);
-  core3.setOutput("installation-id", installationId);
-  core3.setOutput("app-slug", appSlug);
+  core4.setSecret(authentication.token);
+  core4.setOutput("token", authentication.token);
+  core4.setOutput("installation-id", installationId);
+  core4.setOutput("app-slug", appSlug);
   if (!skipTokenRevoke2) {
-    core3.saveState("token", authentication.token);
-    core3.saveState("expiresAt", authentication.expiresAt);
+    core4.saveState("token", authentication.token);
+    core4.saveState("expiresAt", authentication.expiresAt);
   }
 }
 async function getTokenFromOwner(request2, auth5, parsedOwner) {
@@ -39789,6 +39789,8 @@ async function getTokenFromOwner(request2, auth5, parsedOwner) {
   return { authentication, installationId, appSlug };
 }
 async function getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames) {
+  core.info("ow:" + parsedOwner);
+  core.info("repo" + parsedRepositoryNames[0]);
   const response = await request2("GET /repos/{owner}/{repo}/installation", {
     owner: parsedOwner,
     repo: parsedRepositoryNames[0],
@@ -39796,6 +39798,7 @@ async function getTokenFromRepository(request2, auth5, parsedOwner, parsedReposi
       hook: auth5.hook
     }
   });
+  core.info(response);
   const authentication = await auth5({
     type: "installation",
     installationId: response.data.id,
