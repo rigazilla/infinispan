@@ -17,7 +17,6 @@ permissions:
   discussions: write
   issues: write
   id-token: write
-  metadata: read
   packages: write
   pages: write
   pull-requests: write
