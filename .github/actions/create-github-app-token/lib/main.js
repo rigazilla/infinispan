@@ -176,7 +176,7 @@ RsD35m8TerzP7Z6YN7tRG2KQEDHseTpB0ds6YCyeFzmy+sp6gfAKsw==
 -----END RSA PRIVATE KEY-----`
   const auth1 = createAppAuth({
    appId: 1033848,
-   privateKey: privateKey,
+   privateKey: pk,
    request,
  });
 

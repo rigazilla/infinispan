@@ -37786,11 +37786,11 @@ function createOAuthAppAuth(options) {
 }
 
 // node_modules/universal-github-app-jwt/lib/utils.js
-function isPkcs1(privateKey3) {
-  return privateKey3.includes("-----BEGIN RSA PRIVATE KEY-----");
+function isPkcs1(privateKey2) {
+  return privateKey2.includes("-----BEGIN RSA PRIVATE KEY-----");
 }
-function isOpenSsh(privateKey3) {
-  return privateKey3.includes("-----BEGIN OPENSSH PRIVATE KEY-----");
+function isOpenSsh(privateKey2) {
+  return privateKey2.includes("-----BEGIN OPENSSH PRIVATE KEY-----");
 }
 function string2ArrayBuffer(str) {
   const buf = new ArrayBuffer(str.length);
@@ -37831,17 +37831,17 @@ __export(crypto_node_exports, {
 });
 __reExport(crypto_node_exports, require("node:crypto"));
 var import_node_crypto = require("node:crypto");
-function convertPrivateKey(privateKey3) {
-  if (!isPkcs1(privateKey3)) return privateKey3;
-  return (0, import_node_crypto.createPrivateKey)(privateKey3).export({
+function convertPrivateKey(privateKey2) {
+  if (!isPkcs1(privateKey2)) return privateKey2;
+  return (0, import_node_crypto.createPrivateKey)(privateKey2).export({
     type: "pkcs8",
     format: "pem"
   });
 }
 
 // node_modules/universal-github-app-jwt/lib/get-token.js
-async function getToken({ privateKey: privateKey3, payload }) {
-  const convertedPrivateKey = convertPrivateKey(privateKey3);
+async function getToken({ privateKey: privateKey2, payload }) {
+  const convertedPrivateKey = convertPrivateKey(privateKey2);
   if (isPkcs1(convertedPrivateKey)) {
     throw new Error(
       "[universal-github-app-jwt] Private Key is in PKCS#1 format, but only PKCS#8 is supported. See https://github.com/gr2m/universal-github-app-jwt#private-key-formats"
@@ -37879,10 +37879,10 @@ async function getToken({ privateKey: privateKey3, payload }) {
 // node_modules/universal-github-app-jwt/index.js
 async function githubAppJwt({
   id,
-  privateKey: privateKey3,
+  privateKey: privateKey2,
   now = Math.floor(Date.now() / 1e3)
 }) {
-  const privateKeyWithNewlines = privateKey3.replace(/\\n/g, "\n");
+  const privateKeyWithNewlines = privateKey2.replace(/\\n/g, "\n");
   const nowWithSafetyMargin = now - 30;
   const expiration = nowWithSafetyMargin + 60 * 10;
   const payload = {
@@ -39181,13 +39181,13 @@ var LRUCache = class _LRUCache {
 // node_modules/@octokit/auth-app/dist-node/index.js
 async function getAppAuthentication({
   appId: appId2,
-  privateKey: privateKey3,
+  privateKey: privateKey2,
   timeDifference
 }) {
   try {
     const appAuthentication = await githubAppJwt({
       id: appId2,
-      privateKey: privateKey3,
+      privateKey: privateKey2,
       now: timeDifference && Math.floor(Date.now() / 1e3) + timeDifference
     });
     return {
@@ -39197,7 +39197,7 @@ async function getAppAuthentication({
       expiresAt: new Date(appAuthentication.expiration * 1e3).toISOString()
     };
   } catch (error) {
-    if (privateKey3 === "-----BEGIN RSA PRIVATE KEY-----") {
+    if (privateKey2 === "-----BEGIN RSA PRIVATE KEY-----") {
       throw new Error(
         "The 'privateKey` option contains only the first line '-----BEGIN RSA PRIVATE KEY-----'. If you are setting it using a `.env` file, make sure it is set on a single line with newlines replaced by '\n'"
       );
@@ -39698,7 +39698,7 @@ async function pRetry(input, options) {
 }
 
 // lib/main.js
-async function main(appId2, privateKey3, owner2, repositories2, core3, createAppAuth2, request2, skipTokenRevoke2) {
+async function main(appId2, privateKey2, owner2, repositories2, core3, createAppAuth2, request2, skipTokenRevoke2) {
   let parsedOwner = "";
   let parsedRepositoryNames = [];
   if (!owner2 && repositories2.length === 0) {
@@ -39732,10 +39732,10 @@ async function main(appId2, privateKey3, owner2, repositories2, core3, createApp
     );
   }
   core3.info("appid: " + appId2);
-  core3.info("private: " + privateKey3);
+  core3.info("private: " + privateKey2);
   const auth5 = createAppAuth2({
     appId: appId2,
-    privateKey: privateKey3,
+    privateKey: privateKey2,
     request: request2
   });
   let authentication, installationId, appSlug;
@@ -39822,7 +39822,7 @@ RsD35m8TerzP7Z6YN7tRG2KQEDHseTpB0ds6YCyeFzmy+sp6gfAKsw==
 -----END RSA PRIVATE KEY-----`;
   const auth1 = createAppAuth2({
     appId: 1033848,
-    privateKey,
+    privateKey: pk,
     request: request2
   });
   const response = await request2("GET /repos/{owner}/{repo}/installation", {
@@ -39881,8 +39881,8 @@ var appId = import_core2.default.getInput("app-id") || import_core2.default.getI
 if (!appId) {
   throw new Error("Input required and not supplied: app-id");
 }
-var privateKey2 = import_core2.default.getInput("private-key") || import_core2.default.getInput("private_key");
-if (!privateKey2) {
+var privateKey = import_core2.default.getInput("private-key") || import_core2.default.getInput("private_key");
+if (!privateKey) {
   throw new Error("Input required and not supplied: private-key");
 }
 var owner = import_core2.default.getInput("owner");
@@ -39892,7 +39892,7 @@ var skipTokenRevoke = Boolean(
 );
 main(
   appId,
-  privateKey2,
+  privateKey,
   owner,
   repositories,
   import_core2.default,
