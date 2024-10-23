@@ -43,16 +43,23 @@ jobs:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
       GH_TOKEN: ${{ github.token }}
     steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+         app-id: ${{ secrets.APP_CHECK_RUN_ID }}
+         private-key: ${{ secrets.APP_CHECK_RUN_KEY }}
+
       - uses: LouisBrunner/checks-action@v2.0.0
         with:
-          token: ${{ secrets.APP_CHECK_RUN_TOKEN }}
+          token: ${{ steps.generate-token.outputs.token }}
           name: Test Report Result
           status: in_progress
           sha: ${{ needs.get-info.outputs.source-head-sha }}
 
       - uses: LouisBrunner/checks-action@v2.0.0
         with:
-          token: ${{ secrets.APP_CHECK_RUN_TOKEN }}
+          token: ${{ steps.generate-token.outputs.token }}
           name: Test Mvn Verify
           status: in_progress
           sha: ${{ needs.get-info.outputs.source-head-sha }}
@@ -67,7 +74,7 @@ jobs:
         with:
           java-version: 21
           distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.generate-token.outputs.token }}
 
       - name: Extract Maven Artifacts
         uses: ./.github/actions/extract-maven-artifacts
@@ -79,7 +86,7 @@ jobs:
         uses: ./.github/actions/download-infinispan
         with:
           run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ github.token }}
+          github-token: ${{ steps.generate-token.outputs.token }}
 
       - name: Extract Infinispan Source
         run: |
@@ -101,7 +108,7 @@ jobs:
         if: failure()
         uses: LouisBrunner/checks-action@v2.0.0
         with:
-          token: ${{ secrets.APP_CHECK_RUN_TOKEN }}
+          token: ${{ steps.generate-token.outputs.token }}
           name: Test Report Result
           status: completed
           conclusion: failure
@@ -114,7 +121,7 @@ jobs:
       - uses: LouisBrunner/checks-action@v2.0.0
         if: (success() || failure())
         with:
-         token: ${{ secrets.APP_CHECK_RUN_TOKEN }}
+         token: ${{ steps.generate-token.outputs.token }}
          name: Test Mvn Verify
          status: completed
          conclusion: ${{ steps.maven-test.conclusion }}
