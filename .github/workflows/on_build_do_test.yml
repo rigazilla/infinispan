@@ -50,6 +50,13 @@ jobs:
           status: in_progress
           sha: ${{ needs.get-info.outputs.source-head-sha }}
 
+      - uses: LouisBrunner/checks-action@v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Test Mvn Verify
+          status: in_progress
+          sha: ${{ needs.get-info.outputs.source-head-sha }}
+
       - uses: actions/checkout@v4
 
       - name: Setup Java
@@ -80,11 +87,12 @@ jobs:
           mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
 
       - name: Maven Test
+        id: maven-test
         shell: bash
         run: >
             cd test_dir/infinispan &&
             ./mvnw verify -V -B -e -DrerunFailingTestsCount=2
-            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative
+            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl integrationtests/server-integration/third-party-server
 
       - name: Fail check status
       # In case of failure Publish Test Report workflow is skipped
@@ -97,6 +105,15 @@ jobs:
           status: completed
           conclusion: failure
           sha: ${{ needs.get-info.outputs.source-head-sha }}
+
+      - uses: LouisBrunner/checks-action@v2.0.0
+        if: (success() || failure())
+        with:
+         token: ${{ secrets.GITHUB_TOKEN }}
+         name: Test Mvn Verify
+         status: completed
+         conclusion: ${{ steps.maven-test.conclusion }}
+         sha: ${{ needs.get-info.outputs.source-head-sha }}
 
       - name: Archive commit sha PR
         if: >
