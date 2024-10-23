@@ -33,7 +33,7 @@ export async function main(
     parsedRepositoryNames = [repo];
 
     core.info(
-      `owner and repositories not set, creating token for the current repository ("${repo}")`
+      `owner and repositories not set, creating token for the current repository ("${repo}") current owner ("${parsedOwner}")`
     );
   }
 
