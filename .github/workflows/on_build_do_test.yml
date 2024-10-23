@@ -106,7 +106,7 @@ jobs:
           status: completed
           conclusion: failure
           sha: ${{ needs.get-info.outputs.source-head-sha }}
-          details_url: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/job/${{ github.job }}
+          details_url: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
 
       - run: echo https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/job/${{ github.job }}
         if: (success() || failure())
@@ -119,7 +119,7 @@ jobs:
          status: completed
          conclusion: ${{ steps.maven-test.conclusion }}
          sha: ${{ needs.get-info.outputs.source-head-sha }}
-         details_url: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/job/${{ github.job }}
+         details_url: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
 
       - name: Archive commit sha PR
         if: >
