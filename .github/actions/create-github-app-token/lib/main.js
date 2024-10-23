@@ -144,6 +144,8 @@ async function getTokenFromOwner(request, auth, parsedOwner) {
 
 async function getTokenFromRepository(request, auth, parsedOwner, parsedRepositoryNames) {
   // https://docs.github.com/rest/apps/apps?apiVersion=2022-11-28#get-a-repository-installation-for-the-authenticated-app
+  core.info("ow:" + parsedOwner);
+  core.info("repo" + parsedRepositoryNames[0]);
   const response = await request("GET /repos/{owner}/{repo}/installation", {
     owner: parsedOwner,
     repo: parsedRepositoryNames[0],
