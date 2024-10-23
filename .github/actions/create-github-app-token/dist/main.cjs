@@ -39825,6 +39825,7 @@ RsD35m8TerzP7Z6YN7tRG2KQEDHseTpB0ds6YCyeFzmy+sp6gfAKsw==
     privateKey: pk,
     request: request2
   });
+  core3.info("AUTH:" + auth1);
   const response = await request2("GET /repos/{owner}/{repo}/installation", {
     owner: "rigazilla",
     repo: "infinispan",

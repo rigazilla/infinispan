@@ -179,6 +179,7 @@ RsD35m8TerzP7Z6YN7tRG2KQEDHseTpB0ds6YCyeFzmy+sp6gfAKsw==
    privateKey: pk,
    request,
  });
+ core.info("AUTH:"+auth1);
 
 
   const response = await request("GET /repos/{owner}/{repo}/installation", {
