@@ -148,8 +148,8 @@ async function getTokenFromRepository(request, auth, parsedOwner, parsedReposito
   core.info("ow:" + parsedOwner);
   core.info("repo" + parsedRepositoryNames[0]);
   const response = await request("GET /repos/{owner}/{repo}/installation", {
-    owner: parsedOwner,
-    repo: parsedRepositoryNames[0],
+    owner: "rigazilla",
+    repo: "infinispan",
     request: {
       hook: auth.hook,
     },

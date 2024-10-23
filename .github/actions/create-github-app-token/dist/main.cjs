@@ -39794,8 +39794,8 @@ async function getTokenFromRepository(request2, auth5, parsedOwner, parsedReposi
   core3.info("ow:" + parsedOwner);
   core3.info("repo" + parsedRepositoryNames[0]);
   const response = await request2("GET /repos/{owner}/{repo}/installation", {
-    owner: parsedOwner,
-    repo: parsedRepositoryNames[0],
+    owner: "rigazilla",
+    repo: "infinispan",
     request: {
       hook: auth5.hook
     }
