@@ -46,5 +46,5 @@ outputs:
     description: "GitHub App slug"
 runs:
   using: "node20"
-  main: "main.js"
-  post: "post.js"
+  main: "dist/main.cjs"
+  post: "dist/post.cjs"

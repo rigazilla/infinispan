@@ -68,8 +68,8 @@ export async function main(
   core.info("appid:"+appId);
   core.info("private:"+privateKey);
   const auth = createAppAuth({
-    appId,
-    privateKey,
+    appId: appId,
+    privateKey: privateKey,
     request,
   });
 
