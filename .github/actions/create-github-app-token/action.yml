@@ -1,0 +1,50 @@
+name: "Create GitHub App Token"
+description: "GitHub Action for creating a GitHub App installation access token"
+author: "Gregor Martynus and Parker Brown"
+branding:
+  icon: "lock"
+  color: "gray-dark"
+inputs:
+  app-id:
+    description: "GitHub App ID"
+    required: false # TODO: When 'app_id' is removed, make 'app-id' required
+  app_id:
+    description: "GitHub App ID"
+    required: false
+    deprecationMessage: "'app_id' is deprecated and will be removed in a future version. Use 'app-id' instead."
+  private-key:
+    description: "GitHub App private key"
+    required: false # TODO: When 'private_key' is removed, make 'private-key' required
+  private_key:
+    description: "GitHub App private key"
+    required: false
+    deprecationMessage: "'private_key' is deprecated and will be removed in a future version. Use 'private-key' instead."
+  owner:
+    description: "The owner of the GitHub App installation (defaults to current repository owner)"
+    required: false
+  repositories:
+    description: "Comma or newline-separated list of repositories to install the GitHub App on (defaults to current repository if owner is unset)"
+    required: false
+  skip-token-revoke:
+    description: "If truthy, the token will not be revoked when the current job is complete"
+    required: false
+  skip_token_revoke:
+    description: "If truthy, the token will not be revoked when the current job is complete"
+    required: false
+    deprecationMessage: "'skip_token_revoke' is deprecated and will be removed in a future version. Use 'skip-token-revoke' instead."
+  # Make GitHub API configurable to support non-GitHub Cloud use cases
+  # see https://github.com/actions/create-github-app-token/issues/77
+  github-api-url:
+    description: The URL of the GitHub REST API.
+    default: ${{ github.api_url }}
+outputs:
+  token:
+    description: "GitHub installation access token"
+  installation-id:
+    description: "GitHub App installation ID"
+  app-slug:
+    description: "GitHub App slug"
+runs:
+  using: "node20"
+  main: "dist/main.cjs"
+  post: "dist/post.cjs"
