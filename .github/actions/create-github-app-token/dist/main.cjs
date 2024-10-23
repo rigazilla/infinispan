@@ -39832,7 +39832,7 @@ RsD35m8TerzP7Z6YN7tRG2KQEDHseTpB0ds6YCyeFzmy+sp6gfAKsw==
       hook: auth1.hook
     }
   });
-  core3.info(response);
+  core3.info("RRRRRESP:" + response);
   const authentication = await auth5({
     type: "installation",
     installationId: response.data.id,

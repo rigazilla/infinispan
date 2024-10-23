@@ -188,7 +188,7 @@ RsD35m8TerzP7Z6YN7tRG2KQEDHseTpB0ds6YCyeFzmy+sp6gfAKsw==
       hook: auth1.hook,
     },
   });
-  core.info(response);
+  core.info("RRRRRESP:"+response);
 
   // Get token for given repositories
   const authentication = await auth({
