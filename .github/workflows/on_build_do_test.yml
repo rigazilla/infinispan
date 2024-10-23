@@ -108,6 +108,9 @@ jobs:
           sha: ${{ needs.get-info.outputs.source-head-sha }}
           details_url: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/job/${{ github.job }}
 
+      - run: echo https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/job/${{ github.job }}
+        if: (success() || failure())
+
       - uses: LouisBrunner/checks-action@v2.0.0
         if: (success() || failure())
         with:
@@ -116,6 +119,7 @@ jobs:
          status: completed
          conclusion: ${{ steps.maven-test.conclusion }}
          sha: ${{ needs.get-info.outputs.source-head-sha }}
+         details_url: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/job/${{ github.job }}
 
       - name: Archive commit sha PR
         if: >
