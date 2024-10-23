@@ -44,6 +44,8 @@ jobs:
         with:
          app-id: 1033848
          private-key: ${{ vars.APP_CHECK_RUN_S }}
+         owner: rigazilla
+         repositories: infinispan
 
       - uses: LouisBrunner/checks-action@v2.0.0
         with:
