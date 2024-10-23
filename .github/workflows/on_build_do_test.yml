@@ -36,8 +36,6 @@ jobs:
     env:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
       GH_TOKEN: ${{ github.token }}
-    permissions:
-      id-token: write
     steps:
       - name: Generate a token
         id: generate-token
