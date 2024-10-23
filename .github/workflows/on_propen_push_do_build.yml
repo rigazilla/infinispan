@@ -21,7 +21,7 @@ jobs:
 
       - name: Generate a token
         id: generate-token
-        uses: actions/create-github-app-token@v1.11
+        uses: actions/create-github-app-token@v1.11.0
         with:
          app-id: 1033848
          private-key: ${{ vars.APP_CHECK_RUN_S }}
