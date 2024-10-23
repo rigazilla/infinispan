@@ -81,7 +81,6 @@ export async function main(
         core.info(
           `Failed to create token for "${parsedRepositoryNames.join(',')}" (attempt ${error.attemptNumber}): ${error.message}`
         );
-        core.info(error);
       },
       retries: 3,
     }));
