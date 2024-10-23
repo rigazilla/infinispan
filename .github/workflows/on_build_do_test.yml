@@ -56,6 +56,7 @@ jobs:
           name: Test Mvn Verify
           status: in_progress
           sha: ${{ needs.get-info.outputs.source-head-sha }}
+          details_url: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/job/${{ github.job }}
 
       - uses: actions/checkout@v4
 
@@ -105,6 +106,7 @@ jobs:
           status: completed
           conclusion: failure
           sha: ${{ needs.get-info.outputs.source-head-sha }}
+          details_url: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/job/${{ github.job }}
 
       - uses: LouisBrunner/checks-action@v2.0.0
         if: (success() || failure())
