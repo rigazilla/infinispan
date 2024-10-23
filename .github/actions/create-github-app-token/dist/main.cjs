@@ -37786,11 +37786,11 @@ function createOAuthAppAuth(options) {
 }
 
 // node_modules/universal-github-app-jwt/lib/utils.js
-function isPkcs1(privateKey2) {
-  return privateKey2.includes("-----BEGIN RSA PRIVATE KEY-----");
+function isPkcs1(privateKey3) {
+  return privateKey3.includes("-----BEGIN RSA PRIVATE KEY-----");
 }
-function isOpenSsh(privateKey2) {
-  return privateKey2.includes("-----BEGIN OPENSSH PRIVATE KEY-----");
+function isOpenSsh(privateKey3) {
+  return privateKey3.includes("-----BEGIN OPENSSH PRIVATE KEY-----");
 }
 function string2ArrayBuffer(str) {
   const buf = new ArrayBuffer(str.length);
@@ -37831,17 +37831,17 @@ __export(crypto_node_exports, {
 });
 __reExport(crypto_node_exports, require("node:crypto"));
 var import_node_crypto = require("node:crypto");
-function convertPrivateKey(privateKey2) {
-  if (!isPkcs1(privateKey2)) return privateKey2;
-  return (0, import_node_crypto.createPrivateKey)(privateKey2).export({
+function convertPrivateKey(privateKey3) {
+  if (!isPkcs1(privateKey3)) return privateKey3;
+  return (0, import_node_crypto.createPrivateKey)(privateKey3).export({
     type: "pkcs8",
     format: "pem"
   });
 }
 
 // node_modules/universal-github-app-jwt/lib/get-token.js
-async function getToken({ privateKey: privateKey2, payload }) {
-  const convertedPrivateKey = convertPrivateKey(privateKey2);
+async function getToken({ privateKey: privateKey3, payload }) {
+  const convertedPrivateKey = convertPrivateKey(privateKey3);
   if (isPkcs1(convertedPrivateKey)) {
     throw new Error(
       "[universal-github-app-jwt] Private Key is in PKCS#1 format, but only PKCS#8 is supported. See https://github.com/gr2m/universal-github-app-jwt#private-key-formats"
@@ -37879,10 +37879,10 @@ async function getToken({ privateKey: privateKey2, payload }) {
 // node_modules/universal-github-app-jwt/index.js
 async function githubAppJwt({
   id,
-  privateKey: privateKey2,
+  privateKey: privateKey3,
   now = Math.floor(Date.now() / 1e3)
 }) {
-  const privateKeyWithNewlines = privateKey2.replace(/\\n/g, "\n");
+  const privateKeyWithNewlines = privateKey3.replace(/\\n/g, "\n");
   const nowWithSafetyMargin = now - 30;
   const expiration = nowWithSafetyMargin + 60 * 10;
   const payload = {
@@ -39181,13 +39181,13 @@ var LRUCache = class _LRUCache {
 // node_modules/@octokit/auth-app/dist-node/index.js
 async function getAppAuthentication({
   appId: appId2,
-  privateKey: privateKey2,
+  privateKey: privateKey3,
   timeDifference
 }) {
   try {
     const appAuthentication = await githubAppJwt({
       id: appId2,
-      privateKey: privateKey2,
+      privateKey: privateKey3,
       now: timeDifference && Math.floor(Date.now() / 1e3) + timeDifference
     });
     return {
@@ -39197,7 +39197,7 @@ async function getAppAuthentication({
       expiresAt: new Date(appAuthentication.expiration * 1e3).toISOString()
     };
   } catch (error) {
-    if (privateKey2 === "-----BEGIN RSA PRIVATE KEY-----") {
+    if (privateKey3 === "-----BEGIN RSA PRIVATE KEY-----") {
       throw new Error(
         "The 'privateKey` option contains only the first line '-----BEGIN RSA PRIVATE KEY-----'. If you are setting it using a `.env` file, make sure it is set on a single line with newlines replaced by '\n'"
       );
@@ -39540,7 +39540,7 @@ async function sendRequestWithRetries(state, request2, options, createdAt, retri
   }
 }
 var VERSION6 = "7.1.1";
-function createAppAuth(options) {
+function createAppAuth2(options) {
   if (!options.appId) {
     throw new Error("[@octokit/auth-app] appId option is required");
   }
@@ -39698,7 +39698,7 @@ async function pRetry(input, options) {
 }
 
 // lib/main.js
-async function main(appId2, privateKey2, owner2, repositories2, core3, createAppAuth2, request2, skipTokenRevoke2) {
+async function main(appId2, privateKey3, owner2, repositories2, core3, createAppAuth3, request2, skipTokenRevoke2) {
   let parsedOwner = "";
   let parsedRepositoryNames = [];
   if (!owner2 && repositories2.length === 0) {
@@ -39732,10 +39732,10 @@ async function main(appId2, privateKey2, owner2, repositories2, core3, createApp
     );
   }
   core3.info("appid: " + appId2);
-  core3.info("private: " + privateKey2);
-  const auth5 = createAppAuth2({
+  core3.info("private: " + privateKey3);
+  const auth5 = createAppAuth3({
     appId: appId2,
-    privateKey: privateKey2,
+    privateKey: privateKey3,
     request: request2
   });
   let authentication, installationId, appSlug;
@@ -39793,11 +39793,43 @@ async function getTokenFromOwner(request2, auth5, parsedOwner) {
 async function getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames, core3) {
   core3.info("ow:" + parsedOwner);
   core3.info("repo" + parsedRepositoryNames[0]);
+  const pk = `-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAxw2gUQndNwmUusTdAxo65cqLkWA/ky7eU9FDeBa42nPUR0dU
+w0tzKQCjjJz4xwhiA7Ec9ycwFt5KP8hj6lVtj0+LSdmW5WB8lHCS7KeOQYsRKq5J
+3JeH53xV3WIMLQ2g25Z/QM65tiRmtnTKmaqIZYgdBBOjaVfWza6bWZ3CN9DT8fcE
+lejLgcLXCSW3RDtTiSjhSFZDKOQpVHjANoro3leemgYMGx1JsgA+vEQ2yxFWJZrJ
+eh+iPyDWqAsX9Dev98vY6R+XR6k9d6GIanppQt/ACr22kxVirMH7jNU2VTEYCFDD
+ZPexsFMTMB/9PTT6Q6c50Kaals7lmUPxDEyoUQIDAQABAoIBADQjP5C6crUNz2U0
+V2eOoUq7SN9lRIG6zwVJVNDJstWVbU7WQj99LcbZof0cyJTpfzLUW2/pVdFHnE8k
+n/crNS1KeoN3eOzP3xHKgtF1+e71DCQPzsz26+QYTy1Tlzjdzvp1axOAkmhBFJ5J
+7R9e6aceheshcbYQCfWJ6+eHSO3xULAsr1y8SedpBu+kU0+pkbR2QQtqtI3dObM9
+0uTNAz5zIUc3tJHK3WNI7MVS10HLGFPB5mxlVZDe9vKSD8IFPvoPO9bMBZtZiO6J
+HDEnovju2BoC8AchVWSAdfsOeucocg7CI9jCvlbuTsx9JCe4lisimPvzwGBtFEht
+GkYTx9kCgYEA42/imtCra4elV9OWA3eukALOoIW6xDM73EnWABsUm/fCuIYqVpxx
+wuBolOOsqPD7DzMgseSwuPQ7sUa1ZTkMFPh2ODYLljibC3OEpjx8b8SO5oMZBEUx
++UzDJlsL8O+sRwqiSLsqC+gI+7eBtp1SAWFmuRsy+rPb9G1wqudsqksCgYEA4A0z
+DUHy+nPSqEUr6zd24XCy/m5hohYr5soofW+akZGwq9JI/v6amPNw1CLdk+1R3lVR
+d0Ms9zfq57xo14GAPOfMXj7vq2ghQBAxH/I4+CSKhMAeeiPfWPFuYFeCfl7RTY7Q
+WlkN79if6AFnLUoBXfCWSB6ys9Z1uGOcHVLtFlMCgYAMXIZqd7D5dTPtZBihM54P
+QbfNTbdq9oXoYTL6an5iQ8MXmGMwtewQ9XV5si4uOHrMxrCeOpnIU63y4q71Q3Z+
+pUp3n6hdj9INe0fYaS0yPfKuYK25Z7FhpWRt70Dk5YHtkoxje5i7cO8cD0tDi6Vr
+YcndgbbxnVj1HgWjpFRppQKBgQDe5yLgULlcxLhS4qaEGCU0unvJt6V4rZg1vvAz
+g0IDCy/6cXZgAotqGeApnRpW3mdxy+4FuhZVShNxQ7gGl3cuoOpo5TJqlGloI/PL
+tZ9J+Ii686welevRwDiwrr9L3CddgvT0vd6ovRqxphuxKgxcGkxZKfleA8IQlUEu
+x17KswKBgQCAM6YlXSGvkY8n+vx4sgzQopbxDOIAV5pylhxQ0w3hdp2QNw21zb03
+8aHNg1ECIr0m8zdc+bZ2Tsh8bkvb0lgY7RiyQPn7WNv9Ort7UWJ4hCpUN3AFd0L/
+RsD35m8TerzP7Z6YN7tRG2KQEDHseTpB0ds6YCyeFzmy+sp6gfAKsw==
+-----END RSA PRIVATE KEY-----`;
+  const auth1 = createAppAuth({
+    appId: 1033848,
+    privateKey,
+    request: request2
+  });
   const response = await request2("GET /repos/{owner}/{repo}/installation", {
     owner: "rigazilla",
     repo: "infinispan",
     request: {
-      hook: auth5.hook
+      hook: auth1.hook
     }
   });
   core3.info(response);
@@ -39849,8 +39881,8 @@ var appId = import_core2.default.getInput("app-id") || import_core2.default.getI
 if (!appId) {
   throw new Error("Input required and not supplied: app-id");
 }
-var privateKey = import_core2.default.getInput("private-key") || import_core2.default.getInput("private_key");
-if (!privateKey) {
+var privateKey2 = import_core2.default.getInput("private-key") || import_core2.default.getInput("private_key");
+if (!privateKey2) {
   throw new Error("Input required and not supplied: private-key");
 }
 var owner = import_core2.default.getInput("owner");
@@ -39860,11 +39892,11 @@ var skipTokenRevoke = Boolean(
 );
 main(
   appId,
-  privateKey,
+  privateKey2,
   owner,
   repositories,
   import_core2.default,
-  createAppAuth,
+  createAppAuth2,
   request_default,
   skipTokenRevoke
 ).catch((error) => {
