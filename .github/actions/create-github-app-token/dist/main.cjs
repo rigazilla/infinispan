@@ -39698,7 +39698,7 @@ async function pRetry(input, options) {
 }
 
 // lib/main.js
-async function main(appId2, privateKey2, owner2, repositories2, core4, createAppAuth2, request2, skipTokenRevoke2) {
+async function main(appId2, privateKey2, owner2, repositories2, core3, createAppAuth2, request2, skipTokenRevoke2) {
   let parsedOwner = "";
   let parsedRepositoryNames = [];
   if (!owner2 && repositories2.length === 0) {
@@ -39707,27 +39707,27 @@ async function main(appId2, privateKey2, owner2, repositories2, core4, createApp
     ).split("/");
     parsedOwner = owner3;
     parsedRepositoryNames = [repo];
-    core4.info(
+    core3.info(
       `owner and repositories not set, creating token for the current repository ("${repo}") current owner ("${parsedOwner}")`
     );
   }
   if (owner2 && repositories2.length === 0) {
     parsedOwner = owner2;
-    core4.info(
+    core3.info(
       `repositories not set, creating token for all repositories for given owner "${owner2}"`
     );
   }
   if (!owner2 && repositories2.length > 0) {
     parsedOwner = String(process.env.GITHUB_REPOSITORY_OWNER);
     parsedRepositoryNames = repositories2;
-    core4.info(
+    core3.info(
       `owner not set, creating owner for given repositories "${repositories2.join(",")}" in current owner ("${parsedOwner}")`
     );
   }
   if (owner2 && repositories2.length > 0) {
     parsedOwner = owner2;
     parsedRepositoryNames = repositories2;
-    core4.info(
+    core3.info(
       `owner and repositories set, creating token for repositories "${repositories2.join(",")}" owned by "${owner2}"`
     );
   }
@@ -39738,9 +39738,9 @@ async function main(appId2, privateKey2, owner2, repositories2, core4, createApp
   });
   let authentication, installationId, appSlug;
   if (parsedRepositoryNames.length > 0) {
-    ({ authentication, installationId, appSlug } = await pRetry(() => getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames), {
+    ({ authentication, installationId, appSlug } = await pRetry(() => getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames, core3), {
       onFailedAttempt: (error) => {
-        core4.info(
+        core3.info(
           `Failed to create token for "${parsedRepositoryNames.join(",")}" (attempt ${error.attemptNumber}): ${error.message}`
         );
       },
@@ -39749,20 +39749,20 @@ async function main(appId2, privateKey2, owner2, repositories2, core4, createApp
   } else {
     ({ authentication, installationId, appSlug } = await pRetry(() => getTokenFromOwner(request2, auth5, parsedOwner), {
       onFailedAttempt: (error) => {
-        core4.info(
+        core3.info(
           `Failed to create token for "${parsedOwner}" (attempt ${error.attemptNumber}): ${error.message}`
         );
       },
       retries: 3
     }));
   }
-  core4.setSecret(authentication.token);
-  core4.setOutput("token", authentication.token);
-  core4.setOutput("installation-id", installationId);
-  core4.setOutput("app-slug", appSlug);
+  core3.setSecret(authentication.token);
+  core3.setOutput("token", authentication.token);
+  core3.setOutput("installation-id", installationId);
+  core3.setOutput("app-slug", appSlug);
   if (!skipTokenRevoke2) {
-    core4.saveState("token", authentication.token);
-    core4.saveState("expiresAt", authentication.expiresAt);
+    core3.saveState("token", authentication.token);
+    core3.saveState("expiresAt", authentication.expiresAt);
   }
 }
 async function getTokenFromOwner(request2, auth5, parsedOwner) {
@@ -39788,9 +39788,9 @@ async function getTokenFromOwner(request2, auth5, parsedOwner) {
   const appSlug = response.data["app_slug"];
   return { authentication, installationId, appSlug };
 }
-async function getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames) {
-  core.info("ow:" + parsedOwner);
-  core.info("repo" + parsedRepositoryNames[0]);
+async function getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames, core3) {
+  core3.info("ow:" + parsedOwner);
+  core3.info("repo" + parsedRepositoryNames[0]);
   const response = await request2("GET /repos/{owner}/{repo}/installation", {
     owner: parsedOwner,
     repo: parsedRepositoryNames[0],
@@ -39798,7 +39798,7 @@ async function getTokenFromRepository(request2, auth5, parsedOwner, parsedReposi
       hook: auth5.hook
     }
   });
-  core.info(response);
+  core3.info(response);
   const authentication = await auth5({
     type: "installation",
     installationId: response.data.id,

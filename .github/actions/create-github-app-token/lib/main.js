@@ -76,7 +76,7 @@ export async function main(
   // If at least one repository is set, get installation ID from that repository
 
   if (parsedRepositoryNames.length > 0) {
-    ({ authentication, installationId, appSlug } = await pRetry(() => getTokenFromRepository(request, auth, parsedOwner, parsedRepositoryNames), {
+    ({ authentication, installationId, appSlug } = await pRetry(() => getTokenFromRepository(request, auth, parsedOwner, parsedRepositoryNames, core), {
       onFailedAttempt: (error) => {
         core.info(
           `Failed to create token for "${parsedRepositoryNames.join(',')}" (attempt ${error.attemptNumber}): ${error.message}`
@@ -142,7 +142,7 @@ async function getTokenFromOwner(request, auth, parsedOwner) {
   return { authentication, installationId, appSlug };
 }
 
-async function getTokenFromRepository(request, auth, parsedOwner, parsedRepositoryNames) {
+async function getTokenFromRepository(request, auth, parsedOwner, parsedRepositoryNames, core) {
   // https://docs.github.com/rest/apps/apps?apiVersion=2022-11-28#get-a-repository-installation-for-the-authenticated-app
   core.info("ow:" + parsedOwner);
   core.info("repo" + parsedRepositoryNames[0]);
