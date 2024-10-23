@@ -24,7 +24,7 @@ jobs:
         uses: actions/create-github-app-token@v1
         with:
          app-id: 1033848
-         private-key: ${{ secrets.APP_CHECK_RUN_KEY }}
+         private-key: ${{ vars.APP_CHECK_RUN_S }}
 
       - name: Build Infinispan
         uses: ./.github/actions/build-infinispan
