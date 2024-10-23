@@ -19,6 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+         app-id: 56304673
+         private-key: ${{ secrets.APP_CHECK_RUN_KEY }}
+
       - name: Build Infinispan
         uses: ./.github/actions/build-infinispan
 

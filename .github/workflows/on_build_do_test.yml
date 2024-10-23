@@ -47,7 +47,7 @@ jobs:
         id: generate-token
         uses: actions/create-github-app-token@v1
         with:
-         app-id: ${{ vars.APP_CHECK_RUN_ID }}
+         app-id: 56304673
          private-key: ${{ secrets.APP_CHECK_RUN_KEY }}
 
       - uses: LouisBrunner/checks-action@v2.0.0
