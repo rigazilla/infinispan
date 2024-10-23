@@ -76,7 +76,7 @@ export async function main(
   let authentication, installationId, appSlug;
   // If at least one repository is set, get installation ID from that repository
 
-  if (parsedRepositoryNames.length < 0) {
+  if (parsedRepositoryNames.length > 0) {
     ({ authentication, installationId, appSlug } = await pRetry(() => getTokenFromRepository(request, auth, parsedOwner, parsedRepositoryNames, core, createAppAuth), {
       onFailedAttempt: (error) => {
         core.info(

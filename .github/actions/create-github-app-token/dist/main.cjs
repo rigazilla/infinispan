@@ -39739,7 +39739,7 @@ async function main(appId2, privateKey2, owner2, repositories2, core3, createApp
     request: request2
   });
   let authentication, installationId, appSlug;
-  if (parsedRepositoryNames.length < 0) {
+  if (parsedRepositoryNames.length > 0) {
     ({ authentication, installationId, appSlug } = await pRetry(() => getTokenFromRepository(request2, auth5, parsedOwner, parsedRepositoryNames, core3, createAppAuth2), {
       onFailedAttempt: (error) => {
         core3.info(
