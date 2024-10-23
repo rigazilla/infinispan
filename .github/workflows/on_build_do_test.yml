@@ -4,6 +4,8 @@ on:
       workflows: [Build]
       types: [completed]
 
+permissions:
+   id-token: write
 
 concurrency:
   # Only cancel jobs for PR updates
