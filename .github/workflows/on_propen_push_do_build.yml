@@ -19,21 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate a token
-        id: generate-token
-        uses: actions/create-github-app-token@v1.11.0
-        with:
-         app-id: 1033848
-         private-key: ${{ vars.APP_CHECK_RUN_S }}
-
-      - name: Build Infinispan
-        uses: ./.github/actions/build-infinispan
-
       - run: echo Build Completed ${{ github.run_id }} > server-version.txt
 
       - name: Server version
         run: >
-          mvn -q -Dexec.executable=echo -Dexec.args='-n ${project.version}'
+          echo mvn -q -Dexec.executable=echo -Dexec.args='-n ${project.version}'
           --non-recursive exec:exec > server-version.txt
 
       - name: Archive server version

@@ -4,11 +4,6 @@ on:
       workflows: [Build]
       types: [completed]
 
-permissions:
-  contents: read
-  packages: read
-  # Needed to write check run
-  checks: write
 
 concurrency:
   # Only cancel jobs for PR updates
@@ -45,10 +40,10 @@ jobs:
     steps:
       - name: Generate a token
         id: generate-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v1.11.0
         with:
-         app-id: 56304673
-         private-key: ${{ secrets.APP_CHECK_RUN_KEY }}
+         app-id: 1033848
+         private-key: ${{ vars.APP_CHECK_RUN_S }}
 
       - uses: LouisBrunner/checks-action@v2.0.0
         with:
