@@ -65,8 +65,8 @@ export async function main(
       `owner and repositories set, creating token for repositories "${repositories.join(',')}" owned by "${owner}"`
     );
   }
-  core.info(appId);
-  core.info(privateKey);
+  core.info("appid:"+appId);
+  core.info("private:"+privateKey);
   const auth = createAppAuth({
     appId,
     privateKey,

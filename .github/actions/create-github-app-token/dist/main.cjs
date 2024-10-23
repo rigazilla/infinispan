@@ -39731,8 +39731,8 @@ async function main(appId2, privateKey2, owner2, repositories2, core3, createApp
       `owner and repositories set, creating token for repositories "${repositories2.join(",")}" owned by "${owner2}"`
     );
   }
-  core3.info(appId2);
-  core3.info(privateKey2);
+  core3.info("appid:" + appId2);
+  core3.info("private:" + privateKey2);
   const auth5 = createAppAuth2({
     appId: appId2,
     privateKey: privateKey2,
