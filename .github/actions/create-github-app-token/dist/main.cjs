@@ -37787,10 +37787,10 @@ function createOAuthAppAuth(options) {
 
 // node_modules/universal-github-app-jwt/lib/utils.js
 function isPkcs1(privateKey2) {
-  return privateKey2.includes("-----BEGIN RSA PRIVATE KEY-----"); # notsecret
+  return privateKey2.includes("-----BEGIN RSA PRIVATE KEY-----");
 }
 function isOpenSsh(privateKey2) {
-  return privateKey2.includes("-----BEGIN OPENSSH PRIVATE KEY-----"); # notsecret
+  return privateKey2.includes("-----BEGIN OPENSSH PRIVATE KEY-----");
 }
 function string2ArrayBuffer(str) {
   const buf = new ArrayBuffer(str.length);
