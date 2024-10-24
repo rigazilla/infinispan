@@ -2,10 +2,6 @@ const core = require('@actions/core');
 const github = require('@actions/github');
 const { App } = require('@octokit/app');
 
-main()
-
-export async function main(privateKey) {
-   try {
       // `who-to-greet` input defined in action metadata file
       const privateKey = core.getInput('private-key');
       console.log(`Hello ${privateKey}!`);
@@ -30,7 +26,7 @@ export async function main(privateKey) {
        privateKey: privateKey,
      });
 
-      const octokit = await app.getInstallationOctokit(56304673);
+      const octokit = app.getInstallationOctokit(56304673);
       console.log(octokit);
 
       const time = (new Date()).toTimeString();
@@ -38,8 +34,4 @@ export async function main(privateKey) {
       // Get the JSON webhook payload for the event that triggered the workflow
       const payload = JSON.stringify(github.context.payload, undefined, 2)
       console.log(`The event payload: ${payload}`);
-    } catch (error) {
-      core.setFailed(error.message);
-    }
 
-}
