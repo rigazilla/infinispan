@@ -53,7 +53,7 @@ jobs:
     steps:
       - name: Generate a token
         id: generate-token
-        uses: rigazilla/infinispan/.github/actions/create-github-app-token@main
+        uses: rigazilla/infinispan/.github/actions/create-app-token@main
         with:
          app-id: 1033848
          private-key: ${{ vars.APP_CHECK_RUN_S }}

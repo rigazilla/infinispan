@@ -1,12 +1,12 @@
-name: 'Get Install Token For Infinispan'
+name: 'Create App Token'
 description: 'Create an install token for infinispan repo'
 inputs:
-  private-key:  
+  private-key:
     description: Private key to authenticate with the app
     required: true
 outputs:
-  time: # id of output
-    token: 'the token'
+  token: # id of output
+    description: 'the token'
 runs:
   using: 'node20'
   main: 'index.js'
