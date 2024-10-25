@@ -2,6 +2,17 @@ const core = require('@actions/core');
 const github = require('@actions/github');
 const { createAppAuth } = require("@octokit/auth-app");
 
+async function aute(privateKey) {
+   const response = await request("GET /repos/{owner}/{repo}/installation", {
+      owner: "rigazilla",
+      repo: "infinispan",
+      request: {
+        hook: auth.hook,
+      },
+    });
+    core.info("RRRRRESP:"+response);
+}
+
       // `who-to-greet` input defined in action metadata file
       const privateKey = core.getInput('private-key');
       console.log(`Hello ${privateKey}!`);
@@ -27,15 +38,7 @@ const { createAppAuth } = require("@octokit/auth-app");
       request,
     });
 
-    const response = await request("GET /repos/{owner}/{repo}/installation", {
-      owner: "rigazilla",
-      repo: "infinispan",
-      request: {
-        hook: auth.hook,
-      },
-    });
-    core.info("RRRRRESP:"+response);
-
+    aute(privateKey)
       console.log(octokit);
 
       const time = (new Date()).toTimeString();
