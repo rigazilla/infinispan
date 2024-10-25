@@ -1,8 +1,9 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
-const { createAppAuth } = require("@octokit/auth-app");
+import { createAppAuth } from "@octokit/auth-app";
 
-async function aute(privateKey) {
+
+async function aute(auth, privateKey) {
    const response = await request("GET /repos/{owner}/{repo}/installation", {
       owner: "rigazilla",
       repo: "infinispan",
@@ -38,7 +39,7 @@ async function aute(privateKey) {
       request,
     });
 
-    aute(privateKey)
+    aute(auth, privateKey)
       console.log(octokit);
 
       const time = (new Date()).toTimeString();
