@@ -39,7 +39,6 @@ async function aute(auth) {
     });
 
     aute(auth, privateKey)
-      console.log(octokit);
 
       const time = (new Date()).toTimeString();
       core.setOutput("token", time);
