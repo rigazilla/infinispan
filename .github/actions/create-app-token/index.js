@@ -3,7 +3,7 @@ import github from "@actions/github";
 import { createAppAuth } from "@octokit/auth-app";
 
 
-async function aute(auth, privateKey) {
+async function aute(auth) {
    const response = await request("GET /repos/{owner}/{repo}/installation", {
       owner: "rigazilla",
       repo: "infinispan",
@@ -34,9 +34,8 @@ async function aute(auth, privateKey) {
     //  });
 
     const auth = createAppAuth({
-      appId: appId,
+      appId: 1033848,
       privateKey: privateKey,
-      request,
     });
 
     aute(auth, privateKey)
