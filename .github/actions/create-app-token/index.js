@@ -1,6 +1,6 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
-const { App } = require('@octokit/app');
+const { createAppAuth } = require("@octokit/auth-app");
 
       // `who-to-greet` input defined in action metadata file
       const privateKey = core.getInput('private-key');
@@ -21,12 +21,21 @@ const { App } = require('@octokit/app');
     //    },
     //  });
 
-     const app = new App({
-       appId: APP_ID,
-       privateKey: privateKey,
-     });
+    const auth = createAppAuth({
+      appId: appId,
+      privateKey: privateKey,
+      request,
+    });
 
-      const octokit = app.getInstallationOctokit(56304673);
+    const response = await request("GET /repos/{owner}/{repo}/installation", {
+      owner: "rigazilla",
+      repo: "infinispan",
+      request: {
+        hook: auth.hook,
+      },
+    });
+    core.info("RRRRRESP:"+response);
+
       console.log(octokit);
 
       const time = (new Date()).toTimeString();
