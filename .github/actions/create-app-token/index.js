@@ -12,7 +12,7 @@ async function aute(auth) {
         hook: auth.hook,
       },
     });
-    core.info("RRRRRESP:"+response);
+    core.info("RRRRRESP: "+response);
 }
 
       // `who-to-greet` input defined in action metadata file
@@ -37,6 +37,7 @@ async function aute(auth) {
     const auth = createAppAuth({
       appId: 1033848,
       privateKey: privateKey,
+      request
     });
 
     aute(auth, privateKey)
