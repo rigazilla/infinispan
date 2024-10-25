@@ -33,12 +33,14 @@ async function aute(auth) {
     //      hook: auth.hook,
     //    },
     //  });
-
+    var APP_ID=1033848;
     const auth = createAppAuth({
-      appId: 1033848,
+      appId: APP_ID,
       privateKey: privateKey,
       request
     });
+
+    core.info("AUTH: "+auth);
 
     aute(auth, privateKey)
 
