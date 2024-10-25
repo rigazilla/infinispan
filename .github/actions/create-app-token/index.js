@@ -1,6 +1,7 @@
 import core from "@actions/core";
 import github from "@actions/github";
 import { createAppAuth } from "@octokit/auth-app";
+import { request } from "@octokit/request";
 
 
 async function aute(auth) {
