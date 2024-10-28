@@ -94,7 +94,7 @@ jobs:
         with:
             status: ${{ steps.maven-test.outputs.result }}
             sha: ${{ needs.get-info.outputs.source-head-sha }}
-            targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/lob/${{ github.job }}
+            targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
 
       - name: Archive commit sha PR
         if: >

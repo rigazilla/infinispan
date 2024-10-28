@@ -77,4 +77,4 @@ jobs:
         with:
             status: ${{ needs.publish-image.result }}
             sha: ${{ needs.get-info.outputs.source-head-sha }}
-            targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/lob/${{ github.job }}
+            targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
