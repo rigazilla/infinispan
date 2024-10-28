@@ -9,6 +9,7 @@ permissions:
   packages: read
   # Needed to write check run
   checks: write
+  statuses: write
 
 concurrency:
   # Only cancel jobs for PR updates
