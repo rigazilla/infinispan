@@ -19,8 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Infinispan
-        uses: ./.github/actions/build-infinispan
+#      - name: Build Infinispan
+#        uses: ./.github/actions/build-infinispan
 
       - run: echo Build Completed ${{ github.run_id }} > server-version.txt
 

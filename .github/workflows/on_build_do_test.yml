@@ -43,12 +43,12 @@ jobs:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: LouisBrunner/checks-action@v2.0.0
+      - name: set-commit-status
+        uses: myrotvorets/set-commit-status-action@v2.0.1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          name: Test Report Result
-          status: in_progress
-          sha: ${{ needs.get-info.outputs.source-head-sha }}
+            status: pending
+            sha: ${{ needs.get-info.outputs.source-head-sha }}
+            targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
 
       - uses: actions/checkout@v4
 
@@ -84,19 +84,17 @@ jobs:
         run: >
             cd test_dir/infinispan &&
             ./mvnw verify -V -B -e -DrerunFailingTestsCount=2
-            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative
+            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
 
-      - name: Fail check status
+      - name: set-commit-status
+        if: failure()
       # In case of failure Publish Test Report workflow is skipped
       # so we need to fail the check here
-        if: failure()
-        uses: LouisBrunner/checks-action@v2.0.0
+        uses: myrotvorets/set-commit-status-action@v2.0.1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          name: Test Report Result
-          status: completed
-          conclusion: failure
-          sha: ${{ needs.get-info.outputs.source-head-sha }}
+            status: failure
+            sha: ${{ needs.get-info.outputs.source-head-sha }}
+            targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
 
       - name: Archive commit sha PR
         if: >
