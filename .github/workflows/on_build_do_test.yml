@@ -86,7 +86,7 @@ jobs:
         run: >
             cd test_dir/infinispan &&
             ./mvnw verify -V -B -e -DrerunFailingTestsCount=2
-            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
+            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative
 
       - name: set-commit-status-conclusion
         if: success()
