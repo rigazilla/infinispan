@@ -69,10 +69,12 @@ jobs:
          - get-info
          - publish-image
       if: always()
+
       steps:
-      - uses: LouisBrunner/checks-action@v2.0.0
+      - name: set-commit-status
+        if: success() || failure()
+        uses: myrotvorets/set-commit-status-action@v2.0.1
         with:
-           token: ${{ secrets.GITHUB_TOKEN }}
-           name: Publish Image
-           conclusion: ${{ needs.publish-image.result }}
-           sha: ${{ needs.get-info.outputs.source-head-sha }}
+            status: ${{ needs.publish-image.result }}
+            sha: ${{ needs.get-info.outputs.source-head-sha }}
+            targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/lob/${{ github.job }}

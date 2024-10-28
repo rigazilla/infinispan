@@ -81,6 +81,7 @@ jobs:
           mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
 
       - name: Maven Test
+        id: maven-test
         shell: bash
         run: >
             cd test_dir/infinispan &&
@@ -88,14 +89,12 @@ jobs:
             -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
 
       - name: set-commit-status
-        if: failure()
-      # In case of failure Publish Test Report workflow is skipped
-      # so we need to fail the check here
+        if: success() || failure()
         uses: myrotvorets/set-commit-status-action@v2.0.1
         with:
-            status: failure
+            status: ${{ steps.maven-test.outputs.result }}
             sha: ${{ needs.get-info.outputs.source-head-sha }}
-            targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
+            targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}/lob/${{ github.job }}
 
       - name: Archive commit sha PR
         if: >
