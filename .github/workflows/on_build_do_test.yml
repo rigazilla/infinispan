@@ -89,10 +89,18 @@ jobs:
             -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
 
       - name: set-commit-status-conclusion
-        if: success() || failure()
+        if: success()
         uses: myrotvorets/set-commit-status-action@v2.0.1
         with:
-            status: ${{ steps.maven-test.conclusion }}
+            status: success
+            sha: ${{ needs.get-info.outputs.source-head-sha }}
+            targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
+
+      - name: set-commit-status-conclusion
+        if: always() && failure()
+        uses: myrotvorets/set-commit-status-action@v2.0.1
+        with:
+            status: failure
             sha: ${{ needs.get-info.outputs.source-head-sha }}
             targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
 
