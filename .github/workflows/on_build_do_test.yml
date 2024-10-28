@@ -44,7 +44,7 @@ jobs:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: set-commit-status
+      - name: set-commit-status-pending
         uses: myrotvorets/set-commit-status-action@v2.0.1
         with:
             status: pending
@@ -88,11 +88,11 @@ jobs:
             ./mvnw verify -V -B -e -DrerunFailingTestsCount=2
             -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
 
-      - name: set-commit-status
+      - name: set-commit-status-conclusion
         if: success() || failure()
         uses: myrotvorets/set-commit-status-action@v2.0.1
         with:
-            status: ${{ steps.maven-test.outputs.result }}
+            status: ${{ steps.maven-test.conclusion }}
             sha: ${{ needs.get-info.outputs.source-head-sha }}
             targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
 
