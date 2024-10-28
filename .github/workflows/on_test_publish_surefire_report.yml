@@ -25,9 +25,6 @@ jobs:
             github-token: ${{ github.token }}
             run-id: ${{ github.event.workflow_run.id }}
 
-        - name: Unzip artifact
-          run: unzip surefire-test-report.zip
-
         - name: Get github sha
           id: github_sha
           uses: juliangruber/read-file-action@v1
