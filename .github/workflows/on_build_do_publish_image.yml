@@ -52,7 +52,7 @@ jobs:
           with:
               status: pending
               sha: ${{ github.event.workflow_run.head_sha }}
-              targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
+              targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   publish-image:
       needs:
@@ -85,4 +85,4 @@ jobs:
         with:
             status: ${{ needs.publish-image.result }}
             sha: ${{ needs.get-info.outputs.source-head-sha }}
-            targetUrl: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}
+            targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
