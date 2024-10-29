@@ -57,7 +57,7 @@ jobs:
           run: |
             COUNT=$(find . -name "TEST-*.xml" | while read f; do xmlstarlet sel -t -c  "count(//testcase)" -n "$f"; done | awk '{s+=$1} END {print s}')
             echo "test_count=$COUNT" >> $GITHUB_OUTPUT
-            echo "test_min=$MIN_TEST_COUNT" >> $GITHUB_OUTPUT
+            echo "test_min=$MIN_TEST_NUM" >> $GITHUB_OUTPUT
 
         - name: set-commit-status-pending
           uses: myrotvorets/set-commit-status-action@v2.0.1
