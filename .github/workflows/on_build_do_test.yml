@@ -28,7 +28,7 @@ jobs:
          - uses: actions/checkout@v4
 
          - run: |
-            echo HEAD_BRANCH: ${{ github.event.workflow_run.head_repository }}
+            echo HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
             echo HEAD_REPO: ${{ github.event.workflow_run.head_repository.name }}
 
          - id: workflow-run-info
