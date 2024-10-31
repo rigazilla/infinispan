@@ -27,6 +27,9 @@ jobs:
       steps:
          - uses: actions/checkout@v4
 
+         - run: |
+            echo HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+
          - id: workflow-run-info
            uses: ./.github/actions/get-origin-info
            with:
@@ -85,7 +88,7 @@ jobs:
         run: >
             cd test_dir/infinispan &&
             ./mvnw verify -V -B -e -DrerunFailingTestsCount=2
-            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative
+            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
 
       - name: set-commit-status-conclusion
         if: success()
