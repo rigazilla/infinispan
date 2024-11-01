@@ -10,8 +10,8 @@ concurrency:
   # Only cancel jobs same head_branch same owner, works
   # both for pull_request and push
   group: >
-      ci-test-${{ github.event.workflow_run.head_repository.owner }}-
-         ${{ github.event.workflow_run.head_branch }}
+      ${{ github.workflow }}-${{ github.event.workflow_run.head_repository.owner }}-
+      ${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: true
 
 jobs:
