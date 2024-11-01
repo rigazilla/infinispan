@@ -32,7 +32,7 @@ jobs:
 
          - run: |
             echo HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-            echo HEAD_REPO: ${{ github.event.workflow_run.head_repository.name }}
+            echo HEAD_OWNER: ${{ github.event.workflow_run.head_repository.owner }}
 
          - id: workflow-run-info
            uses: ./.github/actions/get-origin-info
