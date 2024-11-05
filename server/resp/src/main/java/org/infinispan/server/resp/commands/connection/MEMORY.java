@@ -64,7 +64,7 @@ public class MEMORY extends RespCommand implements Resp3Command {
             } else {
                byte[] key = arguments.get(1);
                return handler.stageToReturn(advCache.getAsync(key).thenApply(v ->
-                           v == null ? null : (long) (MemoryUtils.length(key) + MemoryUtils.length(v)) / 8 * 8),
+                           v == null ? null : (long) (MemoryUtils.memSize(key) + MemoryUtils.memSize(v))),
                      ctx, Resp3Response.INTEGER);
             }
          case "DOCTOR":

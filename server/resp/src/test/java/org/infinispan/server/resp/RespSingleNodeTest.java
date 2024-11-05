@@ -840,15 +840,15 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
    public void testMemoryUsage() {
       RedisCommands<String, String> redis = redisConnection.sync();
       redis.set(k(), "11");
-      assertThat(redis.memoryUsage(k())).isEqualTo(16);
+      assertThat(redis.memoryUsage(k())).isEqualTo(32+((k().length()+7)/8)*8+8);
       redis.set(k(1), "a".repeat(1001));
-      assertThat(redis.memoryUsage(k(1))).isEqualTo(1032);
+      assertThat(redis.memoryUsage(k(1))).isEqualTo(32+((k(1).length()+7)/8)*8+1008);
 
       redis.sadd(k(2), "a","b","c");
-      assertThat(redis.memoryUsage(k(2))).isEqualTo(144);
+      assertThat(redis.memoryUsage(k(2))).isEqualTo(288);
 
       redis.hmset(k(3), Map.of("k1","v1", "k2","v2", "k3","v3"));
-      assertThat(redis.memoryUsage(k(3))).isEqualTo(168);
+      assertThat(redis.memoryUsage(k(3))).isEqualTo(344);
 
    }
 
