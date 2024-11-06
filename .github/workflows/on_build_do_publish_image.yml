@@ -7,7 +7,7 @@ env:
    IMAGE_NAME: ${{ vars.QUAY_IMAGE_NAME  || 'quay.io/infinispan-test/server' }}
 
 concurrency:
-  # Only cancel jobs same head_branch same repo, works
+  # Cancel jobs same head_branch same repo, works
   # both for pull_request and push
   group: >
       ${{ github.workflow }}-${{ github.event.workflow_run.head_repository.full_name }}-
