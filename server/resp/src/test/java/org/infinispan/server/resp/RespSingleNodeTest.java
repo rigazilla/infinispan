@@ -848,10 +848,37 @@ public class RespSingleNodeTest extends SingleNodeRespBaseTest {
    @Test
    public void testMemoryUsage() {
       RedisCommands<String, String> redis = redisConnection.sync();
+      // String test
       redis.set(k(), "1");
-      assertThat(redis.memoryUsage(k())).isEqualTo(16);
+      // Memory usage for this entry is:
+      // key: 16(header)+4(length)+4(padding) = 24
+      // value: 16(header)+1(length)+7(padding) = 24
+      // entry overhead: 24
+      assertThat(redis.memoryUsage(k())).isEqualTo(72);
       redis.set(k(1), "a".repeat(1001));
-      assertThat(redis.memoryUsage(k(1))).isEqualTo(1032);
+      // Memory usage for this entry is:
+      // key: 16(header)+18(length)+6(padding) = 40
+      // value: 16(header)+1001(length)+7(padding) = 1024
+      // entry overhead: 24
+      assertThat(redis.memoryUsage(k(1))).isEqualTo(1088);
+
+      // Check that memory usage doesn't fail for implemented data types
+      // HashMap
+      Map<String, String> map = Map.of("key1", "value1", "key2", "value2", "key3", "value3");
+      redis.hmset(k(2), map);
+      assertThat(redis.memoryUsage(k(2))).isPositive();
+      // HyperLogLog
+      redis.pfadd(k(3), "el1", "el2", "el3");
+      assertThat(redis.memoryUsage(k(3))).isPositive();
+      // List
+      redis.rpush(k(4), "william", "jose", "pedro");
+      assertThat(redis.memoryUsage(k(4))).isPositive();
+      // Set
+      redis.sadd(k(5), "1", "2", "3");
+      assertThat(redis.memoryUsage(k(5))).isPositive();
+      // SortedSet
+      redis.zadd(k(6), 10.4, "william");
+      assertThat(redis.memoryUsage(k(6))).isPositive();
    }
 
    @Test
