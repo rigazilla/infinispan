@@ -137,7 +137,7 @@ public class PrimitiveEntrySizeCalculator extends AbstractEntrySizeCalculatorHel
     *
     * @return a sun.misc.Unsafe
     */
-   static Unsafe getUnsafe() {
+   public static Unsafe getUnsafe() {
       try {
          return Unsafe.getUnsafe();
       } catch (SecurityException tryReflectionInstead) {
