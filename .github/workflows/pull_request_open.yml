@@ -57,7 +57,7 @@ jobs:
         uses: snnaplab/get-labels-action@v1.0.1
       - if: contains(fromJSON(env.LABELS), 'target/'${{ github.event.pull_request.base.ref }})
         run: |
-          gh pr edit ${{ github.event.pull_request.number }} --add-label 'target/'${{ github.event.pull_request.base.ref }}
+          gh pr edit ${{ github.event.pull_request.number }} --add-label target/${{ github.event.pull_request.base.ref }}
         env:
          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
          GH_REPO: ${{ github.repository }}
