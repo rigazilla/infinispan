@@ -34,7 +34,7 @@ pipeline {
                         env.ALT_TEST_BUILD = ""
                     }
                     // ISPN-9703 Ensure distribution build works on non-prs
-                    env.DISTRIBUTION_BUILD = !env.BRANCH_NAME.startsWith('PR-') || pullRequest.labels.contains('Documentation') || pullRequest.labels.contains('Image Required') ? "-Pdistribution" : ""
+                    env.DISTRIBUTION_BUILD = !env.BRANCH_NAME.startsWith('PR-') || pullRequest.labels.contains('Documentation') || pullRequest.labels.contains('pr/Image Required') ? "-Pdistribution" : ""
                     // Collect reports on non-prs
                     env.REPORTS_BUILD = env.BRANCH_NAME.startsWith('PR-') ? "" : "surefire-report:report pmd:cpd pmd:pmd spotbugs:spotbugs"
                 }
@@ -67,7 +67,7 @@ pipeline {
         stage('Image') {
             when {
                 expression {
-                    return !env.BRANCH_NAME.startsWith("PR-") || pullRequest.labels.contains('Image Required')
+                    return !env.BRANCH_NAME.startsWith("PR-") || pullRequest.labels.contains('pr/Image Required')
                 }
             }
             steps {
@@ -106,7 +106,7 @@ pipeline {
         stage('Native Image') {
             when {
                 expression {
-                    return !env.BRANCH_NAME.startsWith("PR-") || pullRequest.labels.contains('Native Image Required')
+                    return !env.BRANCH_NAME.startsWith("PR-") || pullRequest.labels.contains('pr/Native Image Required')
                 }
             }
             steps {
