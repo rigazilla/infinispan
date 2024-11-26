@@ -55,7 +55,7 @@ jobs:
     steps:
       - name: Get Labels Action
         run: |
-         labels=$(gh api repos(${GH_REPO}/labels --json labels -q '.labels|map(.name)')
+         labels=$(gh api repos/${GH_REPO}/labels --json labels -q '.labels|map(.name)')
          echo "LABELS=$labels" >> $GITHUB_ENV
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
