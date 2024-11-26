@@ -54,7 +54,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get Labels Action
-        uses: snnaplab/get-labels-action@v1.0.1
+        run: |
+         labels=$(gh api repos/${GH_REPO}/labels)
+         echo "LABELS=$labels" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
       - if: contains(fromJSON(env.LABELS), 'target/${{ github.event.pull_request.base.ref }}')
         run: |
           gh pr edit ${{ github.event.pull_request.number }} --add-label target/${{ github.event.pull_request.base.ref }}
