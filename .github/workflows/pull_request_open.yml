@@ -60,9 +60,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-      - if: contains(fromJSON(env.LABELS), 'target/${{ github.event.pull_request.base.ref }}')
+      - if: ${{ contains(fromJSON(env.LABELS), env.TARGET) }}
         run: |
           gh pr edit ${{ github.event.pull_request.number }} --add-label target/${{ github.event.pull_request.base.ref }}
         env:
          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
          GH_REPO: ${{ github.repository }}
+         TARGET: target/${{ github.event.pull_request.base.ref }}
