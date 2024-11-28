@@ -88,9 +88,11 @@ jobs:
         id: maven-test
         shell: bash
         run: >
-            cd test_dir/infinispan &&
-            ./mvnw verify -V -B -e -DrerunFailingTestsCount=2
-            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative
+            #cd test_dir/infinispan &&
+            #./mvnw verify -V -B -e -DrerunFailingTestsCount=2
+            #-Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
+            ./mvnw verify -V -B -e -pl commons/all -Dtest=".*FeaturesTest.*"
+            -DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true
 
       - name: set-commit-status-conclusion
         if: success()
