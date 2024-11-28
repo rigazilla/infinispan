@@ -24,17 +24,16 @@ jobs:
 # containing PR target branch
         - name: Download a Build Artifact
           uses: actions/download-artifact@v4.1.8
+          id: download-artifact
           with:
              name: flaky-test-report
              github-token: ${{ github.token }}
              run-id: ${{ github.event.workflow_run.id }}
 
-        - if: ${{ steps.download-artifact.outputs.result == 'Flaky Found' }}
-          name: Unzip artifact
+        - name: Unzip artifact
           run: unzip flaky-test-report.zip
 
-        - if: ${{ steps.download-artifact.outputs.result == 'Flaky Found' }}
-          name: Create Jira
+        - name: Create Jira
           env:
             TOKEN: ${{ secrets.JIRA_API_TOKEN }}
             RUNNER_DEBUG: 1
@@ -48,23 +47,19 @@ jobs:
             TARGET_BRANCH=$(cat target-branch.txt) bin/jira/track_flaky_tests.sh
             true
 
-        - if: ${{ steps.download-artifact.outputs.result == 'Flaky Found' }}
-          name: Get event name
+        - name: Get event name
           id: event_name
           uses: juliangruber/read-file-action@v1
           with:
             path: ./event-name.txt
 
-        - if: ${{ steps.download-artifact.outputs.result == 'Flaky Found' }}
-          name: Get PR number
+        - name: Get PR number
           id: pr-number
           uses: juliangruber/read-file-action@v1
           with:
             path: ./pr-number.txt
 
-        - if: >
-            ${{ steps.download-artifact.outputs.result == 'Flaky Found' &&
-            steps.event_name.outputs.content == 'pull_request' }}
+        - if: ${{ steps.event_name.outputs.content == 'pull_request' }}
           name: Comment PR
           uses: ./.github/actions/comment-pr-flaky-test
           with:
