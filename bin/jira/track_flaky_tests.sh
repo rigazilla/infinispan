@@ -61,7 +61,7 @@ for TEST in "${TESTS[@]}"; do
 #      }
 #    }
 #EOF
-    gh create issue --title "Flaky Test: ${SUMMARY}" --body "Target Branch: ${TARGET_BRANCH}\n${STACK_TRACE}" --label "Flaky Test"
+    gh issue create --title "Flaky Test: ${SUMMARY}" --body "Target Branch: ${TARGET_BRANCH}\n${STACK_TRACE}" --label "Flaky Test"
       # We retry on error here as for some reason the Jira server occasionally responds with 400 errors
       # export ISSUE_KEY=$(curl --retry 5 --retry-all-errors --data @create-jira.json $API_URL/issue | jq -r .key)
     else
