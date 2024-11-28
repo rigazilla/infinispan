@@ -88,7 +88,7 @@ jobs:
         id: maven-test
         shell: bash
         run: >
-            ./mvnw verify -pl build/logging-annotations,build/logging-processor,build/component-annotations,commons/spi,build/component-processor,build/checkstyle,commons-test,api,commons/all
+            ./mvnw verify -pl build/logging-annotations,build/logging-processor,build/component-annotations,commons/spi,build/component-processor,build/checkstyle,commons-test,api,commons/jdk21,commons/all
             -Dtest=".*FeaturesTest.*" -DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true
             -Dsurefire.failIfNoSpecifiedTests=false
             #./mvnw compile -V -B -e -pl build/logging-annotations,build/logging-processor,commons/all -Dtest=".*FeaturesTest.*"
