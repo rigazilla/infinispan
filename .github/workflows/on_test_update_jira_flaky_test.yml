@@ -30,9 +30,6 @@ jobs:
              github-token: ${{ github.token }}
              run-id: ${{ github.event.workflow_run.id }}
 
-        - name: Unzip artifact
-          run: unzip flaky-test-report.zip
-
         - name: Create Jira
           env:
             TOKEN: ${{ secrets.JIRA_API_TOKEN }}
