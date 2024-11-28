@@ -88,7 +88,7 @@ jobs:
         id: maven-test
         shell: bash
         run: >
-            ./mvnw verify -V -B -e -pl commons/all -Dtest=".*FeaturesTest.*"
+            ./mvnw verify -V -B -e -pl build/*, commons/all -Dtest=".*FeaturesTest.*"
             -DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true
             #./mvnw verify -V -B -e -DrerunFailingTestsCount=2
             #-Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
