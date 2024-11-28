@@ -7,10 +7,6 @@ source "${SCRIPT_DIR}/common.sh"
 
 requiredEnv TOKEN PROJECT_KEY TYPE JENKINS_JOB_URL FLAKY_TEST_GLOB TARGET_BRANCH
 
-PROJECT=$(curl $API_URL/project/${PROJECT_KEY})
-PROJECT_ID=$(echo ${PROJECT} | jq -r .id)
-ISSUE_TYPE_ID=$(echo ${PROJECT} | jq -r ".issueTypes[] | select(.name==\"${TYPE}\").id")
-
 shopt -s nullglob globstar
 TESTS=(${FLAKY_TEST_GLOB})
 for TEST in "${TESTS[@]}"; do
@@ -77,20 +73,5 @@ for TEST in "${TESTS[@]}"; do
       fi
       gh issue comment --body "Target Branch: ${TARGET_BRANCH}\n${STACK_TRACE}"
     fi
-
-#    COMMENT=$(
-#    cat << EOF
-#  h1. ${TEST_NAME}
-#  Target Branch: ${TARGET_BRANCH}
-#  [Jenkins Job|${JENKINS_JOB_URL}]
-#  {code:java}
-#  ${STACK_TRACE}
-#  {code}
-#EOF
-#    )
-#    export COMMENT=$(echo "${COMMENT}" | jq -sR)
-#
-#    # Add details of flaky failure as a new Jira comment
-#    ${SCRIPT_DIR}/add_comment.sh
   done
 done
