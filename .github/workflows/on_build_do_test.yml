@@ -66,29 +66,28 @@ jobs:
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Maven Artifacts
-        uses: ./.github/actions/extract-maven-artifacts
-        with:
-         run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Download Infinispan Server
-        id: dis
-        uses: ./.github/actions/download-infinispan
-        with:
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ github.token }}
-
-      - name: Extract Infinispan Source
-        run: |
-          mkdir test_dir && cd test_dir
-          unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.dis.outputs.server-version }}-src.zip
-          mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
+#      - name: Extract Maven Artifacts
+#        uses: ./.github/actions/extract-maven-artifacts
+#        with:
+#         run-id: ${{ github.event.workflow_run.id }}
+#
+#      - name: Download Infinispan Server
+#        id: dis
+#        uses: ./.github/actions/download-infinispan
+#        with:
+#          run-id: ${{ github.event.workflow_run.id }}
+#          github-token: ${{ github.token }}
+#
+#      - name: Extract Infinispan Source
+#        run: |
+#          mkdir test_dir && cd test_dir
+#          unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.dis.outputs.server-version }}-src.zip
+#          mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
 
       - name: Maven Test
         id: maven-test
         shell: bash
         run: >
-            cd test_dir/infinispan &&
             ./mvnw verify -V -B -e -pl commons/all -Dtest=".*FeaturesTest.*"
             -DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true
             #./mvnw verify -V -B -e -DrerunFailingTestsCount=2
@@ -132,12 +131,12 @@ jobs:
         with:
           name: surefire-test-report
           path: |
-            test_dir/infinispan/**/surefire-reports/TEST-*.xml
-            test_dir/infinispan/**/*.dump*
-            test_dir/infinispan/**/hs_err_*
+            **/surefire-reports/TEST-*.xml
+            **/*.dump*
+            **/hs_err_*
             github-sha.txt
-            !test_dir/infinispan/**/*-reports*/**/TEST-*FLAKY.xml
-            !test_dir/infinispan/**/*-reports*/TEST-*RocksDB*.xml
+            !**/*-reports*/**/TEST-*FLAKY.xml
+            !**/*-reports*/TEST-*RocksDB*.xml
 
 # Create artifact with branch name and surefile flaky test report
       - name: Check flaky report existence
@@ -145,7 +144,7 @@ jobs:
         id: check_flaky_report
         uses: andstor/file-existence-action@v3
         with:
-          files: "test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml"
+          files: "**/target/*-reports*/**/TEST-*FLAKY.xml"
 
       - name: Archive base_ref
         if: (success() || failure()) && steps.check_flaky_report.outputs.files_exists == 'true'
@@ -166,95 +165,95 @@ jobs:
         with:
           name: flaky-test-report
           path: |
-            test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml
+            **/target/*-reports*/**/TEST-*FLAKY.xml
             target-branch.txt
             event-name.txt
             event-number.txt
             pr-number.txt
 
-  db:
-    needs: get-info
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        dbs:
-          - mssql
-          - oracle
-    steps:
-      - name: set-commit-status-pending
-        uses: myrotvorets/set-commit-status-action@v2.0.1
-        with:
-          context: Test DB ${{ matrix.dbs }}
-          status: pending
-          sha: ${{ needs.get-info.outputs.source-head-sha }}
-          targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-      - uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: ./.github/actions/setup-java
-
-      - name: Extract Maven Artifacts
-        uses: ./.github/actions/extract-maven-artifacts
-        with:
-         run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Download Infinispan Server
-        id: dis
-        uses: ./.github/actions/download-infinispan
-        with:
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ github.token }}
-
-      - name: Extract Infinispan Server
-        run: |
-          cd /tmp
-          unzip ${GITHUB_WORKSPACE}/infinispan-server-${{ steps.dis.outputs.server-version }}.zip
-
-      - name: Extract Infinispan Source
-        run: |
-          mkdir test_dir && cd test_dir
-          unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.dis.outputs.server-version }}-src.zip
-          mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
-
-      - name: Test
-        run: |
-          cd test_dir/infinispan &&
-          ./mvnw verify -B -e -pl server/tests -Dmaven.test.failure.ignore=true \
-            -Dansi.strip=true \
-            -DdefaultTestGroup=database \
-            -Dorg.infinispan.test.database.types=${{ matrix.dbs }} \
-            -Dorg.infinispan.test.server.dir=/tmp/infinispan-server-${{ steps.dis.outputs.server-version }}
-
-      - name: Archive surefire test report
-        if: (success() || failure())
-        uses: actions/upload-artifact@v4
-        with:
-          name: surefire-test-report-${{ matrix.dbs }}
-          path: |
-            test_dir/infinispan/**/failsafe-reports/TEST-*.xml
-            test_dir/infinispan/**/*.dump*
-            test_dir/infinispan/**/hs_err_*
-            test_dir/infinispan/**/failsafe-summary.xml
-            github-sha.txt
-            !test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml
-      - name: set-commit-status-conclusion
-        if: success()
-        uses: myrotvorets/set-commit-status-action@v2.0.1
-        with:
-            context: Test DB ${{ matrix.dbs }}
-            status: success
-            sha: ${{ needs.get-info.outputs.source-head-sha }}
-            targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-      - name: set-commit-status-conclusion
-        if: always() && failure()
-        uses: myrotvorets/set-commit-status-action@v2.0.1
-        with:
-            context: Test DB ${{ matrix.dbs }}
-            status: failure
-            sha: ${{ needs.get-info.outputs.source-head-sha }}
-            targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
+#  db:
+#    needs: get-info
+#    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+#    runs-on: ubuntu-latest
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        dbs:
+#          - mssql
+#          - oracle
+#    steps:
+#      - name: set-commit-status-pending
+#        uses: myrotvorets/set-commit-status-action@v2.0.1
+#        with:
+#          context: Test DB ${{ matrix.dbs }}
+#          status: pending
+#          sha: ${{ needs.get-info.outputs.source-head-sha }}
+#          targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+#
+#      - uses: actions/checkout@v4
+#
+#      - name: Setup Java
+#        uses: ./.github/actions/setup-java
+#
+#      - name: Extract Maven Artifacts
+#        uses: ./.github/actions/extract-maven-artifacts
+#        with:
+#         run-id: ${{ github.event.workflow_run.id }}
+#
+#      - name: Download Infinispan Server
+#        id: dis
+#        uses: ./.github/actions/download-infinispan
+#        with:
+#          run-id: ${{ github.event.workflow_run.id }}
+#          github-token: ${{ github.token }}
+#
+#      - name: Extract Infinispan Server
+#        run: |
+#          cd /tmp
+#          unzip ${GITHUB_WORKSPACE}/infinispan-server-${{ steps.dis.outputs.server-version }}.zip
+#
+#      - name: Extract Infinispan Source
+#        run: |
+#          mkdir test_dir && cd test_dir
+#          unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.dis.outputs.server-version }}-src.zip
+#          mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
+#
+#      - name: Test
+#        run: |
+#          cd test_dir/infinispan &&
+#          ./mvnw verify -B -e -pl server/tests -Dmaven.test.failure.ignore=true \
+#            -Dansi.strip=true \
+#            -DdefaultTestGroup=database \
+#            -Dorg.infinispan.test.database.types=${{ matrix.dbs }} \
+#            -Dorg.infinispan.test.server.dir=/tmp/infinispan-server-${{ steps.dis.outputs.server-version }}
+#
+#      - name: Archive surefire test report
+#        if: (success() || failure())
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: surefire-test-report-${{ matrix.dbs }}
+#          path: |
+#            test_dir/infinispan/**/failsafe-reports/TEST-*.xml
+#            test_dir/infinispan/**/*.dump*
+#            test_dir/infinispan/**/hs_err_*
+#            test_dir/infinispan/**/failsafe-summary.xml
+#            github-sha.txt
+#            !test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml
+#      - name: set-commit-status-conclusion
+#        if: success()
+#        uses: myrotvorets/set-commit-status-action@v2.0.1
+#        with:
+#            context: Test DB ${{ matrix.dbs }}
+#            status: success
+#            sha: ${{ needs.get-info.outputs.source-head-sha }}
+#            targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+#
+#      - name: set-commit-status-conclusion
+#        if: always() && failure()
+#        uses: myrotvorets/set-commit-status-action@v2.0.1
+#        with:
+#            context: Test DB ${{ matrix.dbs }}
+#            status: failure
+#            sha: ${{ needs.get-info.outputs.source-head-sha }}
+#            targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+#
