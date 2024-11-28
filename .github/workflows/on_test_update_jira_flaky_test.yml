@@ -38,6 +38,7 @@ jobs:
             PROJECT_KEY: "ISPN"
             TYPE: "Bug"
             JENKINS_JOB_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.event.workflow.id }}"
+            GH_TOKEN: ${{ github.token }}
           run: |
             set +e
             cat target-branch.txt
