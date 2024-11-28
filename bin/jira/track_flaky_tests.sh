@@ -68,7 +68,7 @@ for TEST in "${TESTS[@]}"; do
       export ISSUE_KEY=$(echo "${ISSUES}" | jq  '.[0].number')
       # Re-open the issue if it was previously resolved
       # TRANSITION="New" ${SCRIPT_DIR}/transition.sh
-      if [ "$(gh issue view ${ISSUE_KEY} --json state | jq .state) == "OPEN" ]; then
+      if [ "$(gh issue view ${ISSUE_KEY} --json state | jq .state)" == "OPEN" ]; then
         gh issue reopen ${ISSUE_KEY}
       fi
       gh issue comment --body "Target Branch: ${TARGET_BRANCH}\n${STACK_TRACE}"
