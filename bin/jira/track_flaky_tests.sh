@@ -45,7 +45,7 @@ for TEST in "${TESTS[@]}"; do
     else
       export ISSUE_KEY=$(echo "${ISSUES}" | jq  '.[0].number')
       # Re-open the issue if it was previously resolved
-      if [ "$(gh issue view ${ISSUE_KEY} --json state | jq .state)" == "CLOSED" ]; then
+      if [ "$(gh issue view ${ISSUE_KEY} --json state | jq .state)" == '"CLOSED"' ]; then
         gh issue reopen ${ISSUE_KEY}
       fi
       gh issue comment --body "Target Branch: ${TARGET_BRANCH}\n${STACK_TRACE}"
