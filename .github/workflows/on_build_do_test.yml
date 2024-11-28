@@ -88,8 +88,13 @@ jobs:
         id: maven-test
         shell: bash
         run: >
-            ./mvnw verify -V -B -e -pl build/*, commons/all -Dtest=".*FeaturesTest.*"
-            -DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true
+            mvn verify -pl build/logging-annotations,build/logging-processor,build/component-annotations,commons/spi,build/component-processor,build/checkstyle,commons-test,api,commons/all
+            -Dtest=".*FeaturesTest.*" -DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true
+            -Dsurefire.failIfNoSpecifiedTests=false
+            #./mvnw compile -V -B -e -pl build/logging-annotations,build/logging-processor,commons/all -Dtest=".*FeaturesTest.*"
+            #-DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true &&
+            #./mvnw verify -V -B -e -pl commons/all -Dtest=".*FeaturesTest.*"
+            #-DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true
             #./mvnw verify -V -B -e -DrerunFailingTestsCount=2
             #-Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative -pl commons/all
 
