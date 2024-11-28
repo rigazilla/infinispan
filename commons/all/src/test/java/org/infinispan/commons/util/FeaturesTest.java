@@ -27,4 +27,13 @@ public class FeaturesTest {
       assertTrue(a);
       assertFalse(b);
    }
+   static boolean b = false;
+   @Test
+   public void flakyTest() {
+      if (!b) {
+         b=!b;
+         assertTrue(false);
+      }
+      assertTrue(true);
+   }
 }
