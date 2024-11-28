@@ -33,54 +33,64 @@ for TEST in "${TESTS[@]}"; do
     # Create Issue for Test Class+TestName
     SUMMARY="Flaky test: ${TEST_CLASS}#${TEST_NAME_NO_PARAMS}"
     echo ${SUMMARY}
-    JQL="project = ${PROJECT_KEY} AND summary ~ '${SUMMARY}'"
+    #JQL="project = ${PROJECT_KEY} AND summary ~ '${SUMMARY}'"
     # Search issues for existing Jira issue
-    ISSUES="$(curl ${API_URL}/search -G --data-urlencode "jql=${JQL}")"
-    TOTAL_ISSUES=$(echo "${ISSUES}" | jq -r .total)
+    # ISSUES="$(curl ${API_URL}/search -G --data-urlencode "jql=${JQL}")"
+    # TOTAL_ISSUES=$(echo "${ISSUES}" | jq -r .total)
+
+    # Search issues for existing github issue
+      ISSUES="$(gh search issues "${SUMMARY} in:title" --json number)"
+      TOTAL_ISSUES=$(echo "${ISSUES}" | jq length)
     if [ ${TOTAL_ISSUES} -gt 1 ]; then
-      echo "Multiple Jiras found in '${PROJECT_KEY}' with summary ~ '${SUMMARY}'"
-      exit 1
+      gh issue create --title "Multiple issues for same flaky test: ${TESTCLASS}" \
+      --body "Flaky test ${SUMMARY}\m Please delete all but one of issues:\n $ISSUES"
+      exit
     fi
 
     if [ ${TOTAL_ISSUES} == 0 ]; then
       echo "Existing Jira not found, creating a new one"
-      cat << EOF | tee create-jira.json
-    {
-      "fields": {
-        "project": {
-          "id": "${PROJECT_ID}"
-        },
-        "summary": "${SUMMARY}",
-        "issuetype": {
-          "id": "${ISSUE_TYPE_ID}"
-        },
-        "labels": [
-          "flaky-test"
-        ]
-      }
-    }
-EOF
+#      cat << EOF | tee create-jira.json
+#    {
+#      "fields": {
+#        "project": {
+#          "id": "${PROJECT_ID}"
+#        },
+#        "summary": "${SUMMARY}",
+#        "issuetype": {
+#          "id": "${ISSUE_TYPE_ID}"
+#        },
+#        "labels": [
+#          "flaky-test"
+#        ]
+#      }
+#    }
+#EOF
+    gh create issue --title "Flaky Test: ${SUMMARY}" --body "Target Branch: ${TARGET_BRANCH}\n${STACK_TRACE}" --label "Flaky Test"
       # We retry on error here as for some reason the Jira server occasionally responds with 400 errors
-      export ISSUE_KEY=$(curl --retry 5 --retry-all-errors --data @create-jira.json $API_URL/issue | jq -r .key)
+      # export ISSUE_KEY=$(curl --retry 5 --retry-all-errors --data @create-jira.json $API_URL/issue | jq -r .key)
     else
-      export ISSUE_KEY=$(echo "${ISSUES}" | jq -r '.issues[0].key')
+      export ISSUE_KEY=$(echo "${ISSUES}" | jq  '.[0].number')
       # Re-open the issue if it was previously resolved
-      TRANSITION="New" ${SCRIPT_DIR}/transition.sh
+      # TRANSITION="New" ${SCRIPT_DIR}/transition.sh
+      if [ "$(gh issue view ${ISSUE_KEY} --json state | jq .state) == "OPEN" ]; then
+        gh issue reopen ${ISSUE_KEY}
+      fi
+      gh issue comment --body "Target Branch: ${TARGET_BRANCH}\n${STACK_TRACE}"
     fi
 
-    COMMENT=$(
-    cat << EOF
-  h1. ${TEST_NAME}
-  Target Branch: ${TARGET_BRANCH}
-  [Jenkins Job|${JENKINS_JOB_URL}]
-  {code:java}
-  ${STACK_TRACE}
-  {code}
-EOF
-    )
-    export COMMENT=$(echo "${COMMENT}" | jq -sR)
-
-    # Add details of flaky failure as a new Jira comment
-    ${SCRIPT_DIR}/add_comment.sh
+#    COMMENT=$(
+#    cat << EOF
+#  h1. ${TEST_NAME}
+#  Target Branch: ${TARGET_BRANCH}
+#  [Jenkins Job|${JENKINS_JOB_URL}]
+#  {code:java}
+#  ${STACK_TRACE}
+#  {code}
+#EOF
+#    )
+#    export COMMENT=$(echo "${COMMENT}" | jq -sR)
+#
+#    # Add details of flaky failure as a new Jira comment
+#    ${SCRIPT_DIR}/add_comment.sh
   done
 done
