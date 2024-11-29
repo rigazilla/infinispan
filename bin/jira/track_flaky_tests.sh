@@ -32,7 +32,7 @@ for TEST in "${TESTS[@]}"; do
 
     # Search issues for existing github issue
       ISSUES="$(gh search issues \"${SUMMARY}\" in:title --json number)"
-      if [ "${ISSUES}" -eq "" ]; then
+      if [[ "${ISSUES}" == "" ]]; then
          echo Error with gh search. Maybe rate limits reached?
          gh api rate_limit
          exit 0
