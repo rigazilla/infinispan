@@ -49,7 +49,7 @@ for TEST in "${TESTS[@]}"; do
       exit 1
     fi
 
-      BODY="Target Branch: ${TARGET_BRANCH}$'\n'Github Job:${GH_JOB_URL}$'\n'${STACK_TRACE}"
+      BODY=$(printf "Target Branch: %s\nGithub Job:%s$\n%s" "${TARGET_BRANCH}" "${GH_JOB_URL}" "${STACK_TRACE}")
     if [ ${TOTAL_ISSUES} == 0 ]; then
       echo "Existing issue not found, creating a new one"
       gh issue create --title "${SUMMARY}" --body "${BODY}" --label "Flaky Test"
