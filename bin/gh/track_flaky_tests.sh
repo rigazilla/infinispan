@@ -5,10 +5,11 @@ set -e
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source "${SCRIPT_DIR}/common.sh"
 
-requiredEnv TYPE GH_JOB_URL FLAKY_TEST_GLOB TARGET_BRANCH
+requiredEnv GH_JOB_URL FLAKY_TEST_GLOB TARGET_BRANCH
 
 shopt -s nullglob globstar
 TESTS=(${FLAKY_TEST_GLOB})
+API_LIMIT_TIME=0
 for TEST in "${TESTS[@]}"; do
   TEST_CLASS_NAMES=$(xmlstarlet sel -t --value-of '/testsuite/testcase/@classname'  ${TEST})
   declare -i i
@@ -31,13 +32,18 @@ for TEST in "${TESTS[@]}"; do
     echo ${SUMMARY}
 
     # Search issues for existing github issue
+    # Wait some time for subsequent request to respect API rate limit
+    sleep $API_LIMIT_TIME
+    ISSUES="$(gh search issues \"${SUMMARY}\" in:title --json number || true)"
+    API_LIMIT_TIME=90
+    if [[ "${ISSUES}" == "" ]]; then
+      echo Error with gh search. Maybe rate limits reached? Wait 90 sec and retry...
+      gh api rate_limit
+      sleep $API_LIMIT_TIME
       ISSUES="$(gh search issues \"${SUMMARY}\" in:title --json number || true)"
-      if [[ "${ISSUES}" == "" ]]; then
-         echo Error with gh search. Maybe rate limits reached?
-         gh api rate_limit
-         exit 0
-      fi
-      TOTAL_ISSUES=$(echo "${ISSUES}" | jq length)
+      continue
+    fi
+    TOTAL_ISSUES=$(echo "${ISSUES}" | jq length)
     if [ ${TOTAL_ISSUES} -gt 1 ]; then
       echo "Multiple issues for same flaky test: ${SUMMARY}"
       exit 1
