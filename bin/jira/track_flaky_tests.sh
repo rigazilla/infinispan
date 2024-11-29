@@ -5,7 +5,7 @@ set -e
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source "${SCRIPT_DIR}/common.sh"
 
-requiredEnv TOKEN PROJECT_KEY TYPE JENKINS_JOB_URL FLAKY_TEST_GLOB TARGET_BRANCH
+requiredEnv TYPE JENKINS_JOB_URL FLAKY_TEST_GLOB TARGET_BRANCH
 
 shopt -s nullglob globstar
 TESTS=(${FLAKY_TEST_GLOB})
@@ -31,7 +31,7 @@ for TEST in "${TESTS[@]}"; do
     echo ${SUMMARY}
 
     # Search issues for existing github issue
-      ISSUES="$(gh search issues "${SUMMARY} in:title" --json number)"
+      ISSUES="$(gh search issues \"${SUMMARY}\" in:title --json number)"
       if [ $? -ne 0 ]; then
          echo Error with gh search. Maybe rate limits reached?
          gh api rate_limit
