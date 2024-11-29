@@ -49,16 +49,17 @@ for TEST in "${TESTS[@]}"; do
       exit 1
     fi
 
+      BODY="Target Branch: ${TARGET_BRANCH}$'\n'Github Job:${GH_JOB_URL}$'\n'${STACK_TRACE}"
     if [ ${TOTAL_ISSUES} == 0 ]; then
       echo "Existing issue not found, creating a new one"
-    gh issue create --title "${SUMMARY}" --body "Target Branch: ${TARGET_BRANCH}$'\n'${STACK_TRACE}" --label "Flaky Test"
+      gh issue create --title "${SUMMARY}" --body "${BODY}" --label "Flaky Test"
     else
       export ISSUE_KEY=$(echo "${ISSUES}" | jq  '.[0].number')
       # Re-open the issue if it was previously resolved
       if [ "$(gh issue view ${ISSUE_KEY} --json state | jq .state)" == '"CLOSED"' ]; then
         gh issue reopen ${ISSUE_KEY}
       fi
-      gh issue comment ${ISSUE_KEY} --body "Target Branch: ${TARGET_BRANCH}$'\n'Github Job:${GH_JOB_URL}$'\n'${STACK_TRACE}"
+      gh issue comment ${ISSUE_KEY} --body "${BODY}"
     fi
   done
 done
