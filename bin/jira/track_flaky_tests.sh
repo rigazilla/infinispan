@@ -48,7 +48,7 @@ for TEST in "${TESTS[@]}"; do
       if [ "$(gh issue view ${ISSUE_KEY} --json state | jq .state)" == '"CLOSED"' ]; then
         gh issue reopen ${ISSUE_KEY}
       fi
-      gh issue comment --body "Target Branch: ${TARGET_BRANCH}\n${STACK_TRACE}"
+      gh issue comment ${ISSUE_KEY} --body "Target Branch: ${TARGET_BRANCH}\n${STACK_TRACE}"
     fi
   done
 done
