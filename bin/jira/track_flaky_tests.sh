@@ -32,16 +32,15 @@ for TEST in "${TESTS[@]}"; do
 
     # Search issues for existing github issue
       ISSUES="$(gh search issues \"${SUMMARY}\" in:title --json number)"
-      if [ $? -ne 0 ]; then
+      if [ "${ISSUES}" -eq "" ]; then
          echo Error with gh search. Maybe rate limits reached?
          gh api rate_limit
          exit 0
       fi
       TOTAL_ISSUES=$(echo "${ISSUES}" | jq length)
     if [ ${TOTAL_ISSUES} -gt 1 ]; then
-      gh issue create --title "Multiple issues for same flaky test: ${TEST_CLASS}" \
-      --body "${SUMMARY}\m Please delete all but one of issues:$'\n' $ISSUES"
-      exit
+      echo "Multiple issues for same flaky test: ${SUMMARY}"
+      exit 1
     fi
 
     if [ ${TOTAL_ISSUES} == 0 ]; then
