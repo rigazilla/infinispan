@@ -35,9 +35,9 @@ for TEST in "${TESTS[@]}"; do
     # Wait some time for subsequent request to respect API rate limit
     sleep $API_LIMIT_TIME
     ISSUES="$(gh search issues \"${SUMMARY}\" in:title --json number || true)"
-    API_LIMIT_TIME=90
+    API_LIMIT_TIME=120
     if [[ "${ISSUES}" == "" ]]; then
-      echo Error with gh search. Maybe rate limits reached? Wait 90 sec and retry...
+      echo Error with gh search. Maybe rate limits reached? Wait 120 sec and retry...
       gh api rate_limit
       sleep $API_LIMIT_TIME
       ISSUES="$(gh search issues \"${SUMMARY}\" in:title --json number || true)"
