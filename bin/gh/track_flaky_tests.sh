@@ -5,7 +5,7 @@ set -e
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source "${SCRIPT_DIR}/common.sh"
 
-requiredEnv TYPE JENKINS_JOB_URL FLAKY_TEST_GLOB TARGET_BRANCH
+requiredEnv TYPE GH_JOB_URL FLAKY_TEST_GLOB TARGET_BRANCH
 
 shopt -s nullglob globstar
 TESTS=(${FLAKY_TEST_GLOB})
@@ -52,7 +52,7 @@ for TEST in "${TESTS[@]}"; do
       if [ "$(gh issue view ${ISSUE_KEY} --json state | jq .state)" == '"CLOSED"' ]; then
         gh issue reopen ${ISSUE_KEY}
       fi
-      gh issue comment ${ISSUE_KEY} --body "Target Branch: ${TARGET_BRANCH}$'\n'${STACK_TRACE}"
+      gh issue comment ${ISSUE_KEY} --body "Target Branch: ${TARGET_BRANCH}$'\n'Github Job:${GH_JOB_URL}$'\n'${STACK_TRACE}"
     fi
   done
 done
