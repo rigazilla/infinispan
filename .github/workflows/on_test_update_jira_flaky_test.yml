@@ -6,7 +6,7 @@ on:
 jobs:
    issueForFlakyTest:
       if: github.event.workflow_run.conclusion == 'success'
-      name: Flaky Test To Jira
+      name: Flaky Test Issue
       runs-on: ubuntu-latest
       steps:
         - name: Checkout
