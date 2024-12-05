@@ -2,6 +2,7 @@ package org.infinispan.server.memcached;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.infinispan.Cache;
 import org.infinispan.commons.dataconversion.MediaType;
@@ -144,6 +145,7 @@ public class MemcachedServer extends AbstractProtocolServer<MemcachedServerConfi
    public void stop() {
       super.stop();
       scheduler.shutdown();
+      scheduler.awaitTermination(30, TimeUnit.SECONDS);
    }
 
    /**
