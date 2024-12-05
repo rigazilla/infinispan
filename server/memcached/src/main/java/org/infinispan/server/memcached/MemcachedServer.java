@@ -145,7 +145,11 @@ public class MemcachedServer extends AbstractProtocolServer<MemcachedServerConfi
    public void stop() {
       super.stop();
       scheduler.shutdown();
-      scheduler.awaitTermination(30, TimeUnit.SECONDS);
+      try {
+         scheduler.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+         throw new RuntimeException(e);
+      }
    }
 
    /**
