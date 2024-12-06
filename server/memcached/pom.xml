@@ -91,7 +91,7 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <configuration>
                <dependenciesToScan>
-                  <!-- TestNGSuiteChecksTest -->
+                  <!--  TestNGSuiteChecksTest -->
                   <dependency>org.infinispan:infinispan-commons-test</dependency>
                </dependenciesToScan>
             </configuration>
