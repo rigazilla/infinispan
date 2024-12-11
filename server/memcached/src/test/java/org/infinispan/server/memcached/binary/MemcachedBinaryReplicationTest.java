@@ -26,7 +26,7 @@ import net.spy.memcached.CASResponse;
 import net.spy.memcached.CASValue;
 import net.spy.memcached.internal.OperationFuture;
 
-@Test(groups = "functional", testName = "server.memcached.binary.MemcachedBinaryReplicationTest")
+@Test(groups = {"functional","g3"} , testName = "server.memcached.binary.MemcachedBinaryReplicationTest", dependsOnGroups = "g2")
 public class MemcachedBinaryReplicationTest extends MemcachedMultiNodeTest {
 
    @Override
