@@ -14,6 +14,16 @@ public class FeaturesTest {
       assertTrue(features.isAvailable("B"));
    }
 
+   static int i=0;
+
+   @Test
+   public void testFlaky() {
+   if (i==0) {
+           i=1;
+   assertTrue(false);
+   }
+   }
+
    @Test
    public void featureSysOverride() {
       Features features = new Features();
