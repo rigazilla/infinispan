@@ -90,7 +90,7 @@ jobs:
         shell: bash
         run: >
             cd test_dir/infinispan &&
-            mvn verify -pl build/logging-annotations,build/logging-processor,build/component-annotations,commons/spi,build/component-processor,build/checkstyle,commons-test,api,commons/all
+            ./mvnw verify -pl build/logging-annotations,build/logging-processor,build/component-annotations,commons/spi,build/component-processor,build/checkstyle,commons-test,api,commons/all
             -Dtest=".*FeaturesTest.*" -DrerunFailingTestsCount=2 -Dmaven.test.failure.ignore=true
             -Dsurefire.failIfNoSpecifiedTests=false
 
