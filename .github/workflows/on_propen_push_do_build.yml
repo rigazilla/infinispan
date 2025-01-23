@@ -5,7 +5,7 @@ on:
     branches:
       - feature/*
       - main
-      - 15.[0-9]+.x
+      - 15.*.x
       - 14.0.x
 
 concurrency:
