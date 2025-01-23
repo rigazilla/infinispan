@@ -12,15 +12,20 @@ concurrency:
   # Cancel jobs same head_branch same repo, works
   # both for pull_request and push
   group: >
-      ${{ github.workflow }}-${{ github.event.repository.full_name }}-
-      ${{ github.workflow.event.pull_request.head.ref || github.workflow.event.push.ref }}
-  cancel-in-progress: ${{ github.workflow.event_name == 'pull_request' }}
+      ${{ github.workflow }}-${{ github.repository }}-
+      ${{ github.event.pull_request.head.ref || github.event.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
 
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Dump Github Context
+        uses: cctipsy/gh-dump-context@v1.0.0
+        with:
+          context: github
+
       - uses: actions/checkout@v4
 
       - name: Build Infinispan
