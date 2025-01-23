@@ -29,6 +29,11 @@ jobs:
          source-head-branch: ${{ steps.workflow-run-info.outputs.source-head-branch }}
          source-event: ${{ github.event.workflow_run.event }}
       steps:
+         - name: Dump Github Context
+           uses: cctipsy/gh-dump-context@v1.0.0
+           with:
+             context: github
+
          - uses: actions/checkout@v4
 
          - id: workflow-run-info
