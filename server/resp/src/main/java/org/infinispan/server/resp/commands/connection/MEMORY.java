@@ -70,7 +70,7 @@ public class MEMORY extends RespCommand implements Resp3Command {
                CompletionStage<CacheEntry<byte[], Object>> cs = handler.typedCache(null).getCacheEntryAsync(key);
                CompletionStage<Long> cs1 = cs
                      .thenApply(e -> MemoryEntrySizeUtils.calculateSize(key, (InternalCacheEntry<byte[], Object>) e));
-               return handler.stageToReturn(cs1, ctx, Resp3Response.INTEGER);
+               return handler.stageToReturn(cs1, ctx, ResponseWriter.INTEGER);
             }
          case "DOCTOR":
          case "MALLOC-STATS":

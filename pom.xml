@@ -1522,6 +1522,11 @@
             <scope>test</scope>
          </dependency>
          <dependency>
+            <groupId>org.openjdk.jol</groupId>
+            <artifactId>jol-core</artifactId>
+            <version>${version.openjdk.jol}</version>
+         </dependency>
+         <dependency>
             <groupId>org.openjdk.nashorn</groupId>
             <artifactId>nashorn-core</artifactId>
             <version>${version.nashorn}</version>
