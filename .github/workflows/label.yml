@@ -2,6 +2,9 @@ name: Labeller
 on:
   pull_request_target:
     types: [closed]
+    branches:
+      - main
+      - 15.0.x
 
 jobs:
   label:
