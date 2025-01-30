@@ -15,6 +15,10 @@
 
    <dependencies>
       <dependency>
+         <groupId>org.ehcache</groupId>
+         <artifactId>sizeof</artifactId>
+      </dependency>
+      <dependency>
          <groupId>org.infinispan</groupId>
          <artifactId>infinispan-component-processor</artifactId>
       </dependency>
@@ -29,10 +33,6 @@
       <dependency>
          <groupId>org.infinispan</groupId>
          <artifactId>infinispan-multimap</artifactId>
-      </dependency>
-      <dependency>
-         <groupId>org.openjdk.jol</groupId>
-         <artifactId>jol-core</artifactId>
       </dependency>
       <dependency>
          <groupId>org.kohsuke.metainf-services</groupId>

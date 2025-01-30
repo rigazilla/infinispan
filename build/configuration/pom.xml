@@ -134,6 +134,7 @@
       <version.caffeine>3.2.0</version.caffeine>
       <version.commons.compress>1.27.1</version.commons.compress>
       <version.console>15.2.0.Final</version.console>
+      <version.ehcache.sizeof>0.4.4</version.ehcache.sizeof>
       <version.fabric8.kubernetes-client>6.13.4</version.fabric8.kubernetes-client>
       <version.glassfish.jaxb>4.0.5</version.glassfish.jaxb>
       <version.graalvm>24.0.0</version.graalvm>
@@ -185,7 +186,6 @@
       <version.netty>4.1.111.Final</version.netty>
       <version.netty.incubator.iouring>0.0.26.Final</version.netty.incubator.iouring>
       <version.openjdk.jmh>1.37</version.openjdk.jmh>
-      <version.openjdk.jol>0.17</version.openjdk.jol>
       <version.org.wildfly.arquillian>5.0.1.Final</version.org.wildfly.arquillian>
       <version.org.wildfly.elytron>2.6.0.Final</version.org.wildfly.elytron>
       <version.ow2.asm>9.7.1</version.ow2.asm>
