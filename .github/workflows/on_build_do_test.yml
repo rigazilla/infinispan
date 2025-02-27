@@ -57,7 +57,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: ".github bin"
+          sparse-checkout: ".github"
           sparse-checkout-cone-mode: false
           fetch-depth: 1
 
