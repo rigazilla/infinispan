@@ -56,10 +56,10 @@ jobs:
             targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - uses: actions/checkout@v4
-         with:
-           sparse-checkout: ".github bin"
-           sparse-checkout-cone-mode: false
-           fetch-depth: 1
+        with:
+          sparse-checkout: ".github bin"
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
 
       - name: Setup Java
         uses: ./.github/actions/setup-java
