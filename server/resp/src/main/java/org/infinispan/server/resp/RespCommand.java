@@ -167,9 +167,13 @@ public abstract class RespCommand implements BaseResp3Command {
       int base = 1 + ByteBufferUtils.stringSize(arguments.size()) + CRLF.length;
 
       int argSize = 0;
+      int argSize1 = 0;
       for (byte[] argument : arguments) {
          // The argument type identifier + the actual argument contents + the line break.
          argSize += 1 + argument.length + CRLF.length;
+            for (int k=0; k<100; k++) {
+         argSize1+=argument[k];
+        }
       }
 
       // The command name can be provided as a bulk string ($4\r\nHELLO\r\n) or simple string (+HELLO\r\n).
