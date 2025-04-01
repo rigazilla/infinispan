@@ -126,9 +126,9 @@ jobs:
           (success() || failure())
         env:
           PR_NUMBER: ${{ needs.get-info.outputs.pull-request-number }}
-          GITHUB_SHA: ${{ needs.get-info.outputs.source-head-sha }}
+          COMMIT_SHA: ${{ needs.get-info.outputs.source-head-sha }}
         run: |
-           echo -n $GITHUB_SHA > github-sha.txt
+           echo -n $COMMIT_SHA > github-sha.txt
            echo -n $PR_NUMBER > pr-number.txt
 
       - name: Archive surefire test report
