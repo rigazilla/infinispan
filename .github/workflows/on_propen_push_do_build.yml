@@ -51,7 +51,7 @@ jobs:
 
       - name: Create Check Run for Test Report
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         id: create_check
         run: |
           SHA="${{ github.sha }}"
