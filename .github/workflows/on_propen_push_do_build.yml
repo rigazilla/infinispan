@@ -40,6 +40,8 @@ jobs:
           path: |
             server-version.txt
       - name: Create Check Run
+        env:
+          GH_TOKEN: ${{ github.token }}
         id: create_check
         run: |
           SHA="${{ github.event.pull_request.head.sha }}"
