@@ -40,7 +40,7 @@ jobs:
             -f name="Test Report Result" \
             -f head_sha="$SHA" \
             -f status="in_progress" \
-            -f details_url="www.gnu.org" \
+            -f details_url="https://www.gnu.org" \
             --method POST
           for db in mssql oracle db2; do
             gh api repos/${{ github.repository }}/check-runs \
@@ -48,7 +48,7 @@ jobs:
               -f name="Test Report Result ${db}" \
               -f head_sha="$SHA" \
               -f status="in_progress" \
-              -f details_url="www.gnu.org" \
+              -f details_url="https://www.gnu.org" \
               --method POST
           done
 
