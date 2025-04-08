@@ -23,19 +23,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create Check Run
+      - name: Create Check Run for Test Report
         env:
           GH_TOKEN: ${{ github.token }}
         id: create_check
         run: |
           SHA="${{ github.sha }}"
-          CHECK_RESPONSE=$(gh api repos/${{ github.repository }}/check-runs \
+          gh api repos/${{ github.repository }}/check-runs \
             -H "Accept: application/vnd.github+json" \
             -f name="Test Report Result" \
             -f head_sha="$SHA" \
             -f status="in_progress" \
-            --method POST)
-          echo "$CHECK_RESPONSE"
+            --method POST
+          for db in mssql oracle db2; do
+            gh api repos/${{ github.repository }}/check-runs \
+              -H "Accept: application/vnd.github+json" \
+              -f name="Test Report Result" ${db} \
+              -f head_sha="$SHA" \
+              -f status="in_progress" \
+              --method POST
+          done
 
       - name: Build Infinispan
         uses: ./.github/actions/build-infinispan
