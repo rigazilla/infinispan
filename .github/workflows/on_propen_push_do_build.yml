@@ -39,4 +39,15 @@ jobs:
           name: server-version
           path: |
             server-version.txt
+      - name: Create Check Run
+        id: create_check
+        run: |
+          SHA="${{ github.event.pull_request.head.sha }}"
+          CHECK_RESPONSE=$(gh api repos/${{ github.repository }}/check-runs \
+            -H "Accept: application/vnd.github+json" \
+            -f name="Test Report Result" \
+            -f head_sha="$SHA" \
+            -f status="in_progress" \
+            --method POST)
+          echo "$CHECK_RESPONSE"
 
