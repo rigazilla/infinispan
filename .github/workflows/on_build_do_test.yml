@@ -255,9 +255,10 @@ jobs:
           mkdir test_dir && cd test_dir
           unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.dis.outputs.server-version }}-src.zip
           mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
-          - uses: actions/create-github-app-token@v1
-          id: app-token
-          with:
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
           # required
             app-id: ${{ secrets.APP_CHECK_RUN_ID }}
             private-key: ${{ secrets.APP_CHECK_RUN_KEY }}
