@@ -23,11 +23,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - env:
+          PK_B64: ${{ secrets.APP_CHECK_RUN_KEY }}
+        name: Decode private key
+        id: decode_key
+        run: |
+          echo "${PK_B64}" | base64 -d > private_key.pem
+          echo "private_key=private_key.pem" >> $GITHUB_OUTPUT
       - id: create_token
         uses: tibdex/github-app-token@v2
         with:
           app_id: ${{ secrets.APP_CHECK_RUN_ID }}
-          private_key: ${{ secrets.APP_CHECK_RUN_KEY }}
+          private_key: ${{ steps.decode_key.outputs.private_key }}
 
       - run: "echo 'The created token is masked: ${{ steps.create_token.outputs.token }}'"
 
