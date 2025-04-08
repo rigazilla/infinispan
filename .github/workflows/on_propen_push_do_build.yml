@@ -23,6 +23,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Build Infinispan
+        uses: ./.github/actions/build-infinispan
+
+      - run: echo Build Completed ${{ github.run_id }} > server-version.txt
+
+      - name: Server version
+        run: >
+          mvn -q -Dexec.executable=echo -Dexec.args='-n ${project.version}'
+          --non-recursive exec:exec > server-version.txt
+
+      - name: Archive server version
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-version
+          path: |
+            server-version.txt
+
       - name: Create Check Run for Test Report
         env:
           GH_TOKEN: ${{ github.token }}
@@ -43,20 +60,3 @@ jobs:
               -f status="in_progress" \
               --method POST
           done
-
-      - name: Build Infinispan
-        uses: ./.github/actions/build-infinispan
-
-      - run: echo Build Completed ${{ github.run_id }} > server-version.txt
-
-      - name: Server version
-        run: >
-          mvn -q -Dexec.executable=echo -Dexec.args='-n ${project.version}'
-          --non-recursive exec:exec > server-version.txt
-
-      - name: Archive server version
-        uses: actions/upload-artifact@v4
-        with:
-          name: server-version
-          path: |
-            server-version.txt
