@@ -92,6 +92,26 @@ jobs:
           unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.dis.outputs.server-version }}-src.zip
           mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
 
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+        # required
+          app-id: ${{ secrets.APP_CHECK_RUN_ID }}
+          private-key: ${{ secrets.APP_CHECK_RUN_KEY }}
+
+      - name: Create Check Run for Test Report
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        id: create_check
+        run: |
+          SHA="${{ github.sha }}"
+          gh api repos/${{ github.repository }}/check-runs \
+            -H "Accept: application/vnd.github+json" \
+            -f name="Test Report Result" \
+            -f head_sha="$SHA" \
+            -f status="in_progress" \
+            --method POST
+  
       - name: Maven Test
         env:
           env:
@@ -235,6 +255,25 @@ jobs:
           mkdir test_dir && cd test_dir
           unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.dis.outputs.server-version }}-src.zip
           mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
+          - uses: actions/create-github-app-token@v1
+          id: app-token
+          with:
+          # required
+            app-id: ${{ secrets.APP_CHECK_RUN_ID }}
+            private-key: ${{ secrets.APP_CHECK_RUN_KEY }}
+  
+      - name: Create Check Run for Test Report
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        id: create_check
+        run: |
+          SHA="${{ github.sha }}"
+          gh api repos/${{ github.repository }}/check-runs \
+            -H "Accept: application/vnd.github+json" \
+            -f name="Test Report Result ${{ matrix.dbs }}" \
+            -f head_sha="$SHA" \
+            -f status="in_progress" \
+            --method POST
 
       - name: Test
         run: |

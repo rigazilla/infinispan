@@ -23,36 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-        # required
-          app-id: ${{ secrets.APP_CHECK_RUN_ID }}
-          private-key: ${{ secrets.APP_CHECK_RUN_KEY }}
-      - name: Create Check Run for Test Report
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        id: create_check
-        run: |
-          SHA="${{ github.sha }}"
-          gh api repos/${{ github.repository }}/check-runs \
-            -H "Accept: application/vnd.github+json" \
-            -f name="Test Report Result" \
-            -f head_sha="$SHA" \
-            -f status="in_progress" \
-            -f details_url="https://www.gnu.org" \
-            --method POST
-          for db in mssql oracle db2; do
-            gh api repos/${{ github.repository }}/check-runs \
-              -H "Accept: application/vnd.github+json" \
-              -f name="Test Report Result ${db}" \
-              -f head_sha="$SHA" \
-              -f status="in_progress" \
-              -f details_url="https://www.gnu.org" \
-              --method POST
-          done
-
-
       - name: Build Infinispan
         uses: ./.github/actions/build-infinispan
 
