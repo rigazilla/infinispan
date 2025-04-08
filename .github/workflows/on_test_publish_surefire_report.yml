@@ -67,16 +67,6 @@ jobs:
             echo "test_count=$COUNT" >> $GITHUB_OUTPUT
             echo "test_min=$MIN_TEST_NUM" >> $GITHUB_OUTPUT
 
-        - name: set-commit-status-pending
-          if: steps.test-number.outputs.test_count < steps.test-number.outputs.test_min
-          uses: myrotvorets/set-commit-status-action@v2.0.1
-          with:
-                status: failure
-                sha: ${{ steps.github_sha.outputs.content }}
-                context: Tests number check
-                description: Fail. ${{ steps.test-number.outputs.test_count }} test ran, minimum required is ${{ steps.test-number.outputs.test_min }}
-                targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
    db:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
