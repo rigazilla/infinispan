@@ -38,7 +38,7 @@ jobs:
           for db in mssql oracle db2; do
             gh api repos/${{ github.repository }}/check-runs \
               -H "Accept: application/vnd.github+json" \
-              -f name="Test Report Result" ${db} \
+              -f name="Test Report Result ${db}" \
               -f head_sha="$SHA" \
               -f status="in_progress" \
               --method POST
