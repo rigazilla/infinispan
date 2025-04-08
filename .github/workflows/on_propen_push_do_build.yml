@@ -23,21 +23,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - env:
-          PK_B64: ${{ secrets.APP_CHECK_RUN_KEY }}
-        name: Decode private key
-        id: decode_key
-        run: |
-          echo "${PK_B64}" | base64 -d > private_key.pem
-          echo "private_key=private_key.pem" >> $GITHUB_OUTPUT
       - uses: actions/create-github-app-token@v1
         id: app-token
         with:
           # required
           app-id: ${{ secrets.APP_CHECK_RUN_ID }}
-          private-key: ${{ steps.decode_key.outputs.private_key }}
+          private-key: ${{ secrets.APP_CHECK_RUN_KEY }}
 
-      - run: "echo 'The created token is masked: ${{ steps.create_token.outputs.token }}'"
+      - run: "echo 'The created token is masked: ${{ steps.app-token.outputs.token }}'"
 
       - name: Build Infinispan
         uses: ./.github/actions/build-infinispan
