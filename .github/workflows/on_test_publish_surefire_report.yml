@@ -6,7 +6,20 @@ on:
      types: [completed]
    # Rerun report publishing on exising test run
 jobs:
+   app-token:
+     outputs:
+        app-token: ${{ steps.app-token.outputs.token }}
+     runs-on: ubuntu-latest
+     steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          # required
+          app-id: ${{ secrets.APP_CHECK_RUN_ID }}
+          private-key: ${{ secrets.APP_CHECK_RUN_KEY }}
+
    publish:
+      needs: app-token
       if: github.event.workflow_run.conclusion == 'success'
       name: Publish Surefire Report
       runs-on: ubuntu-latest
@@ -36,6 +49,7 @@ jobs:
           if: success() || failure()
           uses: ScaCap/action-surefire-report@v1.9.0
           with:
+            github_token: ${{ needs.app-token.outputs.app-token }}
             check_name: Test Report Result
             commit: ${{ steps.github_sha.outputs.content }}
             ignore_flaky_tests: true
@@ -70,6 +84,7 @@ jobs:
                 targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
    db:
+    needs: app-token
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     strategy:
@@ -102,6 +117,7 @@ jobs:
       if: success() || failure()
       uses: ScaCap/action-surefire-report@v1.9.0
       with:
+        github_token: ${{ needs.app-token.outputs.app-token }}
         check_name: Test Report Result ${{ matrix.dbs }}
         commit: ${{ steps.github_sha.outputs.content }}
         ignore_flaky_tests: true
