@@ -105,6 +105,5 @@ jobs:
         check_name: Test Report Result ${{ matrix.dbs }}
         commit: ${{ steps.github_sha.outputs.content }}
         ignore_flaky_tests: true
-        create_check: false
         report_paths: |
           **/*-reports*/**/TEST-*.xml
