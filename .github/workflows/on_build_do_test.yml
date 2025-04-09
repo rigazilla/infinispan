@@ -96,7 +96,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         id: create_check
         run: |
-          SHA="${{ github.sha }}"
+          SHA="${{ needs.get-info.outputs.source-head-sha }}"
           gh api repos/${{ github.repository }}/check-runs \
             -H "Accept: application/vnd.github+json" \
             -f name="Test Report Result" \
@@ -236,7 +236,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         id: create_check
         run: |
-          SHA="${{ github.sha }}"
+          SHA="${{ needs.get-info.outputs.source-head-sha }}"
           gh api repos/${{ github.repository }}/check-runs \
             -H "Accept: application/vnd.github+json" \
             -f name="Test Report Result ${{ matrix.dbs }}" \
