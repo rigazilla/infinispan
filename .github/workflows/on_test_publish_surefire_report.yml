@@ -43,6 +43,7 @@ jobs:
           if: success() || failure()
           uses: rigazilla/action-surefire-report@summary
           with:
+            create_check: false
             github_token: ${{ steps.app-token.outputs.token }}
             check_name: Test Report Result
             commit: ${{ steps.github_sha.outputs.content }}
@@ -109,6 +110,7 @@ jobs:
       uses: rigazilla/action-surefire-report@summary
       with:
         github_token: ${{ steps.app-token.outputs.token }}
+        create_check: false
         check_name: Test Report Result ${{ matrix.dbs }}
         commit: ${{ steps.github_sha.outputs.content }}
         ignore_flaky_tests: true
