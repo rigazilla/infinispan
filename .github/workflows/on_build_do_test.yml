@@ -51,6 +51,8 @@ jobs:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
       GH_TOKEN: ${{ github.token }}
     steps:
+      - name: workflow_run status
+        uses: haya14busa/action-workflow_run-status@v1.0.0
       - uses: actions/checkout@v4
         with:
           sparse-checkout: ".github"
