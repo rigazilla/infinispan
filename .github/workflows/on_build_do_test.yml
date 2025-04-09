@@ -103,7 +103,7 @@ jobs:
             -f head_sha="$SHA" \
             -f status="in_progress" \
             -f "output[summary]=Result from workflow run: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}" \
-            -f "output[title]=Mighty Readme report" \
+            -f "output[title]=Waiting for report result..." \
             --method POST
   
       - name: Maven Test
@@ -245,7 +245,7 @@ jobs:
             -f head_sha="$SHA" \
             -f status="in_progress" \
             -f "output[summary]=Result from workflow run: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}" \
-            -f "output[title]=Mighty Readme report" \
+            -f "output[title]=Waiting for report result..." \
             --method POST
 
       - name: Test
