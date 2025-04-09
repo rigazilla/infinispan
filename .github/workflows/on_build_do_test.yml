@@ -119,7 +119,6 @@ jobs:
             ./mvnw verify -V -B -e -DrerunFailingTestsCount=2
             -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative,coverage $HIBERNATE_MATRIX
             -Dorg.infinispan.test.server.extension.libs=org.jacoco:org.jacoco.agent:0.8.12:runtime
-            -pl server/resp
 
       - name: set-commit-failure-status
         if: always() && failure()
