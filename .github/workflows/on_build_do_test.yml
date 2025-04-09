@@ -102,6 +102,7 @@ jobs:
             -f name="Test Report Result" \
             -f head_sha="$SHA" \
             -f status="in_progress" \
+            -f "output[summary]=Result from workflow run: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}" \
             --method POST
   
       - name: Maven Test
@@ -242,6 +243,7 @@ jobs:
             -f name="Test Report Result ${{ matrix.dbs }}" \
             -f head_sha="$SHA" \
             -f status="in_progress" \
+            -f "output[summary]=Result from workflow run: https://github.com/rigazilla/infinispan/actions/runs/${{ github.run_id }}" \
             --method POST
 
       - name: Test
