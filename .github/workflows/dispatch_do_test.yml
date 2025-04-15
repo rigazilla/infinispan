@@ -135,7 +135,7 @@ jobs:
         if: (success() || failure())
         uses: actions/upload-artifact@v4
         with:
-          name: surefire-test-report-$SAN_MODULES-${{ github.run_id }}
+          name: surefire-test-report-${{ env.SAN_MODULES }}-${{ github.run_id }}
           path: |
             test_dir/infinispan/**/target/*-reports*/**/TEST-*.xml
             !test_dir/infinispan/**/*-reports*/**/TEST-*FLAKY.xml
@@ -165,7 +165,7 @@ jobs:
         if: (success() || failure()) && steps.check_flaky_report.outputs.files_exists == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: flaky-test-report-$SAN_MODULES-${{ github.run_id }}
+          name: flaky-test-report-${{ env.SAN_MODULES }}-${{ github.run_id }}
           path: |
             test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml
             target-branch.txt
@@ -174,7 +174,7 @@ jobs:
         if: (success() || failure())
         uses: actions/upload-artifact@v4
         with:
-          name: log-files-$SAN_MODULES-${{ github.run_id }}
+          name: log-files-${{ env.SAN_MODULES }}-${{ github.run_id }}
           compression-level: 9
           path: |
             test_dir/infinispan/**/*.log
