@@ -68,30 +68,6 @@ jobs:
           unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.dis.outputs.server-version }}-src.zip
           mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
 
-      - uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-        # required
-          app-id: ${{ secrets.GH_APP_ISPN_ID }}
-          private-key: ${{ secrets.GH_APP_ISPN_KEY }}
-
-      - name: Create Check Run for Test Report
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        id: create_check
-        run: |
-          SHA="${{ inputs.head-sha }}"
-          CHECK_RUN=$(gh api repos/${{ github.repository }}/check-runs \
-            -H "Accept: application/vnd.github+json" \
-            -f name="On Demand Test Report Result" \
-            -f head_sha="$SHA" \
-            -f status="in_progress" \
-            -f "output[summary]=Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            -f "output[title]=Waiting for report result..." \
-            --method POST \
-            --jq '.id')
-          echo "id=$CHECK_RUN" >> $GITHUB_OUTPUT
-
       - name: Maven Test
         env:
           HIBERNATE_MATRIX: '-Phibernate-matrix'
@@ -103,19 +79,6 @@ jobs:
             -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative,coverage $HIBERNATE_MATRIX
             -Dorg.infinispan.test.server.extension.libs=org.jacoco:org.jacoco.agent:0.8.12:runtime
             -Dgithub.action=true -pl ${{ inputs.modules }}
-
-      - name: set-commit-failure-status
-        if: always() && failure()
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          gh api repos/${{ github.repository }}/check-runs/${{ steps.create_check.outputs.id }} \
-            -H "Accept: application/vnd.github+json" \
-            -f status="completed" \
-            -f conclusion="failure" \
-            -f "output[summary]=Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            -f "output[title]=Run Failed" \
-            --method PATCH
 
       - name: Archive commit sha PR
         if: >
@@ -182,15 +145,14 @@ jobs:
             !**/*[:"<>\*\?]*.log
 
       - name: Publish Test Report
+          env:
+            GH_TOKEN: ${{ github.token }}
         if: success() || failure()
         # Waiting for https://github.com/ScaCap/action-surefire-report/pull/251
         uses: rigazilla/action-surefire-report@summary
         with:
-          github_token: ${{ steps.app-token.outputs.token }}
           check_name: Test Report Result
-          commit: ${{ steps.github_sha.outputs.content }}
           ignore_flaky_tests: true
-          summary: "Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ steps.run_id.outputs.runid }}"
           report_paths: |
             test_dir/infinispan/**/*-reports*/**/TEST-*.xml
 
