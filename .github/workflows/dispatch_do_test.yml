@@ -1,0 +1,188 @@
+name: On Demand Test
+run-name: On Demand Test 
+on:
+   workflow_dispatch:
+     inputs:
+       run-id:
+         description: 'Run ID'
+         required: false
+       head-sha:
+         description: 'Head SHA'
+         required: true
+       head-branch:
+         description: 'Head Branch'
+         required: true
+       event:
+         description: 'Event'
+         required: true
+       modules:
+         description: 'Modules to build and test, comma separated'
+         required: true
+
+permissions:
+  contents: read
+  packages: read
+  # Needed to write commit status
+  statuses: write
+  pull-requests: write
+
+concurrency:
+  # Cancel jobs same head_branch same repo, works
+  # both for pull_request and push
+jobs:
+  ci-build-test-pr:
+    name: Maven Test
+    runs-on: ubuntu-latest
+    env:
+      MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: ".github"
+          fetch-depth: 1
+
+      - name: Setup Java
+        uses: ./.github/actions/setup-java
+
+      - name: Extract Maven Artifacts
+        if: inputs.run-id != ''
+        uses: ./.github/actions/extract-maven-artifacts
+        with:
+         run-id: ${{ inputs.run-id }}
+
+      - name: Download Infinispan Server
+        if: inputs.run-id != ''
+        id: dis
+        uses: ./.github/actions/download-infinispan
+        with:
+          run-id: ${{ inputs.run-id }}
+          github-token: ${{ github.token }}
+
+      - name: Extract Infinispan Source
+        if: inputs.run-id != ''
+        run: |
+          mkdir test_dir && cd test_dir
+          unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.dis.outputs.server-version }}-src.zip
+          mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+        # required
+          app-id: ${{ secrets.GH_APP_ISPN_ID }}
+          private-key: ${{ secrets.GH_APP_ISPN_KEY }}
+
+      - name: Create Check Run for Test Report
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        id: create_check
+        run: |
+          SHA="${{ inputs.head-sha }}"
+          CHECK_RUN=$(gh api repos/${{ github.repository }}/check-runs \
+            -H "Accept: application/vnd.github+json" \
+            -f name="On Demand Test Report Result" \
+            -f head_sha="$SHA" \
+            -f status="in_progress" \
+            -f "output[summary]=Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f "output[title]=Waiting for report result..." \
+            --method POST \
+            --jq '.id')
+          echo "id=$CHECK_RUN" >> $GITHUB_OUTPUT
+
+      - name: Maven Test
+        env:
+          HIBERNATE_MATRIX: '-Phibernate-matrix'
+        id: maven-test
+        shell: bash
+        run: >
+            cd test_dir/infinispan &&
+            ./mvnw verify -V -B -e -DrerunFailingTestsCount=2
+            -Dmaven.test.failure.ignore=true -Dansi.strip=true -Pnative,coverage $HIBERNATE_MATRIX
+            -Dorg.infinispan.test.server.extension.libs=org.jacoco:org.jacoco.agent:0.8.12:runtime
+            -Dgithub.action=true -pl ${{ inputs.modules }}
+
+      - name: set-commit-failure-status
+        if: always() && failure()
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api repos/${{ github.repository }}/check-runs/${{ steps.create_check.outputs.id }} \
+            -H "Accept: application/vnd.github+json" \
+            -f status="completed" \
+            -f conclusion="failure" \
+            -f "output[summary]=Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f "output[title]=Run Failed" \
+            --method PATCH
+
+      - name: Archive commit sha PR
+        if: >
+          (success() || failure())
+        env:
+          COMMIT_SHA: ${{ inputs.head-sha }}
+        run: |
+           echo -n $COMMIT_SHA > github-sha.txt
+
+      - name: Upload surefire test report
+        if: (success() || failure())
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-test-report-${{ inputs.modules }}-${{ github.run_id}}
+          path: |
+            test_dir/infinispan/**/target/*-reports*/**/TEST-*.xml
+            !test_dir/infinispan/**/*-reports*/**/TEST-*FLAKY.xml
+            !test_dir/infinispan/**/*-reports*/TEST-*RocksDB*.xml
+            test_dir/infinispan/**/*.dump*
+            test_dir/infinispan/**/hs_err_*
+            test_dir/infinispan/jacoco/
+            github-sha.txt
+            pr-number.txt
+
+# Create artifact with branch name and surefile flaky test report
+      - name: Check flaky report existence
+        if: success() || failure()
+        id: check_flaky_report
+        uses: andstor/file-existence-action@v3
+        with:
+          files: "test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml"
+
+      - name: Archive base_ref
+        if: (success() || failure()) && steps.check_flaky_report.outputs.files_exists == 'true'
+        env:
+          TARGET_BRANCH: ${{ inputs.head-sha }}
+        run: |
+          echo -n $TARGET_BRANCH > target-branch.txt
+
+      - name: Upload flaky test report
+        if: (success() || failure()) && steps.check_flaky_report.outputs.files_exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flaky-test-report-${{ inputs.modules }}-${{ github.run_id }}
+          path: |
+            test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml
+            target-branch.txt
+
+      - name: Upload log files
+        if: (success() || failure())
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-files-${{ inputs.modules }}-${{ github.run_id }}
+          compression-level: 9
+          path: |
+            test_dir/infinispan/**/*.log
+            !**/*[:"<>\*\?]*/**/*.log
+            !**/*[:"<>\*\?]*.log
+
+      - name: Publish Test Report
+        if: success() || failure()
+        # Waiting for https://github.com/ScaCap/action-surefire-report/pull/251
+        uses: rigazilla/action-surefire-report@summary
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          check_name: Test Report Result
+          commit: ${{ steps.github_sha.outputs.content }}
+          ignore_flaky_tests: true
+          summary: "Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ steps.run_id.outputs.runid }}"
+          report_paths: |
+            test_dir/infinispan/**/*-reports*/**/TEST-*.xml
+
