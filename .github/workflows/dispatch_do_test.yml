@@ -174,7 +174,7 @@ jobs:
         if: (success() || failure())
         uses: actions/upload-artifact@v4
         with:
-          name: log-files-${{ inputs.modules }}-${{ github.run_id }}
+          name: log-files-$SAN_MODULES-${{ github.run_id }}
           compression-level: 9
           path: |
             test_dir/infinispan/**/*.log
