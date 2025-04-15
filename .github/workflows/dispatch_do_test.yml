@@ -31,9 +31,6 @@ permissions:
   statuses: write
   pull-requests: write
 
-concurrency:
-  # Cancel jobs same head_branch same repo, works
-  # both for pull_request and push
 jobs:
   ci-build-test-pr:
     name: Maven Test
