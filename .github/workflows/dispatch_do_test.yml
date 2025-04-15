@@ -125,11 +125,17 @@ jobs:
         run: |
            echo -n $COMMIT_SHA > github-sha.txt
 
+      - name: Set sanitized modules
+        if: (success() || failure())
+        run: |
+          SAN_MODULES=$(echo "${{ inputs.modules }}" | tr -c '/' '_')
+          echo "SAN_MODULES=$SAN_MODULES" >> $GITHUB_ENV
+
       - name: Upload surefire test report
         if: (success() || failure())
         uses: actions/upload-artifact@v4
         with:
-          name: surefire-test-report-${{ inputs.modules }}-${{ github.run_id}}
+          name: surefire-test-report-$SAN_MODULES-${{ github.run_id }}
           path: |
             test_dir/infinispan/**/target/*-reports*/**/TEST-*.xml
             !test_dir/infinispan/**/*-reports*/**/TEST-*FLAKY.xml
@@ -159,7 +165,7 @@ jobs:
         if: (success() || failure()) && steps.check_flaky_report.outputs.files_exists == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: flaky-test-report-${{ inputs.modules }}-${{ github.run_id }}
+          name: flaky-test-report-$SAN_MODULES-${{ github.run_id }}
           path: |
             test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml
             target-branch.txt
