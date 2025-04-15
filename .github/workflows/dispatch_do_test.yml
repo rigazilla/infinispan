@@ -128,7 +128,7 @@ jobs:
       - name: Set sanitized modules
         if: (success() || failure())
         run: |
-          SAN_MODULES=$(echo "${{ inputs.modules }}" | tr -c '/' '_')
+          SAN_MODULES=$(echo "${{ inputs.modules }}" | tr '/' '_')
           echo "SAN_MODULES=$SAN_MODULES" >> $GITHUB_ENV
 
       - name: Upload surefire test report
