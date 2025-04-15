@@ -145,8 +145,8 @@ jobs:
             !**/*[:"<>\*\?]*.log
 
       - name: Publish Test Report
-          env:
-            GH_TOKEN: ${{ github.token }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         if: success() || failure()
         # Waiting for https://github.com/ScaCap/action-surefire-report/pull/251
         uses: rigazilla/action-surefire-report@summary
