@@ -91,7 +91,6 @@ jobs:
         if: ${{ inputs.run-id == '' && env.github_sha != '' }}
         uses: actions/checkout@v4
         with:
-          sparse-checkout: ".github"
           fetch-depth: 1
           path: test_dir/infinispan
           ref: ${{ env.github_sha }}
