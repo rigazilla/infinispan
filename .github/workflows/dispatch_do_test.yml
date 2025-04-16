@@ -76,7 +76,7 @@ jobs:
           echo "github_sha="$(gh pr view ${{ inputs.pr-number }} --json commits --jq '.commits[-1].oid' --repo $GITHUB_REPOSITORY ) >> "$GITHUB_ENV"
 
       - name: Get Sha from Input
-        if: ${{ env.github_sha }} == ''
+        if: env.github_sha == ''
         run:
           echo "github_sha="${{ inputs.head-sha }} >> "$GITHUB_ENV"
 
