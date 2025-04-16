@@ -9,16 +9,12 @@ on:
          type: string
        head-sha:
          description: 'Head SHA'
-         required: true
+         required: false
          type: string
-       head-branch:
-         description: 'Head Branch'
-         required: true
-         type: string
-       event:
-         description: 'Event'
-         required: true
-         type: string
+       pr-number:
+          description: 'PR number'
+          required: false
+          type: string
        modules:
          description: 'Modules to build and test, comma separated'
          required: true
@@ -61,12 +57,44 @@ jobs:
           run-id: ${{ inputs.run-id }}
           github-token: ${{ github.token }}
 
-      - name: Extract Infinispan Source
+      - name: Download Server Version
+        if: inputs.run-id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: server-version
+          run-id: ${{ inputs.run-id }}
+          github-token: ${{ github.token }}
+
+      - name: Get Sha from Run ID
+        if: inputs.run-id != ''
+        run:
+          echo "github_sha="$(cat github-sha.txt) >> "$GITHUB_OUTPUT"
+
+      - name: Get Sha from PR
+        if: ${{ env.github_sha == '' && inputs.pr-number != '' }}
+        run:
+          echo "github_sha="$(gh pr view ${{ inputs.pr-number }} --json commits --jq '.commits[-1].oid' --repo $GITHUB_REPOSITORY ) >> "$GITHUB_OUTPUT"
+
+      - name: Get Sha from Input
+        if: ${{ env.github_sha }} == ''
+        run:
+          echo "github_sha="${{ inputs.head-sha }} >> "$GITHUB_OUTPUT"
+
+      - name: Extract Infinispan From Run ID (${{ inputs.run-id }})
         if: inputs.run-id != ''
         run: |
           mkdir test_dir && cd test_dir
           unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.dis.outputs.server-version }}-src.zip
           mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
+
+      - name: Extract Infinispan From Source (${{ env.github_sha }})
+        if: ${{ inputs.run-id == '' && env.github_sha != '' }}
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: ".github"
+          fetch-depth: 1
+          path: test_dir/infinispan
+          ref: ${{ env.github_sha }}
 
       - name: Maven Test
         env:
@@ -84,7 +112,7 @@ jobs:
         if: >
           (success() || failure())
         env:
-          COMMIT_SHA: ${{ inputs.head-sha }}
+          COMMIT_SHA: ${{ env.github_sha }}
         run: |
            echo -n $COMMIT_SHA > github-sha.txt
 
