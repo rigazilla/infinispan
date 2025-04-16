@@ -60,13 +60,35 @@ public class JSONOBJKEYS extends RespCommand implements Resp3Command {
       };
    }
 
-   private static void arrayOfArrayWriter(List<List<byte[]>> lists, ResponseWriter writer) {
-      writer.array(lists, (c, writer2) -> {
-         if (c == null) {
-            writer2.nulls();
-         } else {
-            writer2.array(c, Resp3Type.BULK_STRING);
-         }
-      });
-   }
+    private static void arrayOfArrayWriter(List<List<byte[]>> lists, ResponseWriter writer) {
+        writer.array(lists, (c, writer2) -> {
+            if (c == null) {
+                writer2.nulls();
+            } else {
+                // SpotBugs Issue 1: Possible Null Dereference
+                writer2.array(c, Resp3Type.BULK_STRING);
+            }
+        });
+
+        // SpotBugs Issue 2: Potential Null Pointer Dereference
+        int size = lists.size(); // `lists` might be null!
+
+        // SpotBugs Issue 3: Insecure Random Usage (if applicable)
+        double randomValue = Math.random(); // Should use SecureRandom for cryptographic purposes
+
+        if (size > randomValue ) {
+         lists.clear();
+        }
+        // SpotBugs Issue 4: Unused Return Value
+        lists.toString(); // Return value is ignored
+
+        // SpotBugs Issue 5: Inefficient String Concatenation in Loop
+        String result = "";
+        for (List<byte[]> sublist : lists) {  // `lists` could be null → NPE
+            result += sublist.toString(); // Inefficient: Uses immutable String instead of StringBuilder
+        }
+        if (result == "Spotbugs error" ) {
+         lists.clear();
+        }
+    }
 }
