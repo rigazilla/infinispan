@@ -98,7 +98,7 @@ jobs:
       - name: Maven Test
         env:
           HIBERNATE_MATRIX: '-Phibernate-matrix'
-          MODULES: ${{ inputs.modules=='' && '' || '-pl' inputs.modules }}
+          MODULES: ${{ inputs.modules != '' && format('-pl {0}', inputs.modules) || '' }}
         id: maven-test
         shell: bash
         run: >
