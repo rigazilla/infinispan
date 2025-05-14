@@ -10,10 +10,9 @@ echo "**PR:** [$PR](https://github.com/$REPO/pull/$PR)"
 if [[ $REF == main ]]; then
   LAST_RELEASE="$(gh api /repos/$REPO/branches --paginate --jq .[].name | grep -E '^[0-9]+\.[0-9]+\.x' | sort -n -r | head -n 1)"
   LAST_MAJOR=$(echo "$LAST_RELEASE" | cut -d '.' -f 1)
-  LAST_MINOR=$(echo "$LAST_RELEASE" | cut -d '.' -f 2)
 
-  NEXT_MAJOR=$LAST_MAJOR
-  NEXT_MINOR="$(($LAST_MINOR + 1))"
+  NEXT_MAJOR="$(($LAST_MAJOR + 1))"
+  NEXT_MINOR="0"
   LABEL="release/$NEXT_MAJOR.$NEXT_MINOR.0"
   EXTRA_EDIT=""
 elif [[ $REF =~ ^[0-9]+\.[0-9]+\.x$ ]]; then
