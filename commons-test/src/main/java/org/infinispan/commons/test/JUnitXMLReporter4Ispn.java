@@ -13,7 +13,9 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.testng.ITestContext;
+import org.testng.ITestResult;
 import org.testng.TestRunner;
+import org.testng.internal.TestResult;
 import org.testng.reporters.JUnitXMLReporter;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -25,7 +27,7 @@ public class JUnitXMLReporter4Ispn extends JUnitXMLReporter {
         TestRunner tr = (TestRunner) context;
         // Avoid super.generateReport() to not create the "Command line suite" directory
         tr.setOutputDirectory(
-                String.format("%s%ssurefire-report-junit-tr", System.getProperty("build.directory"), File.separator));
+                String.format("%s%ssurefire-reports-junit-tr", System.getProperty("build.directory"), File.separator));
 
         super.generateReport(context);
 
@@ -71,4 +73,45 @@ public class JUnitXMLReporter4Ispn extends JUnitXMLReporter {
         StreamResult result = new StreamResult(xmlFile);
         transformer.transform(source, result);
     }
+
+    @Override
+    public void onTestSuccess(ITestResult iTr) {
+        //System.err.println("onTestSuccess");
+        TestResult tr = (TestResult) iTr;
+        int parameterIndex = tr.getParameterIndex();
+        tr.setTestName(tr.getMethod().getMethodName() + (parameterIndex >= 0 ? " [" + parameterIndex + "]" : ""));
+        //System.err.println("onTestSuccess " + tr.getMethod().getMethodName());
+        super.onTestSuccess(tr);
+    }
+
+    @Override
+    public void onTestFailedButWithinSuccessPercentage(ITestResult iTr) {
+        TestResult tr = (TestResult) iTr;
+        int parameterIndex = tr.getParameterIndex();
+        tr.setTestName(tr.getTestName() + (parameterIndex >= 0 ? " [" + parameterIndex + "]" : ""));
+        //System.err.println("onTestWIthi " + tr.getTestName());
+        super.onTestFailedButWithinSuccessPercentage(tr);
+    }
+
+    @Override
+    public void onTestFailure(ITestResult iTr) {
+        TestResult tr = (TestResult) iTr;
+        int parameterIndex = tr.getParameterIndex();
+        tr.setTestName(tr.getTestName() + (parameterIndex >= 0 ? " [" + parameterIndex + "]" : ""));
+        //System.err.println("onTestFailure " + tr.getTestName());
+        super.onTestFailure(tr);
+    }
+
+    /**
+     * Invoked each time a test is skipped.
+     */
+    @Override
+    public void onTestSkipped(ITestResult iTr) {
+        TestResult tr = (TestResult) iTr;
+        int parameterIndex = tr.getParameterIndex();
+        tr.setTestName(tr.getTestName() + (parameterIndex >= 0 ? " [" + parameterIndex + "]" : ""));
+        //System.err.println("onTestSkipped " + tr.getTestName());
+        super.onTestSkipped(tr);
+    }
+
 }
