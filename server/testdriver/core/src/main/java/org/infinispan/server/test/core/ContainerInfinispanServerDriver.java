@@ -6,6 +6,7 @@ import static org.infinispan.server.test.core.Containers.DOCKER_CLIENT;
 import static org.infinispan.server.test.core.Containers.getDockerBridgeAddress;
 import static org.infinispan.server.test.core.Containers.imageArchitecture;
 import static org.infinispan.server.test.core.TestSystemPropertyNames.INFINISPAN_TEST_SERVER_LOG_FILE;
+import static org.infinispan.server.test.core.TestSystemPropertyNames.COVERAGE_ENABLED;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -56,7 +57,6 @@ import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.images.builder.dockerfile.statement.RawStatement;
 
-import com.github.dockerjava.api.command.InspectImageResponse;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import com.github.dockerjava.api.model.Mount;
@@ -520,9 +520,9 @@ public class ContainerInfinispanServerDriver extends AbstractInfinispanServerDri
 
    static String createServerImage(String serverOutputDir) {
       try {
-         InspectImageResponse response = DOCKER_CLIENT.inspectImageCmd(SNAPSHOT_IMAGE).exec();
+         DOCKER_CLIENT.inspectImageCmd(SNAPSHOT_IMAGE).exec();
          log.infof("Reusing existing image");
-         return response.getConfig().getImage();
+         return SNAPSHOT_IMAGE;
       } catch (NotFoundException e) {
          // We build our local image based on the supplied server directory
          Path serverOutputPath = Paths.get(serverOutputDir).normalize();
