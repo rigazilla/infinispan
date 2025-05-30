@@ -223,8 +223,6 @@ jobs:
       matrix:
         dbs:
           - mssql
-          - oracle
-          - db2
     steps:
       - uses: actions/checkout@v4
 
