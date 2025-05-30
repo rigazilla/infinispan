@@ -63,6 +63,8 @@ jobs:
           uses: actions/download-artifact@v4
           with:
             name: check-run-id
+            github-token: ${{ github.token }}
+            run-id: ${{ steps.run_id.outputs.runid }}
 
         - name: Read Check Run ID
           id: read_check_id
@@ -157,9 +159,11 @@ jobs:
 
     - name: Download Check Run ID
       if: failure()
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v4.2.1
       with:
         name: check-run-id-${{ matrix.dbs }}
+        github-token: ${{ github.token }}
+        run-id: ${{ steps.run_id.outputs.runid }}
 
     - name: Read Check Run ID
       if: failure()
