@@ -59,6 +59,30 @@ jobs:
             report_paths: |
               **/*-reports*/**/TEST-*.xml
 
+        - name: Download Check Run ID
+          uses: actions/download-artifact@v4
+          with:
+            name: check-run-id
+
+        - name: Read Check Run ID
+          id: read_check_id
+          run: |
+            CHECK_RUN_ID=$(cat check-run-id.txt)
+            echo "CHECK_RUN_ID=$CHECK_RUN_ID" >> $GITHUB_ENV
+
+        - name: Set failure check if Publish Test Report step failed
+          if: failure()
+          env:
+            GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          run: |
+            gh api repos/${{ github.repository }}/check-runs/${CHECK_RUN_ID} \
+              -H "Accept: application/vnd.github+json" \
+              -f status="completed" \
+              -f conclusion="failure" \
+              -f "output[summary]=Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              -f "output[title]=Run Failed" \
+              --method PATCH
+
         - name: Install xmlstarlet tool
           shell: bash
           run: |
@@ -66,7 +90,6 @@ jobs:
              sudo apt-get install -y xmlstarlet
 
         - name: Check test number
-          if: success() || failure()
           id: test-number
           env:
             MIN_TEST_NUM: 35000
@@ -131,3 +154,29 @@ jobs:
         summary: "Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ steps.run_id.outputs.runid }}"
         report_paths: |
           **/*-reports*/**/TEST-*.xml
+
+    - name: Download Check Run ID
+      if: failure()
+      uses: actions/download-artifact@v4
+      with:
+        name: check-run-id-${{ matrix.dbs }}
+
+    - name: Read Check Run ID
+      if: failure()
+      id: read_check_id
+      run: |
+        CHECK_RUN_ID=$(cat check-run-id-${{ matrix.dbs }}.txt)
+        echo "CHECK_RUN_ID=$CHECK_RUN_ID" >> $GITHUB_ENV
+
+    - name: Set failure check if Publish Test Report step failed
+      if: failure()
+      env:
+        GH_TOKEN: ${{ steps.app-token.outputs.token }}
+      run: |
+        gh api repos/${{ github.repository }}/check-runs/${CHECK_RUN_ID} \
+          -H "Accept: application/vnd.github+json" \
+          -f status="completed" \
+          -f conclusion="failure" \
+          -f "output[summary]=Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+          -f "output[title]=Run Failed" \
+          --method PATCH
