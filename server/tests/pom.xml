@@ -145,7 +145,11 @@
          <artifactId>kafka</artifactId>
          <version>${versionx.org.testcontainers.testcontainers}</version>
       </dependency>
-
+      <dependency>
+         <groupId>com.ibm.db2</groupId>
+         <artifactId>jcc</artifactId>
+         <scope>test</scope>
+      </dependency>
       <dependency>
          <groupId>org.assertj</groupId>
          <artifactId>assertj-core</artifactId>
