@@ -1,6 +1,6 @@
 # Security policy
 
-The Infinispan team and community take all security bugs very seriously.
+1 The Infinispan team and community take all security bugs very seriously.
 You can find our guidelines here regarding our policy and security disclosure.
 
 ## Reporting security issues
