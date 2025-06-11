@@ -28,7 +28,6 @@ jobs:
       matrix:
         jdk:
           - '25-ea'
-          - '24'
 
     steps:
       - uses: actions/checkout@v4
@@ -39,14 +38,6 @@ jobs:
           java-version: ${{ matrix.jdk }}
           distribution: 'temurin'
 
-      - name:
-        run: |
-          if [[ "${{ matrix.jdk }}" == "25-ea" ]]; then
-            echo "Failing build for JDK 25 EA as it is not supported yet"
-            exit 1
-          else
-            echo "Using JDK 24"
-          fi
       - name: Build Infinispan
         run: ./mvnw -B install -DskipTests
 
