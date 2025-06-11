@@ -40,7 +40,7 @@ jobs:
 
       - name:
         run: |
-          if [[ ${{ matrix.jdk }}" == "25-ea" ]]; then
+          if [[ "${{ matrix.jdk }}" == "25-ea" ]]; then
             echo "Failing build for JDK 25 EA as it is not supported yet"
             exit 1
           else
