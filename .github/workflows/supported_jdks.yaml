@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  build:
+  jdk-compatibility:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -38,18 +38,26 @@ jobs:
           java-version: ${{ matrix.jdk }}
           distribution: 'temurin'
 
+      - name:
+        run: |
+          if [[ ${{ matrix.jdk }}" == "25-ea" ]]; then
+            echo "Failing build for JDK 25 EA as it is not supported yet"
+            exit 1
+          else
+            echo "Using JDK 24"
+          fi
       - name: Build Infinispan
         run: ./mvnw -B install -DskipTests
 
-  test-summary:
+  jdk-compatibility-summary:
     runs-on: ubuntu-latest
-    needs: build
+    needs: jdk-compatibility
     if: always()
     steps:
       - name: Check all matrix jobs
         run: |
-          echo "Test job result: ${{ needs.build.result }}"
-          if [[ "${{ needs.build.result }}" != "success" ]]; then
+          echo "Test job result: ${{ needs.jdk-compatibility.result }}"
+          if [[ "${{ needs.jdk-compatibility.result }}" != "success" ]]; then
             echo "One or more matrix jobs failed"
             exit 1
           fi
