@@ -150,7 +150,7 @@ jobs:
           # Only for 14.0.x branch we use special settings
           if [ "$TARGET_BRANCH" == "14.0.x" ]; then
             echo "Using Maven settings for 14.0.x branch"
-            echo SKIPPING ./mvnw -maven-settings.xml verify -V -B -e -DrerunFailingTestsCount=2 \
+            ./mvnw -maven-settings.xml verify -V -B -e -DrerunFailingTestsCount=2 \
             -Dmaven.test.failure.ignore=true -Dansi.strip=true -P${PROFILES} \
             -Dgithub.action=true
           else
