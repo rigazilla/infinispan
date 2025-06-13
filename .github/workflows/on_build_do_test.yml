@@ -154,7 +154,7 @@ jobs:
             -Dgithub.action=true
           else
             echo "Using Maven settings for NON 14.0.x branch"
-            echo SKIPPING ./mvnw verify -V -B -e -DrerunFailingTestsCount=2 \
+            ./mvnw verify -V -B -e -DrerunFailingTestsCount=2 \
             -Dmaven.test.failure.ignore=true -Dansi.strip=true -P${PROFILES},jacoco \
             -Dorg.infinispan.test.server.extension.libs=org.jacoco:org.jacoco.agent:0.8.12:runtime \
             -Dgithub.action=true
