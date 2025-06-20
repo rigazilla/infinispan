@@ -1,3 +1,4 @@
+// Triggering spotbugs
 package org.infinispan.affinity.impl;
 
 import java.util.Random;

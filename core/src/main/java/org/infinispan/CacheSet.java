@@ -1,3 +1,4 @@
+// Triggering spotbugs
 package org.infinispan;
 
 import org.infinispan.commons.util.CloseableIteratorSet;

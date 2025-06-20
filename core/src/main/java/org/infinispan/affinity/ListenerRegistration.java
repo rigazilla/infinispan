@@ -1,3 +1,4 @@
+// Triggering spotbugs
 package org.infinispan.affinity;
 
 import org.infinispan.affinity.impl.KeyAffinityServiceImpl;
