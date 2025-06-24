@@ -108,7 +108,7 @@ public abstract class AbstractFunctionalTest extends BaseNonConfigCoreFunctional
 	protected List<Runnable> cleanup = new ArrayList<>();
 
 	@CustomParameterized.Order(0)
-	@Parameterized.Parameters(name = "{0}, {5}, stats={7}")
+	@Parameterized.Parameters(name = "AbstractFunctionalTest_{0}_{5}_stats={7}")
 	public abstract List<Object[]> getParameters();
 
 	public List<Object[]> getParameters(boolean tx, boolean rw, boolean ro, boolean nonstrict, boolean stats) {
