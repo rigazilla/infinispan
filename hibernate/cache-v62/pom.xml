@@ -126,6 +126,7 @@
                         <classpathDependencyExclude>io.smallrye:jandex</classpathDependencyExclude>
                         <classpathDependencyExclude>org.glassfish.jaxb:jaxb-core</classpathDependencyExclude>
                         <classpathDependencyExclude>org.glassfish.jaxb:txw2</classpathDependencyExclude>
+                        <classpathDependencyExclude>org.jboss.logging:jboss-logging</classpathDependencyExclude>
                         </classpathDependencyExcludes>
                      <additionalClasspathDependencies>
                         <additionalClasspathDependency>
@@ -185,6 +186,7 @@
                               <classpathDependencyExclude>jakarta.activation:jakarta.activation-api</classpathDependencyExclude>
                               <classpathDependencyExclude>net.bytebuddy:byte-buddy</classpathDependencyExclude>
                               <classpathDependencyExclude>org.eclipse.angus:angus-activation</classpathDependencyExclude>
+                              <classpathDependencyExclude>org.jboss.logging:jboss-logging</classpathDependencyExclude>
                            </classpathDependencyExcludes>
                            <additionalClasspathDependencies>
                               <additionalClasspathDependency>
