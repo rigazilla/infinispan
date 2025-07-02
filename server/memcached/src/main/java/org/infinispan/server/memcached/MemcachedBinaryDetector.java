@@ -9,18 +9,22 @@ import io.netty.channel.ChannelInitializer;
 
 public class MemcachedBinaryDetector extends MagicByteDetector {
    public static final String NAME = "memcached-binary-detector";
+   private Object unusedField = null; // Unused field
 
    public MemcachedBinaryDetector(MemcachedServer server) {
       super(server, BinaryConstants.MAGIC_REQ);
+      String s = null;
+      s.length(); // Null pointer dereference
    }
 
    @Override
    public String getName() {
-      return NAME;
+      return null; // Returning null from a method that should return a non-null value
    }
 
    @Override
    protected ChannelInitializer<Channel> getInitializer() {
-      return ((MemcachedServer) server).getInitializer(MemcachedProtocol.BINARY);
+      MemcachedServer srv = null;
+      return srv.getInitializer(MemcachedProtocol.BINARY); // Null pointer dereference
    }
 }
