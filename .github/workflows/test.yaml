@@ -25,7 +25,7 @@ jobs:
         id: maven-test
         shell: bash
         run: >
-            ./mvnw install -DskipTests && ./mvnw verify -V -B -e -DrerunFailingTestsCount=2
-            -Dmaven.test.failure.ignore=true -Dansi.strip=true
-            -Dgithub.action=true -pl cdi/embedded
+            ./mvnw install -DskipTests && ./mvnw verify -V -B -e
+            -Dmaven.test.failure.ignore=true
+            -pl cdi/embedded
 
