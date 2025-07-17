@@ -27,4 +27,4 @@ jobs:
         run: >
             ./mvnw install -DskipTests && ./mvnw verify -V -B -e
             -Dmaven.test.failure.ignore=true
-            -pl cdi/embedded -Dtest=SpecificCacheManagerTest,ConfiguredCacheTest,CacheEventTest,DefaultCacheTest,ExternalCacheContainerTest
+            -pl cdi/embedded -Dtest=SpecificCacheManagerTest,ConfiguredCacheTest,CacheEventTest,DefaultCacheTest,ExternalCacheContainerTest,ProgrammaticCacheContainerTest,CacheRegistrationTest
