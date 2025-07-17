@@ -9,6 +9,12 @@ import org.testng.annotations.Test;
 @Test(groups = "unit", testName = "cdi.test.util.ContractsTest")
 public class ContractsTest {
 
+   @Test(expectedExceptions = NullPointerException.class,
+         expectedExceptionsMessageRegExp = "This parameter cannot be null", timeOut = "4000")
+   public void testAssertNotNullOnNullParameter() {
+      Contracts.assertNotNull(null, "This parameter cannot be null");
+   }
+
    public void testAssertNotNullOnNotNullParameter() {
       Contracts.assertNotNull("not null", "This parameter cannot be null");
    }
