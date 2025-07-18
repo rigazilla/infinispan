@@ -6,7 +6,7 @@ import static org.infinispan.configuration.cache.IndexStorage.LOCAL_HEAP;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.commons.test.TestResourceTracker;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 /**
@@ -18,7 +18,7 @@ import org.testng.annotations.Test;
 @Test(groups = "functional", testName = "it.endpoints.JsonPojoStoreTest")
 public class JsonPojoStoreTest extends BaseJsonTest {
 
-   @BeforeTest
+   @BeforeClass
    public void setup() {
       TestResourceTracker.setThreadTestName("it.endpoints.JsonPojoStoreTest");
    }
