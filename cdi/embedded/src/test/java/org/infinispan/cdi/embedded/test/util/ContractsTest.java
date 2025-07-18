@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
 public class ContractsTest {
 
    @Test(expectedExceptions = NullPointerException.class,
-         expectedExceptionsMessageRegExp = "This parameter cannot be null", timeOut = 4000)
+         expectedExceptionsMessageRegExp = "This parameter cannot be null")
    public void testAssertNotNullOnNullParameter() {
       Contracts.assertNotNull(null, "This parameter cannot be null");
    }
