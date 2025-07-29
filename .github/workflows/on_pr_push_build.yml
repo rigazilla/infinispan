@@ -22,7 +22,7 @@ jobs:
           java-version: '17'
 
       - name: Maven Install
-        run: >
+        run: |
             # Ensure this plugin is built first to avoid warnings in the build
             ./mvnw install -B -Pdistribution
             # By using "dependency:resolve", it will download all dependencies used in later stages for running the tests
