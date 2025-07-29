@@ -29,7 +29,9 @@ jobs:
             ./mvnw install dependency:resolve -B -V -e -DskipTests -DexcludeGroupIds=org.infinispan -Dsilent=true
 
       - name: Maven Verify
-        run:
-            ./mvnw verify -V -B -e -DrerunFailingTestsCount=2
-            -Dmaven.test.failure.ignore=true -Dansi.strip=true
+        run: |
+            CLIENTS=$(find client -maxdepth 2 -name pom.xml -exec dirname {} \; | paste -sd ',' -)
+            ./mvnw verify -V -B -e -DrerunFailingTestsCount=2 \
+            -Dmaven.test.failure.ignore=true -Dansi.strip=true \
+            -pl core,$CLIENTS \
             -Dgithub.action=true
