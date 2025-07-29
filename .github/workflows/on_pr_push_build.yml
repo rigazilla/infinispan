@@ -1,0 +1,35 @@
+name: Maven Build and Test
+
+on:
+  push:
+    branches:
+      - 14.0.x
+  pull_request:
+    branches:
+      - 14.0.x
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Maven Install
+        run: >
+            # Ensure this plugin is built first to avoid warnings in the build
+            ./mvnw install -B -Pdistribution
+            # By using "dependency:resolve", it will download all dependencies used in later stages for running the tests
+            ./mvnw install dependency:resolve -B -V -e -DskipTests -DexcludeGroupIds=org.infinispan -Dsilent=true
+
+      - name: Maven Verify
+        run:
+            ./mvnw verify -V -B -e -DrerunFailingTestsCount=2
+            -Dmaven.test.failure.ignore=true -Dansi.strip=true
+            -Dgithub.action=true
