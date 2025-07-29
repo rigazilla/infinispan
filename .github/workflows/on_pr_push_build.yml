@@ -24,14 +24,14 @@ jobs:
       - name: Maven Install
         run: |
             # Ensure this plugin is built first to avoid warnings in the build
-            ./mvnw install -B -Pdistribution
+            ./mvnw -s maven-settings.xml install -B -Pdistribution
             # By using "dependency:resolve", it will download all dependencies used in later stages for running the tests
             ./mvnw install dependency:resolve -B -V -e -DskipTests -DexcludeGroupIds=org.infinispan -Dsilent=true
 
       - name: Maven Verify
         run: |
             CLIENTS=$(find client -maxdepth 2 -name pom.xml -exec dirname {} \; | paste -sd ',' -)
-            ./mvnw verify -V -B -e -DrerunFailingTestsCount=2 \
+            ./mvnw -s maven-settings.xml verify -V -B -e -DrerunFailingTestsCount=2 \
             -Dmaven.test.failure.ignore=true -Dansi.strip=true \
             -pl core,$CLIENTS \
             -Dgithub.action=true
