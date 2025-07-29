@@ -35,3 +35,14 @@ jobs:
             -Dmaven.test.failure.ignore=true -Dansi.strip=true \
             -pl core,$CLIENTS \
             -Dgithub.action=true
+
+      - name: Publish Test Report
+        if: (success() || failure()) && steps.job-status.outputs.job_status == 'success'
+        # Waiting for https://github.com/ScaCap/action-surefire-report/pull/251
+        uses: rigazilla/action-surefire-report@summary
+        with:
+            check_name: Test Report Result
+            ignore_flaky_tests: true
+            report_paths: |
+              **/*-reports*/**/TEST-*.xml
+              !**/*FLAKY*.xml
