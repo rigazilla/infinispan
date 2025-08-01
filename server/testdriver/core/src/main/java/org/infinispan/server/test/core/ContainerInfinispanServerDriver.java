@@ -6,7 +6,6 @@ import static org.infinispan.server.test.core.Containers.DOCKER_CLIENT;
 import static org.infinispan.server.test.core.Containers.getDockerBridgeAddress;
 import static org.infinispan.server.test.core.Containers.imageArchitecture;
 import static org.infinispan.server.test.core.TestSystemPropertyNames.INFINISPAN_TEST_SERVER_LOG_FILE;
-import static org.infinispan.server.test.core.TestSystemPropertyNames.COVERAGE_ENABLED;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
