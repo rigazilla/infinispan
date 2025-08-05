@@ -82,6 +82,10 @@ public class TestSystemPropertyNames {
     */
    public static final String INFINISPAN_TEST_SERVER_CONTAINER_DEBUG = PREFIX + "container.debug";
    /**
+    * Specifies whether the server has templated (14.0.x) or not (15.x.x) configuration
+    */
+   public static final String INFINISPAN_TEST_SERVER_HAS_TEMPLATES = PREFIX + "container.hasTemplates";
+   /**
     * Specifies the name of the keycloak base image
     */
    public static final String KEYCLOAK_IMAGE = "org.infinispan.test.keycloakImage";
