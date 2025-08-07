@@ -105,7 +105,7 @@ public class HotRodTestClientDriver extends BaseTestClientDriver<HotRodTestClien
       return create(-1);
    }
 
-   private BasicConfiguration toConfiguration(String template) {
+   public static BasicConfiguration toConfiguration(String template) {
       org.infinispan.configuration.cache.ConfigurationBuilder builder = new org.infinispan.configuration.cache.ConfigurationBuilder();
       builder.clustering().cacheMode(CacheMode.valueOf(template));
       builder.statistics().enable();
@@ -114,14 +114,12 @@ public class HotRodTestClientDriver extends BaseTestClientDriver<HotRodTestClien
 
    /**
     * Create a cache adding in the initial server list the server address given by the index
-    * 
+    *
     * @param index
     *           the server index, -1 for all
     * @return {@link RemoteCache}, the cache
     */
    public <K, V> RemoteCache<K, V> create(int index) {
-      boolean hasTemplates = Boolean
-            .getBoolean(System.getProperty(TestSystemPropertyNames.INFINISPAN_TEST_SERVER_HAS_TEMPLATES, "true"));
       RemoteCacheManager remoteCacheManager;
       if (index >= 0) {
          remoteCacheManager = createRemoteCacheManager(index);
@@ -132,15 +130,15 @@ public class HotRodTestClientDriver extends BaseTestClientDriver<HotRodTestClien
       if (serverConfiguration != null) {
          return remoteCacheManager.administration().withFlags(flags).getOrCreateCache(name, serverConfiguration);
       }
-      if (hasTemplates) {
-         return mode != null
-               ? remoteCacheManager.administration().withFlags(flags).getOrCreateCache(name, "org.infinispan." + mode)
-               : remoteCacheManager.administration().withFlags(flags).getOrCreateCache(name, "org.infinispan.DIST_SYNC");
-      }
+      if (Boolean.getBoolean(TestSystemPropertyNames.INFINISPAN_TEST_SERVER_NEWER_THAN_14)) {
          return mode != null
                ? remoteCacheManager.administration().withFlags(flags).getOrCreateCache(name, toConfiguration(mode))
                : remoteCacheManager.administration().withFlags(flags).getOrCreateCache(name,
                      toConfiguration("DIST_SYNC"));
+      }
+         return mode != null
+               ? remoteCacheManager.administration().withFlags(flags).getOrCreateCache(name, "org.infinispan." + mode)
+               : remoteCacheManager.administration().withFlags(flags).getOrCreateCache(name, "org.infinispan.DIST_SYNC");
    }
 
    public RemoteCacheManager createRemoteCacheManager() {
