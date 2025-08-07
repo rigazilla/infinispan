@@ -45,8 +45,11 @@ jobs:
             -pl server/tests -DdefaultExcludedJUnitGroups=embedded,cli \
             -Dorg.infinispan.test.server.dir=${{ github.workspace }}/infinispan-server-15.2.5.Final/ \
             -Dorg.infinispan.test.server.container.newerThan14=true \
+            -Dit.test=HotRodCacheContinuousQueries,HotRodCacheOperations \
             -Dorg.infinispan.test.database.jdbc.drivers=com.oracle.database.jdbc:ojdbc11:23.5.0.24.07,\
             com.ibm.db2:jcc:12.1.2.0,com.microsoft.sqlserver:mssql-jdbc:12.10.1.jre11
       - name: Publish Test Report
         if: success() || failure()
-        uses: scacap/action-surefire-report@v1
+        uses: scacap/action-surefire-report@
+        with:
+            create_check: false
