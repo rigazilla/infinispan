@@ -41,8 +41,12 @@ jobs:
       - name: Maven Verify (server/tests)
         run: |
             ./mvnw -s maven-settings.xml clean verify \
-            -Dorg.infinispan.test.server.dir=${{ github.workspace }}/infinispan-server-15.2.5.Final/ \
+            --B --fae \
             -pl server/tests -DdefaultExcludedJUnitGroups=embedded,cli \
+            -Dorg.infinispan.test.server.dir=${{ github.workspace }}/infinispan-server-15.2.5.Final/ \
             -Dorg.infinispan.test.server.container.newerThan14=true \
             -Dorg.infinispan.test.database.jdbc.drivers=com.oracle.database.jdbc:ojdbc11:23.5.0.24.07,\
             com.ibm.db2:jcc:12.1.2.0,com.microsoft.sqlserver:mssql-jdbc:12.10.1.jre11
+      - name: Publish Test Report
+        if: success() || failure()
+        uses: scacap/action-surefire-report@v1
