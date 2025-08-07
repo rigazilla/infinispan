@@ -27,6 +27,7 @@ import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.server.functional.ClusteredIT;
 import org.infinispan.server.functional.extensions.entities.Entities;
 import org.infinispan.server.test.core.Common;
+import org.infinispan.server.test.core.TestSystemPropertyNames;
 import org.infinispan.server.test.junit5.InfinispanServerExtension;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -47,8 +48,7 @@ public class HotRodCacheEvents {
    static class ArgsProvider implements ArgumentsProvider {
       @Override
       public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
-         return Arrays.stream(ProtocolVersion.values())
-               .filter(v -> v != ProtocolVersion.PROTOCOL_VERSION_20) // Listeners were introduced in 2.1
+         return Arrays.stream(ProtocolVersion.values()).filter(v -> v != ProtocolVersion.PROTOCOL_VERSION_20) // Listeners were introduced in 2.1
                .map(Arguments::of);
       }
    }
@@ -89,7 +89,11 @@ public class HotRodCacheEvents {
       new EventLogListener<>(remoteCache(protocolVersion)).accept((l, remote) -> {
          l.expectNoEvents();
          remote.remove(1);
-         l.expectNoEvents();
+         if (Boolean.getBoolean(TestSystemPropertyNames.INFINISPAN_TEST_SERVER_NEWER_THAN_14)) {
+            l.expectOnlyRemovedEvent(1);
+         } else {
+            l.expectNoEvents();
+         }
          remote.put(1, "one");
          l.expectOnlyCreatedEvent(1);
          remote.remove(1);
@@ -234,7 +238,8 @@ public class HotRodCacheEvents {
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testCustomTypeEvents(ProtocolVersion protocolVersion) {
-      final EventLogListener<Entities.CustomKey, String> listener = new EventLogListener<>(remoteCache(protocolVersion));
+      final EventLogListener<Entities.CustomKey, String> listener = new EventLogListener<>(
+            remoteCache(protocolVersion));
       listener.accept((l, remote) -> {
          l.expectNoEvents();
          Entities.CustomKey key = new Entities.CustomKey(1);
@@ -251,12 +256,12 @@ public class HotRodCacheEvents {
    @ArgumentsSource(ArgsProvider.class)
    public void testEventReplayAfterAddingListener(ProtocolVersion protocolVersion) {
       RemoteCache<Integer, String> cache = remoteCache(protocolVersion);
-      final EventLogListener.WithStateEventLogListener<Integer, String> listener = new EventLogListener.WithStateEventLogListener<>(cache);
+      final EventLogListener.WithStateEventLogListener<Integer, String> listener = new EventLogListener.WithStateEventLogListener<>(
+            cache);
       cache.put(1, "one");
       cache.put(2, "two");
       listener.expectNoEvents();
-      listener.accept((l, remote) ->
-            l.expectUnorderedEvents(ClientEvent.Type.CLIENT_CACHE_ENTRY_CREATED, 1, 2));
+      listener.accept((l, remote) -> l.expectUnorderedEvents(ClientEvent.Type.CLIENT_CACHE_ENTRY_CREATED, 1, 2));
    }
 
    @ParameterizedTest
@@ -378,57 +383,58 @@ public class HotRodCacheEvents {
       });
    }
 
-
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testFilteredEvents(ProtocolVersion protocolVersion) {
-      new EventLogListener.StaticFilteredEventLogListener<>(remoteCache(protocolVersion)).accept(new Object[]{2}, null, (l, remote) -> {
-         l.expectNoEvents();
-         remote.put(1, "one");
-         l.expectNoEvents();
-         remote.put(2, "two");
-         l.expectOnlyCreatedEvent(2);
-         remote.remove(1);
-         l.expectNoEvents();
-         remote.remove(2);
-         l.expectOnlyRemovedEvent(2);
-      });
+      new EventLogListener.StaticFilteredEventLogListener<>(remoteCache(protocolVersion)).accept(new Object[] { 2 },
+            null, (l, remote) -> {
+               l.expectNoEvents();
+               remote.put(1, "one");
+               l.expectNoEvents();
+               remote.put(2, "two");
+               l.expectOnlyCreatedEvent(2);
+               remote.remove(1);
+               l.expectNoEvents();
+               remote.remove(2);
+               l.expectOnlyRemovedEvent(2);
+            });
    }
 
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testParameterBasedFiltering(ProtocolVersion protocolVersion) {
-      new EventLogListener.DynamicFilteredEventLogListener<>(remoteCache(protocolVersion)).accept(new Object[]{3}, null, (l, remote) -> {
-         l.expectNoEvents();
-         remote.put(1, "one");
-         l.expectNoEvents();
-         remote.put(2, "two");
-         l.expectNoEvents();
-         remote.put(3, "three");
-         l.expectOnlyCreatedEvent(3);
-      });
+      new EventLogListener.DynamicFilteredEventLogListener<>(remoteCache(protocolVersion)).accept(new Object[] { 3 },
+            null, (l, remote) -> {
+               l.expectNoEvents();
+               remote.put(1, "one");
+               l.expectNoEvents();
+               remote.put(2, "two");
+               l.expectNoEvents();
+               remote.put(3, "three");
+               l.expectOnlyCreatedEvent(3);
+            });
    }
 
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testFilteredEventsReplay(ProtocolVersion protocolVersion) {
       RemoteCache<Integer, String> cache = remoteCache(protocolVersion);
-      final EventLogListener.StaticFilteredEventLogWithStateListener<Integer, String> staticEventListener =
-            new EventLogListener.StaticFilteredEventLogWithStateListener<>(cache);
+      final EventLogListener.StaticFilteredEventLogWithStateListener<Integer, String> staticEventListener = new EventLogListener.StaticFilteredEventLogWithStateListener<>(
+            cache);
       cache.put(1, "one");
       cache.put(2, "two");
-      staticEventListener.accept(new Object[]{2}, null, (l, remote) -> {
+      staticEventListener.accept(new Object[] { 2 }, null, (l, remote) -> {
          l.expectOnlyCreatedEvent(2);
          remote.remove(1);
          remote.remove(2);
          l.expectOnlyRemovedEvent(2);
       });
-      final EventLogListener.DynamicFilteredEventLogWithStateListener<Integer, String> dynamicEventListener =
-            new EventLogListener.DynamicFilteredEventLogWithStateListener<>(cache);
+      final EventLogListener.DynamicFilteredEventLogWithStateListener<Integer, String> dynamicEventListener = new EventLogListener.DynamicFilteredEventLogWithStateListener<>(
+            cache);
       cache.put(1, "one");
       cache.put(2, "two");
       cache.put(3, "three");
-      dynamicEventListener.accept(new Object[]{3}, null, (l, remote) -> {
+      dynamicEventListener.accept(new Object[] { 3 }, null, (l, remote) -> {
          l.expectOnlyCreatedEvent(3);
          remote.remove(1);
          remote.remove(2);
@@ -441,22 +447,22 @@ public class HotRodCacheEvents {
    @ArgumentsSource(ArgsProvider.class)
    public void testFilteredNoEventsReplay(ProtocolVersion protocolVersion) {
       RemoteCache<Integer, String> cache = remoteCache(protocolVersion);
-      final EventLogListener.StaticFilteredEventLogListener<Integer, String> staticEventListener =
-            new EventLogListener.StaticFilteredEventLogListener<>(cache);
+      final EventLogListener.StaticFilteredEventLogListener<Integer, String> staticEventListener = new EventLogListener.StaticFilteredEventLogListener<>(
+            cache);
       cache.put(1, "one");
       cache.put(2, "two");
-      staticEventListener.accept(new Object[]{2}, null, (l, remote) -> {
+      staticEventListener.accept(new Object[] { 2 }, null, (l, remote) -> {
          l.expectNoEvents();
          remote.remove(1);
          remote.remove(2);
          l.expectOnlyRemovedEvent(2);
       });
-      final EventLogListener.DynamicFilteredEventLogListener<Integer, String> dynamicEventListener =
-            new EventLogListener.DynamicFilteredEventLogListener<>(cache);
+      final EventLogListener.DynamicFilteredEventLogListener<Integer, String> dynamicEventListener = new EventLogListener.DynamicFilteredEventLogListener<>(
+            cache);
       cache.put(1, "one");
       cache.put(2, "two");
       cache.put(3, "three");
-      dynamicEventListener.accept(new Object[]{3}, null, (l, remote) -> {
+      dynamicEventListener.accept(new Object[] { 3 }, null, (l, remote) -> {
          staticEventListener.expectNoEvents();
          remote.remove(1);
          remote.remove(2);
@@ -466,14 +472,15 @@ public class HotRodCacheEvents {
    }
 
    /**
-    * Test that the HotRod server returns an error when a ClientListener is registered with a non-existing
-    * 'filterFactoryName'.
+    * Test that the HotRod server returns an error when a ClientListener is registered with a
+    * non-existing 'filterFactoryName'.
     */
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testNonExistingConverterFactoryCustomEvents(ProtocolVersion protocolVersion) {
       assertThrows(HotRodClientException.class, () -> {
-         EventLogListener.NonExistingFilterFactoryListener<Integer, String> listener = new EventLogListener.NonExistingFilterFactoryListener<>(remoteCache(protocolVersion));
+         EventLogListener.NonExistingFilterFactoryListener<Integer, String> listener = new EventLogListener.NonExistingFilterFactoryListener<>(
+               remoteCache(protocolVersion));
          listener.accept((l, remote) -> {
          });
       });
@@ -482,8 +489,8 @@ public class HotRodCacheEvents {
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testRawFilteredEvents(ProtocolVersion protocolVersion) {
-      final EventLogListener.RawStaticFilteredEventLogListener<Integer, String> listener =
-            new EventLogListener.RawStaticFilteredEventLogListener<>(remoteCache(protocolVersion));
+      final EventLogListener.RawStaticFilteredEventLogListener<Integer, String> listener = new EventLogListener.RawStaticFilteredEventLogListener<>(
+            remoteCache(protocolVersion));
       listener.accept((l, remote) -> {
          l.expectNoEvents();
          remote.put(1, "one");
@@ -500,8 +507,8 @@ public class HotRodCacheEvents {
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testCustomEvents(ProtocolVersion protocolVersion) {
-      final CustomEventLogListener.StaticCustomEventLogListener<Integer, String> listener =
-            new CustomEventLogListener.StaticCustomEventLogListener<>(remoteCache(protocolVersion));
+      final CustomEventLogListener.StaticCustomEventLogListener<Integer, String> listener = new CustomEventLogListener.StaticCustomEventLogListener<>(
+            remoteCache(protocolVersion));
       listener.accept((l, remote) -> {
          l.expectNoEvents();
          remote.put(1, "one");
@@ -516,7 +523,8 @@ public class HotRodCacheEvents {
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testCustomEvents2(ProtocolVersion protocolVersion) {
-      final CustomEventLogListener.SimpleListener<String, String> listener = new CustomEventLogListener.SimpleListener<>(remoteCache(protocolVersion));
+      final CustomEventLogListener.SimpleListener<String, String> listener = new CustomEventLogListener.SimpleListener<>(
+            remoteCache(protocolVersion));
       listener.accept((l, remote) -> {
          l.expectNoEvents();
          remote.put("1", "one");
@@ -542,7 +550,8 @@ public class HotRodCacheEvents {
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testNoConverterFactoryCustomEvents(ProtocolVersion protocolVersion) {
-      CustomEventLogListener.NoConverterFactoryListener<Integer, String> listener = new CustomEventLogListener.NoConverterFactoryListener<>(remoteCache(protocolVersion));
+      CustomEventLogListener.NoConverterFactoryListener<Integer, String> listener = new CustomEventLogListener.NoConverterFactoryListener<>(
+            remoteCache(protocolVersion));
       listener.accept((l, remote) -> {
          l.expectNoEvents();
          remote.put(1, "one");
@@ -554,9 +563,9 @@ public class HotRodCacheEvents {
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testParameterBasedConversion(ProtocolVersion protocolVersion) {
-      final CustomEventLogListener.DynamicCustomEventLogListener<Integer, String> listener =
-            new CustomEventLogListener.DynamicCustomEventLogListener<>(remoteCache(protocolVersion));
-      listener.accept(null, new Object[]{2}, (l, remote) -> {
+      final CustomEventLogListener.DynamicCustomEventLogListener<Integer, String> listener = new CustomEventLogListener.DynamicCustomEventLogListener<>(
+            remoteCache(protocolVersion));
+      listener.accept(null, new Object[] { 2 }, (l, remote) -> {
          l.expectNoEvents();
          remote.put(1, "one");
          l.expectCreatedEvent(new Entities.CustomEvent<>(1, "one", 0));
@@ -570,12 +579,12 @@ public class HotRodCacheEvents {
    public void testConvertedEventsReplay(ProtocolVersion protocolVersion) {
       RemoteCache<Integer, String> cache = remoteCache(protocolVersion);
       cache.put(1, "one");
-      CustomEventLogListener.StaticCustomEventLogWithStateListener<Integer, String> staticEventListener =
-            new CustomEventLogListener.StaticCustomEventLogWithStateListener<>(cache);
+      CustomEventLogListener.StaticCustomEventLogWithStateListener<Integer, String> staticEventListener = new CustomEventLogListener.StaticCustomEventLogWithStateListener<>(
+            cache);
       staticEventListener.accept((l, remote) -> l.expectCreatedEvent(new Entities.CustomEvent<>(1, "one", 0)));
-      CustomEventLogListener.DynamicCustomEventWithStateLogListener<Integer, String> dynamicEventListener =
-            new CustomEventLogListener.DynamicCustomEventWithStateLogListener<>(cache);
-      dynamicEventListener.accept(null, new Object[]{2}, (l, remote) -> {
+      CustomEventLogListener.DynamicCustomEventWithStateLogListener<Integer, String> dynamicEventListener = new CustomEventLogListener.DynamicCustomEventWithStateLogListener<>(
+            cache);
+      dynamicEventListener.accept(null, new Object[] { 2 }, (l, remote) -> {
          l.expectCreatedEvent(new Entities.CustomEvent<>(1, "one", 0));
          remote.put(2, "two");
          l.expectCreatedEvent(new Entities.CustomEvent<>(2, null, 0));
@@ -586,19 +595,21 @@ public class HotRodCacheEvents {
    @ArgumentsSource(ArgsProvider.class)
    public void testConvertedNoEventsReplay(ProtocolVersion protocolVersion) {
       RemoteCache<Integer, String> cache = remoteCache(protocolVersion);
-      CustomEventLogListener.StaticCustomEventLogListener<Integer, String> staticListener = new CustomEventLogListener.StaticCustomEventLogListener<>(cache);
+      CustomEventLogListener.StaticCustomEventLogListener<Integer, String> staticListener = new CustomEventLogListener.StaticCustomEventLogListener<>(
+            cache);
       cache.put(1, "one");
       staticListener.accept((l, remote) -> l.expectNoEvents());
-      CustomEventLogListener.DynamicCustomEventLogListener<Integer, String> dynamicListener = new CustomEventLogListener.DynamicCustomEventLogListener<>(cache);
+      CustomEventLogListener.DynamicCustomEventLogListener<Integer, String> dynamicListener = new CustomEventLogListener.DynamicCustomEventLogListener<>(
+            cache);
       cache.put(2, "two");
-      dynamicListener.accept(null, new Object[]{2}, (l, remote) -> l.expectNoEvents());
+      dynamicListener.accept(null, new Object[] { 2 }, (l, remote) -> l.expectNoEvents());
    }
 
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testRawCustomEvents(ProtocolVersion protocolVersion) {
-      CustomEventLogListener.RawStaticCustomEventLogListener<Integer, String> listener =
-            new CustomEventLogListener.RawStaticCustomEventLogListener<>(remoteCache(protocolVersion));
+      CustomEventLogListener.RawStaticCustomEventLogListener<Integer, String> listener = new CustomEventLogListener.RawStaticCustomEventLogListener<>(
+            remoteCache(protocolVersion));
       listener.accept((l, remote) -> {
          l.expectNoEvents();
          Marshaller marshaller = remote.getRemoteCacheContainer().getMarshaller();
@@ -657,8 +668,9 @@ public class HotRodCacheEvents {
       RemoteCache<Integer, String> cache = remoteCache(protocolVersion);
       final Integer key0 = Common.getIntKeyForServer(cache, 0);
       final Integer key1 = Common.getIntKeyForServer(cache, 1);
-      final EventLogListener.StaticFilteredEventLogListener<Integer, String> listener = new EventLogListener.StaticFilteredEventLogListener<>(cache);
-      listener.accept(new Object[]{key1}, null, (l, remote) -> {
+      final EventLogListener.StaticFilteredEventLogListener<Integer, String> listener = new EventLogListener.StaticFilteredEventLogListener<>(
+            cache);
+      listener.accept(new Object[] { key1 }, null, (l, remote) -> {
          l.expectNoEvents();
          remote.put(key0, "one");
          l.expectNoEvents();
@@ -677,7 +689,8 @@ public class HotRodCacheEvents {
       RemoteCache<Integer, String> cache = remoteCache(protocolVersion);
       final Integer key0 = Common.getIntKeyForServer(cache, 0);
       final Integer key1 = Common.getIntKeyForServer(cache, 1);
-      final CustomEventLogListener.StaticCustomEventLogListener<Integer, String> listener = new CustomEventLogListener.StaticCustomEventLogListener<>(cache);
+      final CustomEventLogListener.StaticCustomEventLogListener<Integer, String> listener = new CustomEventLogListener.StaticCustomEventLogListener<>(
+            cache);
       listener.accept((l, remote) -> {
          l.expectNoEvents();
          remote.put(key0, "one");
@@ -697,8 +710,9 @@ public class HotRodCacheEvents {
       RemoteCache<Integer, String> cache = remoteCache(protocolVersion);
       final Integer key0 = Common.getIntKeyForServer(cache, 0);
       final Integer key1 = Common.getIntKeyForServer(cache, 1);
-      final CustomEventLogListener.FilterCustomEventLogListener<Integer, String> listener = new CustomEventLogListener.FilterCustomEventLogListener<>(cache);
-      listener.accept(new Object[]{key0}, null, (l, remote) -> {
+      final CustomEventLogListener.FilterCustomEventLogListener<Integer, String> listener = new CustomEventLogListener.FilterCustomEventLogListener<>(
+            cache);
+      listener.accept(new Object[] { key0 }, null, (l, remote) -> {
          remote.put(key0, "one");
          l.expectCreatedEvent(new Entities.CustomEvent<>(key0, null, 1));
          remote.put(key0, "newone");
@@ -717,8 +731,10 @@ public class HotRodCacheEvents {
    @ParameterizedTest
    @ArgumentsSource(ArgsProvider.class)
    public void testJsonEvent(ProtocolVersion protocolVersion) {
-      DataFormat jsonValues = DataFormat.builder().valueType(APPLICATION_JSON).valueMarshaller(new UTF8StringMarshaller()).build();
-      RemoteCache<Integer, String> remoteCache = createQueryableCache(SERVERS, false, "/proto/json.proto", "proto.JSON").withDataFormat(jsonValues);
+      DataFormat jsonValues = DataFormat.builder().valueType(APPLICATION_JSON)
+            .valueMarshaller(new UTF8StringMarshaller()).build();
+      RemoteCache<Integer, String> remoteCache = createQueryableCache(SERVERS, false, "/proto/json.proto", "proto.JSON")
+            .withDataFormat(jsonValues);
       new EventLogListener<>(remoteCache).accept((l, cache) -> {
          l.expectNoEvents();
          cache.put(1, "{\"_type\":\"proto.JSON\",\"key\":\"one\"}");
