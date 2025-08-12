@@ -343,6 +343,137 @@ jobs:
             test_dir/infinispan/jacoco/
             github-sha.txt
 
+  tomcat:
+    needs: get-info
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: ./.github/actions/setup-java
+
+      - name: Extract Maven Artifacts
+        uses: ./.github/actions/extract-maven-artifacts
+        with:
+         run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Download Infinispan Server
+        id: dis
+        uses: ./.github/actions/download-infinispan
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Extract Infinispan Server
+        run: |
+          cd /tmp
+          unzip ${GITHUB_WORKSPACE}/infinispan-server-${{ steps.dis.outputs.server-version }}.zip
+
+      - name: Extract Infinispan Source
+        run: |
+          mkdir test_dir && cd test_dir
+          unzip ${GITHUB_WORKSPACE}/infinispan-${{ steps.dis.outputs.server-version }}-src.zip
+          mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
+
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+            app-id: ${{ secrets.GH_APP_ISPN_ID }}
+            private-key: ${{ secrets.GH_APP_ISPN_KEY }}
+  
+      - name: Create Check Run for Test Report
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        id: create_check
+        run: |
+          SHA="${{ needs.get-info.outputs.source-head-sha }}"
+          CHECK_RUN=$(gh api repos/${{ github.repository }}/check-runs \
+            -H "Accept: application/vnd.github+json" \
+            -f name="Test Report Result tomcat" \
+            -f head_sha="$SHA" \
+            -f status="in_progress" \
+            -f "output[summary]=Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f "output[title]=Waiting for report result..." \
+            --method POST \
+            --jq '.id')
+          echo "id=$CHECK_RUN" >> $GITHUB_OUTPUT
+          echo "$CHECK_RUN" > check-run-id-tomcat.txt
+
+      - name: Upload Check Run ID
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-run-id-tomcat
+          path: check-run-id-tomcat.txt
+
+      - name: Download and unzip Apache Tomcat 11.0.10
+        run: |
+          wget https://dlcdn.apache.org/tomcat/tomcat-11/v11.0.10/bin/apache-tomcat-11.0.10.zip
+          unzip apache-tomcat-11.0.10.zip
+        # Set CATALINA_HOME for subsequent steps
+      - name: Set CATALINA_HOME
+        run: echo "CATALINA_HOME=${GITHUB_WORKSPACE}/apache-tomcat-11.0.10" >> $GITHUB_ENV
+
+      - name: Test
+        run: |
+          cd test_dir/infinispan &&
+          ./mvnw verify -pl server/runtime,\
+          integrationtests/server-integration/server-integration-commons,\
+          integrationtests/server-integration/third-party-server/ \
+          -DcatalinaHome=${CATALINA_HOME} -Dinfinispan.server.integration.launch=tomcat
+
+      - name: set-commit-failure-status
+        if: always() && failure()
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api repos/${{ github.repository }}/check-runs/${{ steps.create_check.outputs.id }} \
+            -H "Accept: application/vnd.github+json" \
+            -f status="completed" \
+            -f conclusion="failure" \
+            -f "output[summary]=Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f "output[title]=Run Failed" \
+            --method PATCH
+
+      - name: set-commit-failure-status
+        if: always() && cancelled()
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api repos/${{ github.repository }}/check-runs/${{ steps.create_check.outputs.id }} \
+            -H "Accept: application/vnd.github+json" \
+            -f status="completed" \
+            -f conclusion="failure" \
+            -f "output[summary]=Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f "output[title]=Run Cancelled" \
+            --method PATCH
+
+      - name: Archive commit sha PR
+        if: >
+          (success() || failure())
+        run: |
+           echo -n ${{ needs.get-info.outputs.source-head-sha }} > github-sha.txt
+
+      - name: Upload surefire test report
+        if: (success() || failure())
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-test-report-tomcat
+          path: |
+            test_dir/infinispan/**/target/*-reports*/**/TEST-*.xml
+            !test_dir/infinispan/**/target/*-reports*/**/TEST-*FLAKY.xml
+            !test_dir/infinispan/**/ignored*reports*
+            test_dir/infinispan/**/*.dump*
+            test_dir/infinispan/**/hs_err_*
+            test_dir/infinispan/**/failsafe-summary.xml
+            test_dir/infinispan/jacoco/
+            github-sha.txt
+
+
+
   coverage:
     needs: [get-info, ci-build-test-pr, db]
     if: ${{ github.event.workflow_run.conclusion == 'success' && needs.get-info.outputs.source-event == 'pull_request' }}

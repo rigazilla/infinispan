@@ -130,7 +130,7 @@ jobs:
             description: Fail. ${{ steps.test-number.outputs.test_count }} test ran, minimum required is ${{ steps.test-number.outputs.test_min }}
             targetUrl: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-   db:
+   db-and-tomcat:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -139,6 +139,7 @@ jobs:
           - mssql
           - oracle
           - db2
+          - tomcat
     steps:
     - name: Set run_id based on event type
       id: run_id
@@ -170,7 +171,11 @@ jobs:
         GH_TOKEN: ${{ steps.app-token.outputs.token }}
       id: job-status
       run: |
-        JOB_STATUS=$(gh api https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ steps.run_id.outputs.runid }}/jobs --jq '.jobs[] | select(.name=="db (${{ matrix.dbs }})") | .conclusion')
+        if [ "${{ matrix.dbs }}" = "tomcat" ]; then
+          JOB_STATUS=$(gh api https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ steps.run_id.outputs.runid }}/jobs --jq '.jobs[] | select(.name=="tomcat") | .conclusion')
+        else
+          JOB_STATUS=$(gh api https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ steps.run_id.outputs.runid }}/jobs --jq '.jobs[] | select(.name=="db (${{ matrix.dbs }})") | .conclusion')
+        fi
         echo "job_status=$JOB_STATUS" >> $GITHUB_OUTPUT
 
     - name: Publish Test Report
