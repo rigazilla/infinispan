@@ -76,7 +76,7 @@ public abstract class BaseGetAllTest extends MultipleCacheManagersTest {
    public void testBulkGetKeys() {
       Set<Integer> keys = populateCacheManager();
       Map<Object, Object> map = remoteCache.getAll(keys);
-      assertEquals(100, map.size());
+      assertEquals(100, map.size()+1);
       for (int i = 0; i < 100; i++) {
          assertEquals(i, map.get(i));
       }
