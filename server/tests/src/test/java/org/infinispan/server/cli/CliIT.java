@@ -25,6 +25,7 @@ import org.infinispan.server.test.junit5.InfinispanServerExtension;
 import org.infinispan.server.test.junit5.InfinispanServerExtensionBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
  * @author Tristan Tarrant &lt;tristan@infinispan.org&gt;
  * @since 10.0
  **/
+@Tag("cli")
 public class CliIT {
 
    @RegisterExtension
@@ -70,7 +72,8 @@ public class CliIT {
          terminal.send("stats");
          terminal.assertContains("required_minimum_number_of_nodes");
          terminal.clear();
-         terminal.send("create cache --template=org.infinispan.DIST_SYNC dcache");
+         terminal.send("create cache --file=" + getCliResource("dtemplate.xml").getPath() + " dtemplate");
+         terminal.send("create cache --template=dtemplate dcache");
          terminal.send("cd caches/dcache");
          terminal.assertContains("//containers/default/caches/dcache]>");
          terminal.send("put k1 v1");
