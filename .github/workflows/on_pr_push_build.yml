@@ -36,22 +36,13 @@ jobs:
             -pl core,$CLIENTS \
             -Dgithub.action=true
 
-      - uses: actions/create-github-app-token@v2
-        if: success() || failure()
-        id: app-token
-        with:
-          app-id: ${{ secrets.GH_APP_ISPN_ID }}
-          private-key: ${{ secrets.GH_APP_ISPN_KEY }}
-
       - name: Publish Clients Test Report
         if: (success() || failure())
         # Waiting for https://github.com/ScaCap/action-surefire-report/pull/251
-        uses: rigazilla/action-surefire-report@summary
+        uses: ScaCap/action-surefire-report@v1
         with:
             check_name: Clients Test Report Result
-            github_token: ${{ steps.app-token.outputs.token }}
             ignore_flaky_tests: true
-            summary: "Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             report_paths: |
               **/*-reports*/**/TEST-*.xml
               !**/*FLAKY*.xml
