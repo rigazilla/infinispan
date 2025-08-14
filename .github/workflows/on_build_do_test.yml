@@ -126,15 +126,15 @@ jobs:
             -Dorg.infinispan.test.server.extension.libs=org.jacoco:org.jacoco.agent:0.8.12:runtime \
             -Dgithub.action=true &
             MVN_PID=$!
-            # Wait up to 4 hours (14400 seconds)
+            # Wait up to 4 hours (240 seconds)
             SECONDS=0
             while kill -0 $MVN_PID 2>/dev/null; do
-              if [ $SECONDS -ge 14400 ]; then
+              if [ $SECONDS -ge 240 ]; then
                 echo "Timeout reached. Dumping Java threads..."
                 # Find all Java processes and dump threads
                 for pid in $(pgrep java); do
                   echo "Dumping threads for Java process $pid"
-                  echo "Dumps will also be available in the surefire-test-report artifact"
+                  echo "Dumps will also be available in the jstack-report artifact"
                   jstack -l $pid | tee jstack-$pid.txt || echo "jstack failed for $pid"
                 done
                 # Kill the mvn process
@@ -192,6 +192,15 @@ jobs:
             **/jstack-*.txt
             github-sha.txt
             pr-number.txt
+
+      - name: Upload jstack files
+        if: (success() || failure())
+        uses: actions/upload-artifact@v4
+        with:
+          name: jstack-report
+          path: |
+            **/jstack-*.txt
+          if-no-files-found: ignore
 
 # Create artifact with branch name and surefile flaky test report
       - name: Check flaky report existence
