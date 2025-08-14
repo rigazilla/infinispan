@@ -1,3 +1,4 @@
+// Triggering spotbugs
 package org.infinispan;
 
 import java.util.Collection;
