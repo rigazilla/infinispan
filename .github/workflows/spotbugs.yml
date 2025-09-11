@@ -1,0 +1,46 @@
+name: SpotBugs on PR changes
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  spotbugs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0    # Need full history to compare base vs head
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11' # or whichever version you're using
+
+      - name: Determine changed Java files
+        id: changed
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...${{ github.sha }} | grep '\.java$' || true)
+          echo "changed_java_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+
+      - name: Skip if no Java changes
+        if: steps.changed.outputs.changed_java_files == ''
+        run: |
+          echo "No Java files changed. Skipping SpotBugs."
+          exit 0
+
+      - name: Build + SpotBugs (incremental)
+        run: |
+          mvn verify com.worksap.tools:incremental-analysis-maven-plugin:1.1.0:spotbugs \
+             -Dincremental.spotbugs.source=origin/${{ github.event.pull_request.base.ref }} \
+             -Dincremental.spotbugs.target=HEAD \
+             spotbugs:spotbugs
+
+      - name: Publish SpotBugs report annotation
+        uses: jwgmeligmeyling/spotbugs-github-action@master
+        with:
+          path: '**/target/spotbugsXml.xml'
