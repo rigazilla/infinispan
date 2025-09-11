@@ -26,7 +26,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
  * @author Tristan Tarrant &lt;tristan@infinispan.org&gt;
  * @since 15.0
  **/
-public class FootprintIT {
+public class FootprintITTest {
    private static final int LOADED_CLASS_COUNT_LOWER_BOUND = 11_800;
    private static final int LOADED_CLASS_COUNT_UPPER_BOUND = 12_000;
    private static final long HEAP_USAGE_LOWER_BOUND = 25_000_000L;
