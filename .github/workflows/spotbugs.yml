@@ -35,7 +35,7 @@ jobs:
 
       - name: Run SpotBugs on changed classes
         run: |
-          mvn install spotbugs:spotbugs -pl server/resp -DskipTests=true -Dspotbugs.onlyAnalyze="${{ steps.changed.outputs.classes }}"
+          mvn install spotbugs:spotbugs -DskipTests=true -Dspotbugs.onlyAnalyze="${{ steps.changed.outputs.classes }}"
 
       - name: Publish SpotBugs report annotation
         uses: jwgmeligmeyling/spotbugs-github-action@master
