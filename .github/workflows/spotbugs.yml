@@ -38,6 +38,6 @@ jobs:
           mvn install spotbugs:spotbugs -DskipTests=true -Dspotbugs.onlyAnalyze="${{ steps.changed.outputs.classes }}"
 
       - name: Publish SpotBugs report annotation
-        uses: jwgmeligmeyling/spotbugs-github-action@master
+        uses: rigazilla/spotbugs-github-action@annotations
         with:
           path: '**/target/spotbugsXml.xml'
