@@ -20,27 +20,25 @@ jobs:
           distribution: 'temurin'
           java-version: '11' # or whichever version you're using
 
-      - name: Determine changed Java files
+      - name: Find changed classes
         id: changed
         run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...${{ github.sha }} | grep '\.java$' || true)
-          echo "changed_java_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          chmod +x .github/scripts/changed-classes.sh
+          CLASSES=$(.github/scripts/changed-classes.sh origin/${{ github.event.pull_request.base.ref }} HEAD)
+          echo "classes=$CLASSES" >> $GITHUB_OUTPUT
 
-      - name: Skip if no Java changes
-        if: steps.changed.outputs.changed_java_files == ''
+      - name: Skip if no changes
+        if: steps.changed.outputs.classes == 'NO_CHANGES'
         run: |
-          echo "No Java files changed. Skipping SpotBugs."
+          echo "No Java classes changed. Skipping SpotBugs."
           exit 0
 
-      - name: Build + SpotBugs (incremental)
+      - name: Run SpotBugs on changed classes
         run: |
-          mvn verify com.worksap.tools:incremental-analysis-maven-plugin:1.1.0:spotbugs \
-             -Dincremental.spotbugs.source=origin/${{ github.event.pull_request.base.ref }} \
-             -Dincremental.spotbugs.target=HEAD \
-             spotbugs:spotbugs
+          mvn install spotbugs:spotbugs -pl server/resp -DskipTests=true -Dspotbugs.onlyAnalyze="${{ steps.changed.outputs.classes }}"
 
-      - name: Publish SpotBugs report annotation
-        uses: jwgmeligmeyling/spotbugs-github-action@master
-        with:
-          path: '**/target/spotbugsXml.xml'
+
+            - name: Publish SpotBugs report annotation
+              uses: jwgmeligmeyling/spotbugs-github-action@master
+              with:
+                path: '**/target/spotbugsXml.xml'
