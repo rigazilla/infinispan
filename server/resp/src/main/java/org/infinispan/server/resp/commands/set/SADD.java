@@ -34,4 +34,28 @@ public class SADD extends RespCommand implements Resp3Command {
       CompletionStage<Long> result = esc.add(key, arguments.subList(1, arguments.size()));
       return handler.stageToReturn(result, ctx, ResponseWriter.INTEGER);
    }
+
+   // SpotBugs: EQ_COMPARE_ARRAYS
+   public boolean isKeyEqual(byte[] a, byte[] b) {
+      return a == b; // Should use Arrays.equals(a, b)
+   }
+
+   // SpotBugs: EI_EXPOSE_REP
+   private byte[] secretKey = new byte[] {1,2,3,4};
+
+   public byte[] getSecretKey() {
+      return secretKey; // Exposes internal representation
+   }
+
+   // SpotBugs: REC_CATCH_EXCEPTION
+   public void riskyOperation() {
+      try {
+         int x = 1 / 0;
+      } catch (Exception e) {
+         // Ignored
+      }
+   }
+
+   // SpotBugs: HARD_CODE_PASSWORD
+   private String password = "123456"; // Hardcoded password
 }
