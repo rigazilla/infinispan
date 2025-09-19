@@ -72,15 +72,16 @@ public interface ConfigurationChildBuilder {
    ConfigurationBuilder clientIntelligence(ClientIntelligence clientIntelligence);
 
    /**
-    * Configures the connection pool
-    */
-   ConnectionPoolConfigurationBuilder connectionPool();
-
-   /**
     * This property defines the maximum socket connect timeout in milliseconds before giving up connecting to the
     * server. Defaults to {@link org.infinispan.client.hotrod.impl.ConfigurationProperties#DEFAULT_CONNECT_TIMEOUT}
     */
    ConfigurationBuilder connectionTimeout(int connectionTimeout);
+
+   /**
+    * Configures the connection pool
+    */
+   @Deprecated(forRemoval = true, since = "15.1")
+   ConnectionPoolConfigurationBuilder connectionPool();
 
    /**
     * Defines the {@link ConsistentHash} implementation to use for the specified version. By default,
@@ -104,12 +105,6 @@ public interface ConfigurationChildBuilder {
     * Whether or not to implicitly FORCE_RETURN_VALUE for all calls.
     */
    ConfigurationBuilder forceReturnValues(boolean forceReturnValues);
-
-   /**
-    * @deprecated Since 12.0, does nothing and will be removed in 15.0
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   ConfigurationBuilder keySizeEstimate(int keySizeEstimate);
 
    /**
     * Allows you to specify a custom {@link Marshaller} implementation to
@@ -186,12 +181,6 @@ public interface ConfigurationChildBuilder {
    ConfigurationBuilder uri(String uri);
 
    /**
-    * @deprecated Since 12.0, does nothing and will be removed in 15.0
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   ConfigurationBuilder valueSizeEstimate(int valueSizeEstimate);
-
-   /**
     * It sets the maximum number of retries for each request. A valid value should be greater or equals than 0 (zero).
     * Zero means no retry will made in case of a network failure. It defaults to 10.
     */
@@ -215,12 +204,6 @@ public interface ConfigurationChildBuilder {
    ConfigurationBuilder addJavaSerialAllowList(String... regEx);
 
    /**
-    * @deprecated Use {@link #addJavaSerialAllowList(String...)} instead. To be removed in 14.0.
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   ConfigurationBuilder addJavaSerialWhiteList(String... regEx);
-
-   /**
     * Sets the batch size of internal iterators (ie. <code>keySet().iterator()</code>. Defaults to 10_000
     * @param batchSize the batch size to set
     * @return this configuration builder with the batch size set
@@ -231,11 +214,6 @@ public interface ConfigurationChildBuilder {
     * Configures client-side statistics.
     */
    StatisticsConfigurationBuilder statistics();
-
-   /**
-    * Transaction configuration
-    */
-   TransactionConfigurationBuilder transaction();
 
    /**
     * Per-cache configuration

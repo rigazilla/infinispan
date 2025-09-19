@@ -219,19 +219,6 @@ public class RemoteCacheConfigurationBuilder implements Builder<RemoteCacheConfi
    }
 
    /**
-    * The {@link jakarta.transaction.TransactionManager} to use for the cache
-    *
-    * @param manager an instance of a TransactionManager
-    * @return an instance of the builder
-    * @deprecated since 12.0. To be removed in Infinispan 14. Use {@link #transactionManagerLookup(TransactionManagerLookup)}
-    * instead.
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   public RemoteCacheConfigurationBuilder transactionManager(TransactionManager manager) {
-      return transactionManagerLookup(() -> manager);
-   }
-
-   /**
     * The {@link TransactionManagerLookup} to lookup for the {@link TransactionManager} to interact with.
     *
     * @param lookup A {@link TransactionManagerLookup} instance.
@@ -252,6 +239,11 @@ public class RemoteCacheConfigurationBuilder implements Builder<RemoteCacheConfi
       }
       if (attributes.attribute(TRANSACTION_MANAGER).get() == null) {
          throw HOTROD.invalidTransactionManagerLookup();
+      }
+      if (attributes.attribute(NEAR_CACHE_MODE).get().enabled()) {
+         if (attributes.attribute(NEAR_CACHE_BLOOM_FILTER).get() && attributes.attribute(NEAR_CACHE_MAX_ENTRIES).get() < 1) {
+            throw HOTROD.nearCacheMaxEntriesPositiveWithBloom(attributes.attribute(NEAR_CACHE_MAX_ENTRIES).get());
+         }
       }
    }
 

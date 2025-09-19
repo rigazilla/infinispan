@@ -1,31 +1,44 @@
 package org.infinispan.server.test.core.rollingupgrade;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.invoke.MethodHandles;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.infinispan.client.hotrod.RemoteCacheManager;
+import org.infinispan.client.hotrod.configuration.ClientIntelligence;
+import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 import org.infinispan.client.rest.RestClient;
 import org.infinispan.client.rest.configuration.RestClientConfigurationBuilder;
+import org.infinispan.commons.maven.MavenArtifact;
+import org.infinispan.commons.test.CommonsTestingUtil;
+import org.infinispan.commons.util.OS;
 import org.infinispan.commons.util.Util;
 import org.infinispan.server.Server;
 import org.infinispan.server.test.api.TestUser;
 import org.infinispan.server.test.core.ContainerInfinispanServerDriver;
+import org.infinispan.server.test.core.InfinispanServerListener;
 import org.infinispan.server.test.core.InfinispanServerTestConfiguration;
 import org.infinispan.server.test.core.ServerConfigBuilder;
 import org.infinispan.server.test.core.ServerRunMode;
 import org.infinispan.server.test.core.TestSystemPropertyNames;
+import org.infinispan.server.test.core.Unzip;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
+import org.jboss.shrinkwrap.api.Archive;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
 
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.cluster.RedisClusterClient;
@@ -33,19 +46,33 @@ import net.spy.memcached.ConnectionFactoryBuilder;
 import net.spy.memcached.MemcachedClient;
 
 public class RollingUpgradeHandler {
+   public record ConfigAndDriver(InfinispanServerTestConfiguration infinispanServerTestConfiguration,
+                                 ContainerInfinispanServerDriver containerInfinispanServerDriver) {
+   }
+
    private static final Log log = LogFactory.getLog(MethodHandles.lookup().lookupClass());
+
    private final RollingUpgradeConfiguration configuration;
+
+   private final int nodeCount;
+   private final String clusterName;
+   private final String siteName;
+   // Holds a value of how many nodes are left to upgrade
+   private int nodeLeft;
+
+   private final String versionFrom;
+   private final String versionTo;
 
    private String toImageCreated;
    private String fromImageCreated;
 
-   private ContainerInfinispanServerDriver fromDriver;
-   private ContainerInfinispanServerDriver toDriver;
+   private ConfigAndDriver fromDriver;
+   private ConfigAndDriver toDriver;
 
    private RemoteCacheManager remoteCacheManager;
    private RedisClusterClient respClient;
-   private MemcachedClient[] memcachedClients;
-   private RestClient[] restClients;
+   private final MemcachedClient[] memcachedClients;
+   private final RestClient[] restClients;
 
    private STATE currentState = STATE.NOT_STARTED;
 
@@ -76,8 +103,16 @@ public class RollingUpgradeHandler {
       ERROR
    }
 
-   private RollingUpgradeHandler(RollingUpgradeConfiguration configuration) {
+   private RollingUpgradeHandler(RollingUpgradeConfiguration configuration, String siteName) {
+      this.nodeCount = configuration.nodeCount();
+      this.nodeLeft = nodeCount;
+      this.versionFrom = configuration.fromVersion();
+      this.versionTo = configuration.toVersion();
       this.configuration = configuration;
+      this.restClients = new RestClient[nodeCount];
+      this.memcachedClients = new MemcachedClient[nodeCount];
+      this.clusterName = configuration.name();
+      this.siteName = siteName;
    }
 
    public String getToImageCreated() {
@@ -89,11 +124,19 @@ public class RollingUpgradeHandler {
    }
 
    public ContainerInfinispanServerDriver getFromDriver() {
-      return fromDriver;
+      return fromDriver.containerInfinispanServerDriver;
    }
 
    public ContainerInfinispanServerDriver getToDriver() {
-      return toDriver;
+      return toDriver.containerInfinispanServerDriver;
+   }
+
+   public InfinispanServerTestConfiguration getFromConfig() {
+      return fromDriver.infinispanServerTestConfiguration;
+   }
+
+   public InfinispanServerTestConfiguration getToConfig() {
+      return toDriver.infinispanServerTestConfiguration;
    }
 
    public RollingUpgradeConfiguration getConfiguration() {
@@ -101,6 +144,9 @@ public class RollingUpgradeHandler {
    }
 
    public RemoteCacheManager getRemoteCacheManager() {
+      if (remoteCacheManager == null) {
+         remoteCacheManager = createRemoteCacheManager();
+      }
       return remoteCacheManager;
    }
 
@@ -108,8 +154,8 @@ public class RollingUpgradeHandler {
       if (restClients[server] != null) return restClients[server];
 
       InetAddress address = getCurrentState() == STATE.OLD_RUNNING
-            ? fromDriver.getServerAddress(server)
-            : toDriver.getServerAddress(server);
+            ? fromDriver.containerInfinispanServerDriver.getServerAddress(server)
+            : toDriver.containerInfinispanServerDriver.getServerAddress(server);
 
       builder.addServer().host(address.getHostAddress()).port(11222);
       return restClients[server] = RestClient.forConfiguration(builder.build());
@@ -120,7 +166,9 @@ public class RollingUpgradeHandler {
 
       int nodeCount = configuration.nodeCount();
       Function<Integer, InetAddress> addressFunction = i ->
-            fromDriver.isRunning(i) ? fromDriver.getServerAddress(i) : toDriver.getServerAddress(i);
+            fromDriver.containerInfinispanServerDriver.isRunning(i) ?
+                  fromDriver.containerInfinispanServerDriver.getServerAddress(i) :
+                  toDriver.containerInfinispanServerDriver.getServerAddress(i);
       List<RedisURI> uris = new ArrayList<>();
       for (int i = 0; i < nodeCount; i++) {
          InetAddress address = addressFunction.apply(i);
@@ -138,8 +186,8 @@ public class RollingUpgradeHandler {
       if (memcachedClients[server] != null) return memcachedClients[server];
 
       InetAddress address = getCurrentState() == STATE.OLD_RUNNING
-            ? fromDriver.getServerAddress(server)
-            : toDriver.getServerAddress(server);
+            ? fromDriver.containerInfinispanServerDriver.getServerAddress(server)
+            : toDriver.containerInfinispanServerDriver.getServerAddress(server);
 
       try {
          return memcachedClients[server] = new MemcachedClient(builder.build(), Collections.singletonList(InetSocketAddress.createUnresolved(address.getHostAddress(), 11222)));
@@ -152,67 +200,152 @@ public class RollingUpgradeHandler {
       return currentState;
    }
 
-   public static void performUpgrade(RollingUpgradeConfiguration configuration) throws InterruptedException {
-      String site1Name = "site1";
-      RollingUpgradeHandler handler = new RollingUpgradeHandler(configuration);
+   /**
+    * Similar to {@link #performUpgrade(RollingUpgradeConfiguration)} except that it will stop processing the upgrade
+    * after it has a mixed cluster of 1 new and (n-1) old nodes. This allows for processing operations during this
+    * period. When done you should complete the Future when it can proceed or set it's exception in whic case it will
+    * clean up early.
+    *
+    * @param configuration the configuration to use
+    * @return a future to signal when it should complete the upgrade
+    */
+   public static RollingUpgradeHandler runUntilMixed(RollingUpgradeConfiguration configuration) {
+      RollingUpgradeHandler handler = startOldCluster(configuration);
 
-      int nodeCount = configuration.nodeCount();
-      String versionFrom = configuration.fromVersion();
-      String versionTo = configuration.toVersion();
       try {
-         log.debugf("Starting %d node to version %s", nodeCount, versionFrom);
-         handler.fromDriver = handler.startNode(false, configuration.nodeCount(), configuration.nodeCount(),
-               site1Name, configuration.jgroupsProtocol(), null);
+         handler.upgradeNewNode();
+      } catch (Throwable t) {
+         try {
+            handler.exceptionEncountered(t);
+         } finally {
+            handler.close();
+         }
+      }
+
+      return handler;
+   }
+
+   public static RollingUpgradeHandler startOldCluster(RollingUpgradeConfiguration configuration) {
+      return startOldCluster(configuration, null);
+   }
+
+   public static RollingUpgradeHandler startOldCluster(RollingUpgradeConfiguration configuration, String siteName) {
+      if (configuration.nodeCount() <= 1) {
+         throw new IllegalStateException("Rolling Upgrade requires at least 2 nodes, but received " + configuration.nodeCount());
+      }
+      RollingUpgradeHandler handler = new RollingUpgradeHandler(configuration, siteName);
+
+      try {
+         log.debugf("Starting %d nodes to version %s in cluster %s", handler.nodeCount, handler.versionFrom, handler.clusterName);
+         final Archive<?>[] artifacts;
+         try {
+            if (configuration.customArtifacts().length > 0) {
+               // If possible, use the "fromVersion" artifacts
+               MavenArtifact mavenArtifacts = new MavenArtifact("org.infinispan", "infinispan-server-tests", configuration.fromVersion(), "artifacts");
+               Path artifactsZip = mavenArtifacts.resolveArtifact("zip");
+               if (artifactsZip == null) {
+                  artifacts = configuration.customArtifacts();
+                  log.warnf("Could not download custom artifacts for version %s using %s. Failures may happen", configuration.fromVersion(), mavenArtifacts);
+               } else {
+                  artifacts = Unzip.unzip(artifactsZip, Paths.get(CommonsTestingUtil.tmpDirectory(), configuration.fromVersion()))
+                        .stream().map(p -> ShrinkWrap.createFromZipFile(JavaArchive.class, p.toFile()))
+                        .toArray(i -> new Archive<?>[i]);
+                  log.infof("Custom artifacts for version %s using %s", configuration.fromVersion(), mavenArtifacts);
+               }
+            } else {
+               artifacts = configuration.customArtifacts();
+            }
+         } catch (IOException e) {
+            throw new UncheckedIOException(e);
+         }
+
+         handler.fromDriver = handler.startNode(VersionType.FROM, configuration.nodeCount(), configuration.nodeCount(),
+               configuration.jgroupsProtocol(), null, configuration.serverConfigurationFile(),
+               configuration.defaultServerConfigurationFile(), artifacts,
+               configuration.mavenArtifacts(), configuration.properties(), configuration.listeners());
          handler.currentState = STATE.OLD_RUNNING;
 
-         try (RemoteCacheManager manager = handler.createRemoteCacheManager()) {
-            handler.remoteCacheManager = manager;
-            handler.restClients = new RestClient[nodeCount];
-            handler.memcachedClients = new MemcachedClient[nodeCount];
-            configuration.initialHandler().accept(handler);
-
-            for (int i = 0; i < nodeCount; ++i) {
-               log.debugf("Shutting down 1 node from version: %s", versionFrom);
-               int nodeId = nodeCount - i - 1;
-               String volumeId = handler.fromDriver.volumeId(nodeId);
-               handler.fromDriver.stop(nodeId);
-               handler.cleanup(i);
-
-               handler.currentState = STATE.REMOVED_OLD;
-
-               if (!ensureServersWorking(handler, nodeCount - 1)) {
-                  if (log.isDebugEnabled()) {
-                     log.debugf("Servers are: %s", Arrays.toString(manager.getServers()));
-                  }
-                  throw new IllegalStateException("Servers did not shut down properly within 30 seconds, assuming error");
-               }
-
-               log.debugf("Starting 1 node to version %s", versionTo);
-               if (handler.toDriver == null) {
-                  handler.toDriver = handler.startNode(true, 1, nodeCount, site1Name,
-                        configuration.jgroupsProtocol(), volumeId);
-               } else {
-                  handler.toDriver.startAdditionalServer(nodeCount, volumeId);
-               }
-
-               handler.currentState = STATE.ADDED_NEW;
-
-               if (!ensureServersWorking(handler, nodeCount)) {
-                  if (log.isDebugEnabled()) {
-                     log.debugf("Servers are only: %s", Arrays.toString(manager.getServers()));
-                  }
-                  throw new IllegalStateException("Servers did not cluster within 30 seconds, assuming error");
-               }
-            }
-
-            handler.currentState = STATE.NEW_RUNNING;
-         }
+         configuration.initialHandler().accept(handler);
       } catch (Throwable t) {
-         handler.currentState = STATE.ERROR;
-         handler.configuration.exceptionHandler().accept(t, handler);
-         throw t;
+         try {
+            handler.exceptionEncountered(t);
+            throw t;
+         } finally {
+            handler.close();
+         }
+      }
+
+      return handler;
+   }
+
+   public void upgradeNewNode() throws InterruptedException {
+      if (nodeLeft <= 0) {
+         throw new IllegalStateException("All nodes have already been migrated to a new server. Check invocation count," +
+               " configured nodeCount is: " + nodeCount);
+      }
+      log.debugf("Shutting down 1 node from version: %s for cluster %s", versionFrom, clusterName);
+      int nodeId = nodeLeft-- - 1;
+      String volumeId = fromDriver.containerInfinispanServerDriver.volumeId(nodeId);
+      fromDriver.containerInfinispanServerDriver.stop(nodeId);
+      cleanup(nodeId);
+
+      currentState = STATE.REMOVED_OLD;
+
+      if (!ensureServersWorking(this, nodeCount - 1)) {
+         if (log.isDebugEnabled() && remoteCacheManager != null) {
+            log.debugf("Servers are: %s", Arrays.toString(remoteCacheManager.getServers()));
+         }
+         throw new IllegalStateException("Servers did not shut down properly within 30 seconds, assuming error");
+      }
+
+      log.debugf("Starting 1 node to version %s at cluster %s", versionTo, clusterName);
+      if (toDriver == null) {
+         toDriver = startNode(VersionType.TO, 1, nodeCount,
+               configuration.jgroupsProtocol(), volumeId, configuration.serverConfigurationFile(),
+               configuration.defaultServerConfigurationFile(), configuration.customArtifacts(),
+               configuration.mavenArtifacts(), configuration.properties(), configuration.listeners());
+      } else {
+         toDriver.containerInfinispanServerDriver.startAdditionalServer(nodeCount, volumeId);
+      }
+
+      currentState = STATE.ADDED_NEW;
+
+      if (!ensureServersWorking(this, nodeCount)) {
+         if (log.isDebugEnabled() && remoteCacheManager != null) {
+            log.debugf("Servers are: %s", Arrays.toString(remoteCacheManager.getServers()));
+         }
+         throw new IllegalStateException("Servers did not cluster within 30 seconds, assuming error");
+      }
+   }
+
+   public void completeUpgrade(boolean shouldClose) {
+      try {
+         while (nodeLeft > 0) {
+            upgradeNewNode();
+            currentState = STATE.NEW_RUNNING;
+         }
+      } catch (Throwable e) {
+         exceptionEncountered(e);
       } finally {
-         handler.cleanup();
+         if (shouldClose) {
+            close();
+         }
+      }
+   }
+
+   public void exceptionEncountered(Throwable t) {
+      currentState = STATE.ERROR;
+      configuration.exceptionHandler().accept(t, this);
+   }
+
+   public static void performUpgrade(RollingUpgradeConfiguration configuration) {
+      RollingUpgradeHandler ruh = runUntilMixed(configuration);
+      try {
+         ruh.completeUpgrade(false);
+      } catch (Throwable t) {
+         ruh.exceptionEncountered(t);
+      } finally {
+         ruh.close();
       }
    }
 
@@ -220,6 +353,7 @@ public class RollingUpgradeHandler {
       long begin = System.nanoTime();
       while (TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - begin) < handler.configuration.serverCheckTimeSecs()) {
          log.debugf("Checking to ensure cluster formed properly, expecting %d servers", expectedCount);
+         // Allow the caller to delay us by waiting until the stage is complete
          if (handler.configuration.isValidServerState().test(handler)) {
             return true;
          }
@@ -229,14 +363,17 @@ public class RollingUpgradeHandler {
       return false;
    }
 
-   private void cleanup() {
+   public void close() {
       if (fromDriver != null) {
-         fromDriver.stop(configuration.fromVersion());
+         fromDriver.containerInfinispanServerDriver.stop(configuration.fromVersion());
+         fromDriver = null;
       }
       if (toDriver != null) {
-         toDriver.stop(configuration.toVersion());
+         toDriver.containerInfinispanServerDriver.stop(configuration.toVersion());
+         toDriver = null;
       }
 
+      Util.close(remoteCacheManager);
       Arrays.stream(restClients).forEach(Util::close);
       Arrays.stream(memcachedClients).forEach(c -> {
          if (c != null) c.shutdown();
@@ -254,23 +391,56 @@ public class RollingUpgradeHandler {
       }
    }
 
-   public RemoteCacheManager createRemoteCacheManager() {
-      TestUser user = TestUser.ADMIN;
+   private RemoteCacheManager createRemoteCacheManager() {
+      assert currentState == STATE.OLD_RUNNING;
 
-      String hotrodURI = "hotrod://" + user.getUser() + ":" + user.getPassword() + "@" + fromDriver.getServerAddress(0).getHostAddress() + ":11222";
-      log.debugf("Creating RCM with uri: %s", hotrodURI);
+      ConfigurationBuilder builder = new ConfigurationBuilder();
+      builder.maxRetries(1).connectionPool().maxActive(1);
+      if (OS.getCurrentOs().equals(OS.MAC_OS) || OS.getCurrentOs().equals(OS.WINDOWS)) {
+         builder.clientIntelligence(ClientIntelligence.BASIC);
+      }
 
-      return new RemoteCacheManager(hotrodURI);
+      if (fromDriver.infinispanServerTestConfiguration.isDefaultFile()) {
+         TestUser user = TestUser.ADMIN;
+         builder.security().authentication().username(user.getUser()).password(user.getPassword());
+      }
+
+      // Apply the configuration updates after applying others but not the server info as test shouldn't be updating it
+      builder = configuration.configurationHandler().apply(builder);
+
+      for (int i = 0; i < fromDriver.infinispanServerTestConfiguration.numServers(); i++) {
+         InetSocketAddress address = fromDriver.containerInfinispanServerDriver.getServerSocket(i, 11222);
+         builder.addServer().host(address.getHostString()).port(address.getPort());
+      }
+
+      return fromDriver.containerInfinispanServerDriver.createRemoteCacheManager(builder);
    }
 
-   private ContainerInfinispanServerDriver startNode(boolean toOrFrom, int nodeCount, int expectedCount, String clusterName,
-                                                            String protocol, String volumeId) {
-      ServerConfigBuilder builder = new ServerConfigBuilder("infinispan.xml", true);
+   private ConfigAndDriver startNode(VersionType versionType, int nodeCount, int expectedCount,
+                                     String protocol, String volumeId,
+                                     String serverConfigurationFile, boolean defaultServerConfigurationFile,
+                                     Archive<?>[] artifacts, String[] mavenArtifacts, Properties properties,
+                                     List<InfinispanServerListener> listeners) {
+      ServerConfigBuilder builder = new ServerConfigBuilder(serverConfigurationFile, defaultServerConfigurationFile);
+      // We ignore the test server directory system property as it would force both to and from version to be ignored
+      // when using the version which is pulled from quay.io
+      builder.removeProperty(TestSystemPropertyNames.INFINISPAN_TEST_SERVER_DIR);
       builder.runMode(ServerRunMode.CONTAINER);
       builder.numServers(nodeCount);
       builder.expectedServers(expectedCount);
       builder.clusterName(clusterName);
+      properties.forEach((k, v) -> {
+         if (k instanceof String && v instanceof String) {
+            builder.property((String) k, (String) v);
+         }
+      });
+      if (siteName != null) {
+         builder.site(siteName);
+      }
+      builder.artifacts(artifacts);
+      builder.mavenArtifacts(mavenArtifacts);
       builder.property(Server.INFINISPAN_CLUSTER_STACK, protocol);
+      listeners.forEach(builder::addListener);
       // If the nodeCount was the same as expected it means it is the start of a fresh cluster. In that case we don't
       // need the join timeout as there shouldn't be any existing nodes in the cluster and don't wait
       builder.property(TestSystemPropertyNames.INFINISPAN_TEST_SERVER_REQUIRE_JOIN_TIMEOUT, Boolean.toString(nodeCount != expectedCount));
@@ -278,17 +448,23 @@ public class RollingUpgradeHandler {
          builder.property(TestSystemPropertyNames.INFINISPAN_TEST_SERVER_CONTAINER_VOLUME_REQUIRED, "true");
       }
 
-      String versionToUse = toOrFrom ? configuration.toVersion() : configuration.fromVersion();
+      String versionToUse = versionType == VersionType.TO ? configuration.toVersion() : configuration.fromVersion();
+      String name = (siteName != null ? siteName : "") + clusterName + "-" + versionToUse;
 
       if (versionToUse.startsWith("image://")) {
          builder.property(TestSystemPropertyNames.INFINISPAN_TEST_SERVER_BASE_IMAGE_NAME, versionToUse.substring("image://".length()));
       } else if (versionToUse.startsWith("file://")) {
-         builder.property(TestSystemPropertyNames.INFINISPAN_TEST_SERVER_DIR, versionToUse.substring("file://".length()));
+         // Need to strip the file: as testcontainers strips all `file:` occurrences which seems like a bug
+         {
+            versionToUse = versionToUse.substring("file://".length());
+            name = (siteName != null ? siteName : "") + clusterName + "-" + versionToUse;
+         }
+         builder.property(TestSystemPropertyNames.INFINISPAN_TEST_SERVER_DIR, versionToUse);
          // For simplicity trim down to the directory name for the rest of the test
          versionToUse = Path.of(versionToUse).getFileName().toString();
 
          String imageName;
-         if (toOrFrom) {
+         if (versionType == VersionType.TO) {
             assert toImageCreated == null;
             imageName = toImageCreated = versionToUse.toLowerCase() + "-to";
          } else {
@@ -302,16 +478,24 @@ public class RollingUpgradeHandler {
       InfinispanServerTestConfiguration config = builder.createServerTestConfiguration();
 
       ContainerInfinispanServerDriver driver = (ContainerInfinispanServerDriver) ServerRunMode.CONTAINER.newDriver(config);
-      driver.prepare(versionToUse);
+      driver.prepare(name);
+      // Invoke listener before starting any container.
+      // Listener might add extra runtime properties.
+      listeners.forEach(l -> l.before(driver));
       if (volumeId != null) {
          if (nodeCount != 1) {
             throw new IllegalArgumentException("nodeCount " + nodeCount + " must be 1 when a volumeId is passed " + volumeId);
          }
-         driver.configureImage(versionToUse);
+         driver.configureImage(name);
          driver.startAdditionalServer(expectedCount, volumeId);
       } else {
-         driver.start(versionToUse);
+         driver.start(name);
       }
-      return driver;
+      return new ConfigAndDriver(config, driver);
+   }
+
+   enum VersionType {
+      FROM,
+      TO
    }
 }

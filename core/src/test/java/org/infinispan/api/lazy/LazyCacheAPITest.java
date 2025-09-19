@@ -2,6 +2,7 @@ package org.infinispan.api.lazy;
 
 import java.lang.reflect.Method;
 
+import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.cache.StorageType;
 import org.infinispan.manager.EmbeddedCacheManager;
@@ -24,8 +25,8 @@ public class LazyCacheAPITest extends SingleCacheManagerTest {
    protected EmbeddedCacheManager createCacheManager() throws Exception {
       // start a single cache instance
       ConfigurationBuilder c = getDefaultStandaloneCacheConfig(true);
-      c.memory().storageType(StorageType.BINARY);
-      EmbeddedCacheManager cm = TestCacheManagerFactory.createCacheManager(false, TestDataSCI.INSTANCE);
+      c.memory().storage(StorageType.HEAP).encoding().mediaType(MediaType.APPLICATION_PROTOSTREAM);
+      EmbeddedCacheManager cm = TestCacheManagerFactory.createCacheManager(true, TestDataSCI.INSTANCE);
       cm.defineConfiguration("lazy-cache-test", c.build());
       cache = cm.getCache("lazy-cache-test");
       return cm;

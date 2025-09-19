@@ -3,14 +3,11 @@ package org.infinispan.spring.remote.support;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.ASYNC_EXECUTOR_FACTORY;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.FORCE_RETURN_VALUES;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.JAVA_SERIAL_ALLOWLIST;
-import static org.infinispan.client.hotrod.impl.ConfigurationProperties.KEY_SIZE_ESTIMATE;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.MARSHALLER;
-import static org.infinispan.client.hotrod.impl.ConfigurationProperties.NEAR_CACHE_MODE;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.REQUEST_BALANCING_STRATEGY;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.SERVER_LIST;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.TCP_KEEP_ALIVE;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.TCP_NO_DELAY;
-import static org.infinispan.client.hotrod.impl.ConfigurationProperties.VALUE_SIZE_ESTIMATE;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
@@ -24,7 +21,6 @@ import java.util.Properties;
 
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.SomeRequestBalancingStrategy;
-import org.infinispan.client.hotrod.configuration.NearCacheMode;
 import org.infinispan.commons.executors.ExecutorFactory;
 import org.infinispan.commons.marshall.IdentityMarshaller;
 import org.infinispan.commons.marshall.JavaSerializationMarshaller;
@@ -402,52 +398,6 @@ public class InfinispanRemoteCacheManagerFactoryBeanTest extends AbstractInfinis
 
    /**
     * Test method for
-    * {@link org.infinispan.spring.remote.support.InfinispanRemoteCacheManagerFactoryBean#setKeySizeEstimate(int)}
-    * .
-    *
-    * @throws Exception
-    */
-   @Test
-   public final void setKeySizeEstimateShouldOverrideDefaultKeySizeEstimate() throws Exception {
-      final int expectedKeySizeEstimate = -123456;
-      final InfinispanRemoteCacheManagerFactoryBean objectUnderTest = new InfinispanRemoteCacheManagerFactoryBean();
-      objectUnderTest.setKeySizeEstimate(expectedKeySizeEstimate);
-      objectUnderTest.afterPropertiesSet();
-
-      final RemoteCacheManager remoteCacheManager = objectUnderTest.getObject();
-
-      assertEquals("setKeySizeEstimate(" + expectedKeySizeEstimate
-                         + ") should have overridden property 'keySizeEstimate'. However, it didn't.",
-                   String.valueOf(expectedKeySizeEstimate),
-                   remoteCacheManager.getConfiguration().properties().get(KEY_SIZE_ESTIMATE));
-      objectUnderTest.destroy();
-   }
-
-   /**
-    * Test method for
-    * {@link org.infinispan.spring.remote.support.InfinispanRemoteCacheManagerFactoryBean#setValueSizeEstimate(int)}
-    * .
-    *
-    * @throws Exception
-    */
-   @Test
-   public final void setValueSizeEstimateShouldOverrideDefaultValueSizeEstimate() throws Exception {
-      final int expectedValueSizeEstimate = -3456789;
-      final InfinispanRemoteCacheManagerFactoryBean objectUnderTest = new InfinispanRemoteCacheManagerFactoryBean();
-      objectUnderTest.setValueSizeEstimate(expectedValueSizeEstimate);
-      objectUnderTest.afterPropertiesSet();
-
-      final RemoteCacheManager remoteCacheManager = objectUnderTest.getObject();
-
-      assertEquals("setValueSizeEstimate(" + expectedValueSizeEstimate
-                         + ") should have overridden property 'valueSizeEstimate'. However, it didn't.",
-                   String.valueOf(expectedValueSizeEstimate),
-                   remoteCacheManager.getConfiguration().properties().get(VALUE_SIZE_ESTIMATE));
-      objectUnderTest.destroy();
-   }
-
-   /**
-    * Test method for
     * {@link org.infinispan.spring.remote.support.InfinispanRemoteCacheManagerFactoryBean#setForceReturnValues(boolean)}
     * .
     *
@@ -466,29 +416,6 @@ public class InfinispanRemoteCacheManagerFactoryBeanTest extends AbstractInfinis
                          + ") should have overridden property 'forceReturnValue'. However, it didn't.",
                    String.valueOf(expectedForceReturnValues),
                    remoteCacheManager.getConfiguration().properties().get(FORCE_RETURN_VALUES));
-      objectUnderTest.destroy();
-   }
-
-   /**
-    * Test method for
-    * {@link org.infinispan.spring.remote.support.InfinispanRemoteCacheManagerFactoryBean#setNearCacheMode(String)}
-    *
-    * @throws Exception
-    */
-   @Test
-   public final void setNearCacheModeShouldOverrideDefaultNearCacheMode() throws Exception {
-      final NearCacheMode expectedNearCacheMode = NearCacheMode.INVALIDATED;
-      final InfinispanRemoteCacheManagerFactoryBean objectUnderTest = new InfinispanRemoteCacheManagerFactoryBean();
-      objectUnderTest.setNearCacheMode(expectedNearCacheMode.name());
-      objectUnderTest.setNearCacheMaxEntries(100);
-      objectUnderTest.afterPropertiesSet();
-
-      final RemoteCacheManager remoteCacheManager = objectUnderTest.getObject();
-
-      assertEquals("setNearCacheMode(" + expectedNearCacheMode
-                  + ") should have overridden property 'nearCacheMode'. However, it didn't.",
-            expectedNearCacheMode.name(),
-            remoteCacheManager.getConfiguration().properties().get(NEAR_CACHE_MODE));
       objectUnderTest.destroy();
    }
 }

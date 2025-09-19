@@ -1,5 +1,6 @@
 package org.infinispan.server.test.junit4;
 
+import java.net.InetAddress;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -72,6 +73,11 @@ public class InfinispanServerTestMethodRule implements TestRule, TestClientDrive
    }
 
    @Override
+   public InetAddress getServerAddress(int offset) {
+      return testClient.getServerDriver().getServerAddress(offset);
+   }
+
+   @Override
    public Statement apply(Statement base, Description description) {
       return new Statement() {
          @Override
@@ -89,6 +95,11 @@ public class InfinispanServerTestMethodRule implements TestRule, TestClientDrive
 
    public String addScript(RemoteCacheManager remoteCacheManager, String script) {
       return testClient.addScript(remoteCacheManager, script);
+   }
+
+   @Override
+   public boolean isContainerized() {
+      return false;
    }
 
    public RestClient newRestClient(RestClientConfigurationBuilder restClientConfigurationBuilder) {

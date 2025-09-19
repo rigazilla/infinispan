@@ -30,7 +30,7 @@ public class ConcurrentNotificationTest extends AbstractInfinispanTest {
 
    @BeforeMethod
    public void setUp() {
-      cm = TestCacheManagerFactory.createCacheManager(false);
+      cm = TestCacheManagerFactory.createCacheManager(true);
       cache = cm.getCache();
       listener = new CacheListener();
       cache.addListener(listener);
@@ -105,7 +105,7 @@ public class ConcurrentNotificationTest extends AbstractInfinispanTest {
    }
 
    @Listener
-   static public class CacheListener {
+   public static class CacheListener {
       private final AtomicInteger counter = new AtomicInteger(0);
 
       @CacheEntryModified

@@ -1,9 +1,11 @@
 package org.infinispan.rest;
 
 import java.net.URI;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 
 import org.infinispan.configuration.parsing.ParserRegistry;
+import org.infinispan.counter.EmbeddedCounterManagerFactory;
 import org.infinispan.counter.impl.manager.EmbeddedCounterManager;
 import org.infinispan.factories.GlobalComponentRegistry;
 import org.infinispan.lifecycle.ComponentStatus;
@@ -25,30 +27,22 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 public class InvocationHelper {
    private final ParserRegistry parserRegistry = new ParserRegistry();
    private final RestCacheManager<Object> restCacheManager;
-   private final EmbeddedCounterManager counterManager;
    private final RestServerConfiguration configuration;
    private final ServerManagement server;
    private final Executor executor;
    private final RestServer protocolServer;
-   private final EncoderRegistry encoderRegistry;
-   private final MetricsRegistry metricsRegistry;
-   private final ProtobufMetadataManager protobufMetadataManager;
    private final String cspHeader;
+   private EncoderRegistry encoderRegistry;
+   private MetricsRegistry metricsRegistry;
+   private ProtobufMetadataManager protobufMetadataManager;
 
-   InvocationHelper(RestServer protocolServer, RestCacheManager<Object> restCacheManager, EmbeddedCounterManager counterManager,
+   InvocationHelper(RestServer protocolServer, RestCacheManager<Object> restCacheManager,
                     RestServerConfiguration configuration, ServerManagement server, Executor executor) {
       this.protocolServer = protocolServer;
       this.restCacheManager = restCacheManager;
-      this.counterManager = counterManager;
       this.configuration = configuration;
       this.server = server;
       this.executor = executor;
-
-      GlobalComponentRegistry globalComponentRegistry = GlobalComponentRegistry.of(restCacheManager.getInstance());
-      this.encoderRegistry = globalComponentRegistry.getComponent(EncoderRegistry.class);
-      this.metricsRegistry = globalComponentRegistry.getComponent(MetricsRegistry.class);
-      this.protobufMetadataManager = globalComponentRegistry.getComponent(ProtobufMetadataManager.class);
-
       String url = server.getLoginConfiguration(protocolServer).get(ServerManagement.URL);
       String baseAuthUrl = createURLForCSPHeader(url);
       cspHeader = String.format("default-src 'self' %s data:; style-src 'self' 'unsafe-inline'; base-uri 'self'; form-action 'self'; frame-src 'self' %s; frame-ancestors 'self'; object-src 'none'; report-uri 'self';", baseAuthUrl, baseAuthUrl);
@@ -68,6 +62,13 @@ public class InvocationHelper {
          }
       }
       return baseAuthUrl;
+   }
+
+   public void postStart() {
+      GlobalComponentRegistry globalComponentRegistry = GlobalComponentRegistry.of(restCacheManager.getInstance());
+      this.encoderRegistry = globalComponentRegistry.getComponent(EncoderRegistry.class);
+      this.metricsRegistry = globalComponentRegistry.getComponent(MetricsRegistry.class);
+      this.protobufMetadataManager = globalComponentRegistry.getComponent(ProtobufMetadataManager.class);
    }
 
    public ParserRegistry getParserRegistry() {
@@ -93,7 +94,7 @@ public class InvocationHelper {
 
    public EmbeddedCounterManager getCounterManager() {
       checkServerStatus();
-      return counterManager;
+      return (EmbeddedCounterManager) EmbeddedCounterManagerFactory.asCounterManager(protocolServer.getCacheManager());
    }
 
    public String getContext() {
@@ -105,15 +106,15 @@ public class InvocationHelper {
    }
 
    public EncoderRegistry getEncoderRegistry() {
-      return encoderRegistry;
+      return Objects.requireNonNull(encoderRegistry, "Encoder registry not initialized yet");
    }
 
    public MetricsRegistry getMetricsRegistry() {
-      return metricsRegistry;
+      return Objects.requireNonNull(metricsRegistry, "Metrics registry not initialized yet");
    }
 
    public ProtobufMetadataManager protobufMetadataManager() {
-      return protobufMetadataManager;
+      return Objects.requireNonNull(protobufMetadataManager, "Protobuf manager not initialized yet");
    }
 
    private void checkServerStatus() {

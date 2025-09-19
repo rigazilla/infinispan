@@ -110,6 +110,18 @@ public class TestSystemPropertyNames {
     */
    public static final String INFINISPAN_TEST_SERVER_CONTAINER_ULIMIT = PREFIX + "container.ulimit";
 
+   private static final String INFINISPAN_ROLLING_UPGRADE_TEST = PREFIX + "rolling.upgrade.";
+
+   /**
+    * Specifies the version to start the containers during the rolling upgrade procedure.
+    */
+   public static final String INFINISPAN_ROLLING_UPGRADE_FROM_VERSION = INFINISPAN_ROLLING_UPGRADE_TEST + "from";
+
+   /**
+    * Specifies the target version to perform the rolling upgrades.
+    */
+   public static final String INFINISPAN_ROLLING_UPGRADE_TO_VERSION = INFINISPAN_ROLLING_UPGRADE_TEST + "to";
+
    /**
     * Specifies the name of the keycloak base image
     */
@@ -138,15 +150,4 @@ public class TestSystemPropertyNames {
     * Specifies the type of sasl mechanism for the Hot Rod client. Not all tests are using it.
     */
    public static final String HOTROD_CLIENT_SASL_MECHANISM = "org.infinispan.test.hotrod.client.salsmechanism";
-   /**
-    * The property specifying the path to jacoco exec files.
-    */
-   public static final String JACOCO_REPORTS_DIR = "dir.jacoco";
-   /**
-    * Specifies if the coverage profile is enabled. Is used for enableing jacoco agent during container run.
-    */
-   public static final String COVERAGE_ENABLED = "coverage.enabled";
-
-
-
 }

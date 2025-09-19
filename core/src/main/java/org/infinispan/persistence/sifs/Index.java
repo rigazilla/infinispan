@@ -242,8 +242,10 @@ class Index {
    public boolean load() {
       boolean loaded = attemptLoad();
 
-      // If we failed to load any of the index we have to make sure the sizer per segment is cleared
+      // If we failed to load any of the index we have to make sure to clear anything we may have loaded
       if (!loaded) {
+         maxSeqId = -1;
+         compactor.getFileStats().clear();
          for (int i = 0; i < sizePerSegment.length(); ++i) {
             sizePerSegment.set(i, 0);
          }
@@ -492,8 +494,22 @@ class Index {
       return size;
    }
 
-   public long getMaxSeqId() throws IOException {
-      if (maxSeqId >= 0) {
+   /**
+    * Returns the maximum sequence id or -1 if it is not yet set. This method does not calculate the sequence. If you
+    * want to retrieve an initialized sequence id you can use {@link #getOrCalculateMaxSeqId()} which will calculate
+    * it if needed and return it.
+    * @return the maximum sequence id or -1 if not yet calculated
+    */
+   public long getMaxSeqId() {
+      return maxSeqId;
+   }
+
+   /**
+    * Returns the maximum sequence id for the index which will always be 0 or greater
+    * @return the maximum sequence id to use for writes
+    */
+   public long getOrCalculateMaxSeqId() throws IOException {
+      if (maxSeqId > 0) {
          return maxSeqId;
       }
       long maxSeqId = 0;
@@ -508,8 +524,8 @@ class Index {
       return maxSeqId;
    }
 
-   public void start() {
-      addSegments(IntSets.immutableRangeSet(segments.length));
+   public void start(IntSet segments) {
+      addSegments(segments);
    }
 
    static boolean read(FileProvider.Handle handle, ByteBuffer buffer, long offset) throws IOException {
@@ -648,12 +664,15 @@ class Index {
 
       for (PrimitiveIterator.OfInt iter = removedCacheSegments.iterator(); iter.hasNext(); ) {
          int i = iter.nextInt();
-         removedSegments.add(segments[i]);
-         segments[i] = emptySegment;
-         removedFlowables.add(flowableProcessors[i]);
-         flowableProcessors[i] = emptyFlowable;
+         // If the segment was not owned by us don't do anything with it
+         if (segments[i] != emptySegment) {
+            removedSegments.add(segments[i]);
+            segments[i] = emptySegment;
+            removedFlowables.add(flowableProcessors[i]);
+            flowableProcessors[i] = emptyFlowable;
 
-         sizePerSegment.set(i, 0);
+            sizePerSegment.set(i, 0);
+         }
       }
       // Technically this is an issue with sequential removeSegments being called and then shutdown, but
       // we don't support data consistency with non-shared stores in a cluster (this method is only called in a cluster).
@@ -666,11 +685,12 @@ class Index {
             // removed the segments until the segment file is deleted
             AggregateCompletionStage<Void> stage = CompletionStages.aggregateCompletionStage();
             // Then we need to delete the segment
-            for (int cacheSegment = 0; cacheSegment < addedCount; cacheSegment++) {
+            for (int offset = 0; offset < removedSegments.size(); ++offset) {
+
                // We signal to complete the flowables, once complete the index is updated as we need to
                // update the compactor
-               removedFlowables.get(cacheSegment).onComplete();
-               Segment segment = removedSegments.get(cacheSegment);
+               removedFlowables.get(offset).onComplete();
+               Segment segment = removedSegments.get(offset);
                stage.dependsOn(
                      segment.thenCompose(___ ->
                                  // Now we free all entries in the index, this will include expired and removed entries
@@ -737,9 +757,11 @@ class Index {
                indexFileSize = freeBlocksOffset;
                loaded = true;
             } else {
+               // If the file was empty and we had no entries in our sizePerSegment we can treat this as loaded
+               // as this means we didn't own the segment before
+               loaded = handle.getFileSize() == 0 && index.sizePerSegment.get(id) == 0;
                handle.truncate(0);
                root = IndexNode.emptyWithLeaves(this);
-               loaded = false;
                // reserve space for shutdown
                indexFileSize = INDEX_FILE_HEADER_SIZE;
             }
@@ -773,6 +795,7 @@ class Index {
 
             write(handle, buffer, 0);
          }
+         freeBlocks.clear();
       }
 
       @Override

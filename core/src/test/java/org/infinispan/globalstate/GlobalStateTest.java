@@ -19,6 +19,7 @@ import java.lang.reflect.Method;
 import java.nio.channels.FileLock;
 import java.util.Properties;
 
+import org.infinispan.Cache;
 import org.infinispan.commons.CacheConfigurationException;
 import org.infinispan.commons.api.CacheContainerAdmin;
 import org.infinispan.commons.jdkspecific.CallerId;
@@ -54,8 +55,8 @@ public class GlobalStateTest extends AbstractInfinispanTest {
       GlobalConfigurationBuilder global1 = statefulGlobalBuilder(state1, true);
       String state2 = tmpDirectory(this.getClass().getSimpleName(), m.getName() + "2");
       GlobalConfigurationBuilder global2 = statefulGlobalBuilder(state2, true);
-      EmbeddedCacheManager cm1 = TestCacheManagerFactory.createClusteredCacheManager(false, global1, null, new TransportFlags());
-      EmbeddedCacheManager cm2 = TestCacheManagerFactory.createClusteredCacheManager(false, global2, null, new TransportFlags());
+      EmbeddedCacheManager cm1 = TestCacheManagerFactory.createClusteredCacheManager(true, global1, null, new TransportFlags());
+      EmbeddedCacheManager cm2 = TestCacheManagerFactory.createClusteredCacheManager(true, global2, null, new TransportFlags());
       try {
          Configuration cacheConfig = new ConfigurationBuilder().build();
          Configuration template = new ConfigurationBuilder().template(true).build();
@@ -77,9 +78,45 @@ public class GlobalStateTest extends AbstractInfinispanTest {
          cm2.stop();
 
          global1 = statefulGlobalBuilder(state1, false);
-         EmbeddedCacheManager newCm1 = TestCacheManagerFactory.createClusteredCacheManager(false, global1, new ConfigurationBuilder(), new TransportFlags());
+         EmbeddedCacheManager newCm1 = TestCacheManagerFactory.createClusteredCacheManager(true, global1, new ConfigurationBuilder(), new TransportFlags());
          assertNotNull(newCm1.getCache("replicated-cache"));
          assertNotNull(newCm1.getCacheConfiguration("replicated-template"));
+      } finally {
+         TestingUtil.killCacheManagers(cm1, cm2);
+      }
+   }
+
+   public void testAliasReassignment(Method m) {
+      String dir1 = tmpDirectory(this.getClass().getSimpleName(), m.getName() + "1");
+      String dir2 = tmpDirectory(this.getClass().getSimpleName(), m.getName() + "2");
+      GlobalConfigurationBuilder gcb1 = statefulGlobalBuilder(dir1, true);
+      GlobalConfigurationBuilder gcb2 = statefulGlobalBuilder(dir2, true);
+      EmbeddedCacheManager cm1 = TestCacheManagerFactory.createClusteredCacheManager(true, gcb1, null, new TransportFlags());
+      EmbeddedCacheManager cm2 = null;
+      try {
+         String alias = "my-alias";
+         Configuration conf1 = new ConfigurationBuilder()
+               .aliases(alias)
+               .clustering().cacheMode(CacheMode.DIST_SYNC).persistence().addSoftIndexFileStore().build();
+         Configuration conf2 = new ConfigurationBuilder()
+               .clustering().cacheMode(CacheMode.DIST_SYNC).persistence().addSoftIndexFileStore().build();
+
+         Cache<String, String> c1 = cm1.administration().createCache("c1", conf1);
+         Cache<String, String> c2 = cm1.administration().createCache("c2", conf2);
+
+         c1.put("key", "value-1");
+         c2.put("key", "value-2");
+
+         assertThat(cm1.<String, String>getCache(alias).get("key")).isEqualTo("value-1");
+         cm1.administration().assignAlias(alias, "c2");
+         assertThat(cm1.<String, String>getCache(alias).get("key")).isEqualTo("value-2");
+
+         // New node joins and receives the existing configurations from cm1.
+         cm2 = TestCacheManagerFactory.createClusteredCacheManager(true, gcb2, null, new TransportFlags());
+
+         assertThat(cm2.getCache("c1").get("key")).isEqualTo("value-1");
+         assertThat(cm2.getCache("c2").get("key")).isEqualTo("value-2");
+         assertThat(cm2.getCache(alias).get("key")).isEqualTo("value-2");
       } finally {
          TestingUtil.killCacheManagers(cm1, cm2);
       }
@@ -131,8 +168,8 @@ public class GlobalStateTest extends AbstractInfinispanTest {
       GlobalConfigurationBuilder global1 = statefulGlobalBuilder(state1, true);
       String state2 = tmpDirectory(this.getClass().getSimpleName(), m.getName() + "2");
       GlobalConfigurationBuilder global2 = statefulGlobalBuilder(state2, true);
-      EmbeddedCacheManager cm1 = TestCacheManagerFactory.createClusteredCacheManager(false, global1, new ConfigurationBuilder(), new TransportFlags());
-      EmbeddedCacheManager cm2 = TestCacheManagerFactory.createClusteredCacheManager(false, global2, new ConfigurationBuilder(), new TransportFlags());
+      EmbeddedCacheManager cm1 = TestCacheManagerFactory.createClusteredCacheManager(true, global1, new ConfigurationBuilder(), new TransportFlags());
+      EmbeddedCacheManager cm2 = TestCacheManagerFactory.createClusteredCacheManager(true, global2, new ConfigurationBuilder(), new TransportFlags());
       try {
          cm1.start();
          cm2.start();
@@ -249,7 +286,7 @@ public class GlobalStateTest extends AbstractInfinispanTest {
       // Test the PURGE action by creating a dangling lock file
       global.globalState().uncleanShutdownAction(UncleanShutdownAction.PURGE);
       runHoldingFileLock(state, () -> {
-         EmbeddedCacheManager cmPurge = TestCacheManagerFactory.createClusteredCacheManager(false, global, null, new TransportFlags());
+         EmbeddedCacheManager cmPurge = TestCacheManagerFactory.createClusteredCacheManager(true, global, null, new TransportFlags());
          try {
             cmPurge.start();
          } finally {
@@ -266,7 +303,7 @@ public class GlobalStateTest extends AbstractInfinispanTest {
       // Test the IGNORE action
       global.globalState().uncleanShutdownAction(UncleanShutdownAction.IGNORE);
       runHoldingFileLock(state, () -> {
-         EmbeddedCacheManager cmIgnore = TestCacheManagerFactory.createClusteredCacheManager(false, global, null, new TransportFlags());
+         EmbeddedCacheManager cmIgnore = TestCacheManagerFactory.createClusteredCacheManager(true, global, null, new TransportFlags());
          try {
             cmIgnore.start();
          } finally {
@@ -298,8 +335,8 @@ public class GlobalStateTest extends AbstractInfinispanTest {
       GlobalConfigurationBuilder global1 = statefulGlobalBuilder(state1, true);
       String state2 = tmpDirectory(this.getClass().getSimpleName(), m.getName() + "2");
       GlobalConfigurationBuilder global2 = statefulGlobalBuilder(state2, true);
-      EmbeddedCacheManager cm1 = TestCacheManagerFactory.createClusteredCacheManager(false, global1, null, new TransportFlags());
-      EmbeddedCacheManager cm2 = TestCacheManagerFactory.createClusteredCacheManager(false, global2, null, new TransportFlags());
+      EmbeddedCacheManager cm1 = TestCacheManagerFactory.createClusteredCacheManager(true, global1, null, new TransportFlags());
+      EmbeddedCacheManager cm2 = TestCacheManagerFactory.createClusteredCacheManager(true, global2, null, new TransportFlags());
       try {
          Configuration cacheConfig = new ConfigurationBuilder().build();
          Configuration template = new ConfigurationBuilder().template(true).build();
@@ -327,7 +364,7 @@ public class GlobalStateTest extends AbstractInfinispanTest {
       final String exceptionMessage = String.format("ISPN000663: Name must be less than 256 bytes, current name '%s' exceeds the size.", cacheName);
       String state1 = tmpDirectory(this.getClass().getSimpleName(), m.getName());
       GlobalConfigurationBuilder gcb = statefulGlobalBuilder(state1, true);
-      EmbeddedCacheManager cm = TestCacheManagerFactory.createClusteredCacheManager(false, gcb, null, new TransportFlags());
+      EmbeddedCacheManager cm = TestCacheManagerFactory.createClusteredCacheManager(true, gcb, null, new TransportFlags());
       final Configuration configuration = new ConfigurationBuilder().build();
 
       try {

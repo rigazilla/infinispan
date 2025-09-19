@@ -13,10 +13,11 @@ import org.infinispan.protostream.annotations.ProtoSchema;
             Note.class,
             Transaction.class,
             User.class,
-            User.Gender.class
+            User.Gender.class,
+            Metadata.class
       },
       schemaFileName = "test.protostream.sampledomain.proto",
-      schemaFilePath = "proto/generated",
+      schemaFilePath = "org/infinispan/test",
       schemaPackageName = "sample_bank_account",
       service = false
 )

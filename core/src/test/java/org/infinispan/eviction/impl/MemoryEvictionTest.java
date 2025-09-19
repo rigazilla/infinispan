@@ -5,7 +5,6 @@ import java.util.Random;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.cache.StorageType;
 import org.infinispan.container.DataContainer;
-import org.infinispan.eviction.EvictionType;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.test.SingleCacheManagerTest;
 import org.infinispan.test.fwk.TestCacheManagerFactory;
@@ -16,6 +15,7 @@ import org.testng.annotations.Test;
 /**
  * This test is useful to test how much memory is in use by the data container.  Since the Java GC may not clean up
  * everything on 1 pass, we have to run multiple passes through until we get a number that is relatively stable.
+ *
  * @author William Burns
  */
 @Test(groups = "profiling", testName = "eviction.MemoryEvictionTest")
@@ -24,14 +24,14 @@ public class MemoryEvictionTest extends SingleCacheManagerTest {
    private final long MAX_MEMORY = 400 * 1000 * 1000;
    private final int MATCH_COUNT = 5;
 
-   private final static Log log = LogFactory.getLog(MemoryEvictionTest.class);
+   private static final Log log = LogFactory.getLog(MemoryEvictionTest.class);
 
    @Override
    protected EmbeddedCacheManager createCacheManager() throws Exception {
       ConfigurationBuilder cfg = new ConfigurationBuilder();
       cfg
-         .memory().storageType(StorageType.BINARY).evictionType(EvictionType.MEMORY).size(MAX_MEMORY)
-         .build();
+            .memory().storage(StorageType.HEAP).maxSize(MAX_MEMORY)
+            .build();
       EmbeddedCacheManager cm = TestCacheManagerFactory.createCacheManager(cfg);
       cache = cm.getCache();
       return cm;
@@ -66,7 +66,8 @@ public class MemoryEvictionTest extends SingleCacheManagerTest {
 
    // Also returns size
    private long printMemoryUsage(int cacheSize) {
-      System.gc(); System.gc();
+      System.gc();
+      System.gc();
       Runtime runtime = Runtime.getRuntime();
       long usedMemory = runtime.totalMemory() - runtime.freeMemory();
       log.debugf("Used memory = %d, cache size = %d", usedMemory, cacheSize);

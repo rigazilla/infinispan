@@ -40,7 +40,7 @@ import net.jcip.annotations.ThreadSafe;
 public class KeyAffinityServiceImpl<K> implements KeyAffinityService<K> {
 
    // TODO During state transfer, we should try to assign keys to a node only if they are owners in both CHs
-   public final static float THRESHOLD = 0.5f;
+   public static final float THRESHOLD = 0.5f;
 
    //interval between key/queue poll
    private static final int POLL_INTERVAL_MILLIS = 50;
@@ -300,7 +300,7 @@ public class KeyAffinityServiceImpl<K> implements KeyAffinityService<K> {
     */
    @GuardedBy("maxNumberInvariant")
    private void resetNumberOfKeys() {
-      maxNumberOfKeys.set(address2key.keySet().size() * bufferSize);
+      maxNumberOfKeys.set(address2key.size() * bufferSize);
       existingKeyCount.set(0);
       if (log.isTraceEnabled()) {
          log.tracef("resetNumberOfKeys ends with: maxNumberOfKeys=%s, existingKeyCount=%s",
@@ -337,7 +337,7 @@ public class KeyAffinityServiceImpl<K> implements KeyAffinityService<K> {
 
    private boolean isNodeInConsistentHash(Address address) {
       DistributionManager distributionManager = getDistributionManager();
-      ConsistentHash hash = distributionManager.getWriteConsistentHash();
+      ConsistentHash hash = distributionManager.getCacheTopology().getWriteConsistentHash();
       return hash.getMembers().contains(address);
    }
    private DistributionManager getDistributionManager() {

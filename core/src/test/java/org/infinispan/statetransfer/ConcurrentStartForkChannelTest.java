@@ -14,7 +14,7 @@ import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.manager.EmbeddedCacheManager;
-import org.infinispan.remoting.transport.jgroups.JGroupsAddress;
+import org.infinispan.remoting.transport.Address;
 import org.infinispan.remoting.transport.jgroups.JGroupsTransport;
 import org.infinispan.test.MultipleCacheManagersTest;
 import org.infinispan.test.fwk.CleanupAfterMethod;
@@ -81,9 +81,15 @@ public class ConcurrentStartForkChannelTest extends MultipleCacheManagersTest {
          // When the coordinator starts first, it's ok to just start the caches in sequence.
          // When the coordinator starts last, however, the other node is not able to start before the
          // coordinator has the ClusterTopologyManager running.
-         Future<Cache<String, String>> c1rFuture = fork(() -> manager(eagerManager).getCache(CACHE_NAME));
+         Future<Cache<String, String>> c1rFuture = fork(() -> {
+            EmbeddedCacheManager m = manager(eagerManager);
+            m.start();
+            return m.getCache(CACHE_NAME);
+         });
          Thread.sleep(1000);
-         Cache<String, String> c2r = manager(lazyManager).getCache(CACHE_NAME);
+         EmbeddedCacheManager m = manager(lazyManager);
+         m.start();
+         Cache<String, String> c2r = m.getCache(CACHE_NAME);
          Cache<String, String> c1r = c1rFuture.get(10, TimeUnit.SECONDS);
 
          blockUntilViewsReceived(10000, cm1, cm2);
@@ -147,7 +153,7 @@ public class ConcurrentStartForkChannelTest extends MultipleCacheManagersTest {
                                                                   new TransportFlags());
       JChannel channel = new JChannel(new ByteArrayInputStream(configString.getBytes()));
       channel.setName(name);
-      channel.addAddressGenerator(JGroupsAddress::randomUUID);
+      channel.addAddressGenerator(Address::randomUUID);
       channel.connect(ConcurrentStartForkChannelTest.class.getSimpleName());
       log.tracef("Channel %s connected: %s", channel, channel.getViewAsString());
       return channel;

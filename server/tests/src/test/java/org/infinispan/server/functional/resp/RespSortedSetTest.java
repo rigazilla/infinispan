@@ -26,17 +26,19 @@ public class RespSortedSetTest extends AbstractRespTest {
             })
             .compose(v -> {
                ctx.verify(() -> assertThat(v.toLong()).isEqualTo(1));
-               return redis.zrange(List.of("zadd", "0", "-1"));
+               return redis.zrange(List.of("zadd", "0", "-1", "WITHSCORES"));
             })
             .compose(v -> {
                ctx.verify(() -> assertThat(v)
-                     // [v1, 10.4, v2, 20.4]
-                     .hasSize(4)
+                     // [[v1, 10.4], [v2, 20.4]]
+                     .hasSize(2)
                      .isInstanceOfSatisfying(MultiType.class, mt -> {
-                        assertThat(mt.get(0).toString()).isEqualTo("v1");
-                        assertThat(mt.get(1).toDouble()).isEqualTo(10.4);
-                        assertThat(mt.get(2).toString()).isEqualTo("v2");
-                        assertThat(mt.get(3).toDouble()).isEqualTo(20.4);
+                        MultiType first = (MultiType) mt.get(0);
+                        MultiType second = (MultiType) mt.get(1);
+                        assertThat(first.get(0).toString()).isEqualTo("v1");
+                        assertThat(first.get(1).toDouble()).isEqualTo(10.4);
+                        assertThat(second.get(0).toString()).isEqualTo("v2");
+                        assertThat(second.get(1).toDouble()).isEqualTo(20.4);
                      }));
                return redis.zcount("zadd", "(10.4", "20.4");
             })
@@ -50,9 +52,9 @@ public class RespSortedSetTest extends AbstractRespTest {
    public void testMixTypes(Vertx vertx, VertxTestContext ctx) {
       RedisAPI redis = createConnection(vertx);
 
-      redis.zadd(List.of("zadd", "10.4", "v1"))
+      redis.zadd(List.of("mix", "10.4", "v1"))
             .onFailure(ctx::failNow)
-            .compose(ignore -> redis.get("zadd"))
+            .compose(ignore -> redis.get("mix"))
             .onComplete(res -> {
                ctx.verify(() -> assertThat(res.failed()).isTrue());
                ctx.verify(() -> assertThat(res.cause())

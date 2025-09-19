@@ -78,9 +78,9 @@
       <module>server/runtime</module>
       <module>server/testdriver</module>
       <module>server/tests</module>
+      <module>server/rollingupgradetests</module>
       <module>client/rest-client</module>
       <module>client/hotrod-client</module>
-      <module>client/hotrod-client-legacy</module>
       <module>client/hotrod-client-test</module>
       <module>client/infinispan-key-value-store-hotrod</module>
       <module>archetypes</module>
@@ -120,11 +120,8 @@
       <!-- unstable and stress because we can have them inside a functional class, for example -->
       <defaultExcludedTestNGGroups>unstable,stress</defaultExcludedTestNGGroups>
       <defaultTestNGGroups>functional,unit,xsite,arquillian</defaultTestNGGroups>
-      <org.infinispan.tests.threads.virtual>false</org.infinispan.tests.threads.virtual>
+      <org.infinispan.tests.threads.virtual>true</org.infinispan.tests.threads.virtual>
       <dir.ispn>../</dir.ispn>
-      <dir.jacoco>${maven.multiModuleProjectDirectory}/jacoco/</dir.jacoco>
-      <dir.jacoco.merged>${dir.jacoco}/merged/</dir.jacoco.merged>
-      <dir.jacoco.report>${dir.jacoco}/report/</dir.jacoco.report>
       <rerunFailingTestsCount>0</rerunFailingTestsCount>
       <testjvm.commonArgs>-XX:+UseG1GC -XX:-TieredCompilation -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${user.dir} -Dio.netty.leakDetection.level=paranoid -XX:+UseCodeCacheFlushing</testjvm.commonArgs>
       <!--
@@ -168,7 +165,7 @@
       <testjvm.dynamicAgentLoading/>
       <testjvm.jdkSpecificArgs>${testjvm.jigsawArgs} -Dnet.bytebuddy.experimental=true ${testjvm.blockHoundRedefinitionArgs} ${testjvm.dynamicAgentLoading}</testjvm.jdkSpecificArgs>
       <testjvm.extraArgs/>
-      <forkJvmArgs>-Xmx2G ${testjvm.commonArgs} ${testjvm.jdkSpecificArgs} ${testjvm.extraArgs}</forkJvmArgs>
+      <forkJvmArgs>-Djdk.virtualThreadScheduler.parallelism=16 -Xmx2G ${testjvm.commonArgs} ${testjvm.jdkSpecificArgs} ${testjvm.extraArgs}</forkJvmArgs>
       <server.jvm>${env.JAVA_HOME}</server.jvm>
       <server.jvm.args>${testjvm.commonArgs} ${testjvm.jdkSpecificArgs} ${testjvm.extraArgs}</server.jvm.args>
       <infinispan.module-suffix>-${project.artifactId}</infinispan.module-suffix>
@@ -190,19 +187,18 @@
       <!-- dependencies version -->
       <versionx.org.infinispan.memcached-client>1.2.3</versionx.org.infinispan.memcached-client>
       <versionx.com.clearspring.analytics.stream>2.9.8</versionx.com.clearspring.analytics.stream>
-      <versionx.com.google.errorprone.error_prone_annotations>2.38.0</versionx.com.google.errorprone.error_prone_annotations>
+      <versionx.com.google.errorprone.error_prone_annotations>2.41.0</versionx.com.google.errorprone.error_prone_annotations>
       <versionx.com.google.guava.guava>33.4.8-jre</versionx.com.google.guava.guava>
-      <versionx.com.google.testing.compile>0.21.0</versionx.com.google.testing.compile>
       <versionx.com.h2database.h2>2.3.232</versionx.com.h2database.h2>
       <versionx.com.ibm.db2>11.5.9.0</versionx.com.ibm.db2>
       <versionx.com.microsoft.azure.azure-storage>8.6.6</versionx.com.microsoft.azure.azure-storage>
-      <versionx.com.microsoft.sqlserver>12.10.0.jre11</versionx.com.microsoft.sqlserver>
+      <versionx.com.microsoft.sqlserver>12.10.1.jre11</versionx.com.microsoft.sqlserver>
       <versionx.com.mysqldatabase.mysql>8.4.0</versionx.com.mysqldatabase.mysql>
       <versionx.com.postgresqldatabase.postgresql>42.7.3</versionx.com.postgresqldatabase.postgresql>
-      <versionx.com.oracle.ojdbc.ojdbc8>19.3.0.0</versionx.com.oracle.ojdbc.ojdbc8>
+      <versionx.com.oracle.database.jdbc.ojdbc11>23.9.0.25.07</versionx.com.oracle.database.jdbc.ojdbc11>
       <versionx.com.squareup.protoparser>4.0.3</versionx.com.squareup.protoparser>
       <versionx.commons-dbcp.commons-dbcp>1.4</versionx.commons-dbcp.commons-dbcp>
-      <versionx.commons-io.commons-io>2.19.0</versionx.commons-io.commons-io>
+      <versionx.commons-io.commons-io>2.20.0</versionx.commons-io.commons-io>
       <versionx.commons-logging.commons-logging>1.3.5</versionx.commons-logging.commons-logging>
       <versionx.javax.activation.activation>1.1.1</versionx.javax.activation.activation>
       <versionx.javax.annotation.javax.annotation-api>1.3.2</versionx.javax.annotation.javax.annotation-api>
@@ -210,16 +206,16 @@
       <versionx.net.spy.spymemcached>2.12.3</versionx.net.spy.spymemcached>
       <versionx.org.antlr.antlr-runtime>3.5.3</versionx.org.antlr.antlr-runtime>
       <versionx.org.apache.avro.avro>1.12.0</versionx.org.apache.avro.avro>
-      <versionx.org.apache.commons.commons-lang3>3.17.0</versionx.org.apache.commons.commons-lang3>
+      <versionx.org.apache.commons.commons-lang3>3.18.0</versionx.org.apache.commons.commons-lang3>
       <versionx.org.apache.commons.commons-math>2.2</versionx.org.apache.commons.commons-math>
       <versionx.org.apache.directory.server.apacheds>2.0.0.AM27</versionx.org.apache.directory.server.apacheds>
       <versionx.org.apache.maven.plugin-tools.maven-plugin-annotations>3.15.1</versionx.org.apache.maven.plugin-tools.maven-plugin-annotations>
       <versionx.org.aspectj.aspectjweaver>1.9.24</versionx.org.aspectj.aspectjweaver>
-      <versionx.org.assertj.assertj-core>3.27.3</versionx.org.assertj.assertj-core>
+      <versionx.org.assertj.assertj-core>3.27.4</versionx.org.assertj.assertj-core>
       <versionx.org.apache.mina.mina>2.2.4</versionx.org.apache.mina.mina>
-      <versionx.org.codehaus.mojo.versions-maven-plugin>2.18.0</versionx.org.codehaus.mojo.versions-maven-plugin>
+      <versionx.org.codehaus.mojo.versions-maven-plugin>2.19.0</versionx.org.codehaus.mojo.versions-maven-plugin>
       <versionx.org.codehaus.mojo.xml-maven-plugin>1.1.0</versionx.org.codehaus.mojo.xml-maven-plugin>
-      <versionx.org.dom4j.dom4j>2.1.4</versionx.org.dom4j.dom4j>
+      <versionx.org.dom4j.dom4j>2.2.0</versionx.org.dom4j.dom4j>
       <versionx.org.javassist.javassist>3.29.1-GA</versionx.org.javassist.javassist>
       <versionx.org.jboss.arquillian.container.arquillian-weld-embedded>4.0.0.Final</versionx.org.jboss.arquillian.container.arquillian-weld-embedded>
       <versionx.org.jboss.jboss-common-core>2.5.0.Final</versionx.org.jboss.jboss-common-core>
@@ -228,21 +224,20 @@
       <versionx.org.jboss.spec.javax.ejb.jboss-ejb-api_3.2_spec>2.0.0.Final</versionx.org.jboss.spec.javax.ejb.jboss-ejb-api_3.2_spec>
       <versionx.org.jboss.spec.javax.jms.jboss-jms-api_2.0_spec>2.0.0.Final</versionx.org.jboss.spec.javax.jms.jboss-jms-api_2.0_spec>
       <versionx.org.jboss.spec.jboss-jakartaee-8.0>1.0.1.Final</versionx.org.jboss.spec.jboss-jakartaee-8.0>
-      <versionx.org.jboss.threads.jboss-threads>3.6.1.Final</versionx.org.jboss.threads.jboss-threads>
-      <versionx.org.jboss.weld.se.weld-se-core>5.1.5.Final</versionx.org.jboss.weld.se.weld-se-core>
-      <versionx.org.jboss.weld.weld-core-impl>5.1.5.Final</versionx.org.jboss.weld.weld-core-impl>
+      <versionx.org.jboss.weld.se.weld-se-core>5.1.6.Final</versionx.org.jboss.weld.se.weld-se-core>
+      <versionx.org.jboss.weld.weld-core-impl>5.1.6.Final</versionx.org.jboss.weld.weld-core-impl>
       <versionx.org.jboss.weld.weld-api>5.0.SP3</versionx.org.jboss.weld.weld-api>
-      <versionx.org.mariadb.jdbc>3.5.2</versionx.org.mariadb.jdbc>
+      <versionx.org.mariadb.jdbc>3.5.5</versionx.org.mariadb.jdbc>
       <versionx.org.objectweb.howl.howl>1.0.1-1</versionx.org.objectweb.howl.howl>
-      <versionx.org.postgresql>42.7.5</versionx.org.postgresql>
-      <versionx.org.testcontainers.testcontainers>1.21.0</versionx.org.testcontainers.testcontainers>
+      <versionx.org.postgresql>42.7.7</versionx.org.postgresql>
+      <versionx.org.testcontainers.testcontainers>1.21.3</versionx.org.testcontainers.testcontainers>
       <!-- Test dependency. Only update if testcontainer dependency > 1.17.6 with newer docker-java version is available in GraalVM metadata repository -->
       <versionx.com.github.docker-java>3.3.5</versionx.com.github.docker-java>
       <versionx.org.testng.testng>6.14.3</versionx.org.testng.testng>
       <versionx.org.twdata.maven.mojo-executor>2.4.1</versionx.org.twdata.maven.mojo-executor>
       <versionx.org.wildfly.common.wildfly-common>1.7.0.Final</versionx.org.wildfly.common.wildfly-common>
       <versionx.org.wildfly.maven.plugins.licenses-plugin>2.4.2.Final</versionx.org.wildfly.maven.plugins.licenses-plugin>
-      <versionx.org.xerial>3.49.1.0</versionx.org.xerial>
+      <versionx.org.xerial>3.50.3.0</versionx.org.xerial>
       <versionx.sun.jdk.jconsole>jdk</versionx.sun.jdk.jconsole>
    </properties>
 
@@ -254,6 +249,14 @@
             <groupId>org.infinispan</groupId>
             <artifactId>infinispan-bom</artifactId>
             <version>${project.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+         </dependency>
+
+         <dependency>
+            <groupId>org.hibernate.search</groupId>
+            <artifactId>hibernate-search-bom</artifactId>
+            <version>${version.hibernate.search}</version>
             <type>pom</type>
             <scope>import</scope>
          </dependency>
@@ -363,12 +366,6 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${versionx.com.google.guava.guava}</version>
-         </dependency>
-         <dependency>
-            <groupId>com.google.testing.compile</groupId>
-            <artifactId>compile-testing</artifactId>
-            <version>${versionx.com.google.testing.compile}</version>
-            <scope>test</scope>
          </dependency>
          <dependency>
             <groupId>com.h2database</groupId>
@@ -863,6 +860,12 @@
             <version>${versionx.org.assertj.assertj-core}</version>
             <scope>test</scope>
          </dependency>
+         <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>${version.awaitility}</version>
+            <scope>test</scope>
+         </dependency>
          <!-- Dependency of org.hibernate:hibernate-core. Overwrite verison to 2.1.3 -->
          <dependency>
             <groupId>org.dom4j</groupId>
@@ -896,6 +899,11 @@
             <scope>test</scope>
          </dependency>
          <dependency>
+            <groupId>org.hibernate.models</groupId>
+            <artifactId>hibernate-models</artifactId>
+            <version>${version.hibernate.models}</version>
+         </dependency>
+         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-core</artifactId>
             <version>${version.hibernate.core}</version>
@@ -910,21 +918,6 @@
             <artifactId>hibernate-jpamodelgen</artifactId>
             <version>${version.hibernate.core}</version>
             <scope>test</scope>
-         </dependency>
-         <dependency>
-            <groupId>org.hibernate.search</groupId>
-            <artifactId>hibernate-search-backend-lucene</artifactId>
-            <version>${version.hibernate.search}</version>
-         </dependency>
-         <dependency>
-            <groupId>org.hibernate.search</groupId>
-            <artifactId>hibernate-search-mapper-pojo-base</artifactId>
-            <version>${version.hibernate.search}</version>
-         </dependency>
-         <dependency>
-            <groupId>org.hibernate.search</groupId>
-            <artifactId>hibernate-search-v5migrationhelper-engine</artifactId>
-            <version>${version.hibernate.search}</version>
          </dependency>
          <dependency>
             <groupId>org.hibernate.lucene-jbossmodules</groupId>
@@ -1380,7 +1373,7 @@
          <dependency>
             <groupId>org.jboss.threads</groupId>
             <artifactId>jboss-threads</artifactId>
-            <version>${versionx.org.jboss.threads.jboss-threads}</version>
+            <version>${version.jboss.threads}</version>
          </dependency>
          <!-- cdi-weld-annotations-test-harness requests weld-api and weld-spi, override the versions to match the impl -->
          <dependency>
@@ -1469,9 +1462,9 @@
             <scope>test</scope>
          </dependency>
          <dependency>
-            <groupId>com.oracle.ojdbc</groupId>
-            <artifactId>ojdbc8</artifactId>
-            <version>${versionx.com.oracle.ojdbc.ojdbc8}</version>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <version>${versionx.com.oracle.database.jdbc.ojdbc11}</version>
             <scope>test</scope>
          </dependency>
          <dependency>
@@ -2080,6 +2073,7 @@
                <version>${version.maven.resources}</version>
                <configuration>
                   <encoding>UTF-8</encoding>
+                  <propertiesEncoding>UTF-8</propertiesEncoding>
                </configuration>
             </plugin>
             <plugin>
@@ -2096,6 +2090,13 @@
                      <excludeRoot>target/generated-sources</excludeRoot>
                   </excludeRoots>
                </configuration>
+               <executions>
+                  <execution>
+                     <goals>
+                        <goal>pmd</goal>
+                     </goals>
+                  </execution>
+               </executions>
             </plugin>
             <plugin>
                <groupId>org.apache.maven.plugins</groupId>
@@ -2777,7 +2778,6 @@
       </profile>
       <profile>
          <id>coverage</id>
-
          <build>
             <plugins>
                <plugin>
@@ -2785,6 +2785,7 @@
                   <configuration>
                      <systemPropertyVariables>
                         <coverage.enabled>true</coverage.enabled>
+                        <version.jacoco>${version.jacoco}</version.jacoco>
                      </systemPropertyVariables>
                   </configuration>
                </plugin>
@@ -2795,28 +2796,6 @@
                   <configuration>
                      <argLine combine.self="override">${forkJvmArgs} ${jacoco.agent.argLine}</argLine>
                   </configuration>
-               </plugin>
-
-               <plugin>
-                  <groupId>org.codehaus.mojo</groupId>
-                  <artifactId>properties-maven-plugin</artifactId>
-                  <version>1.2.1</version>
-                  <executions>
-                     <!-- Copy the ant tasks jar. Needed for ts.jacoco.report-ant . -->
-                     <execution>
-                        <goals>
-                           <goal>set-system-properties</goal>
-                        </goals>
-                        <configuration>
-                           <properties>
-                              <property>
-                                 <name>jacoco.reportPath</name>
-                                 <value>${session.executionRootDirectory}/jacoco</value>
-                              </property>
-                           </properties>
-                        </configuration>
-                     </execution>
-                  </executions>
                </plugin>
 
                <!-- Starting jacoco agent for recording code coverage. -->
@@ -2834,9 +2813,13 @@
                   </executions>
                   <configuration>
                      <propertyName>jacoco.agent.argLine</propertyName>
-                     <destFile>${dir.jacoco}/${project.artifactId}.exec</destFile>
                      <excludes>
                         <exclude>**/logging/**</exclude>
+                        <exclude>org/infinispan/cli/benchmark/jmh_generated/**</exclude>
+                        <exclude>org/infinispan/objectfilter/impl/ql/parse/**</exclude>
+                        <exclude>org/infinispan/server/hotrod/HotRodDecoder.class</exclude>
+                        <exclude>**/*$___Marshaller_*.class</exclude>
+                        <exclude>org/infinispan/**/test/**</exclude>
                      </excludes>
                   </configuration>
                </plugin>
@@ -2867,209 +2850,15 @@
                         <version>${version.ant-nodeps}</version>
                      </dependency>
                   </dependencies>
-                  <executions>
-                     <execution>
-                        <id>copy-generated-classes</id>
-                        <phase>test</phase>
-                        <goals>
-                           <goal>run</goal>
-                        </goals>
-                        <configuration>
-                           <target>
-                              <available file="${project.build.directory}/classes" type="dir" property="hasClasses"/>
-                              <echo level="info" message="Copying test classes to jacoco folder" if:set="hasClasses" xmlns:if="ant:if"/>
-                              <copydir dest="${jacoco.reportPath}/classes"
-                                       src="${project.build.directory}/classes"
-                                       if:set="hasClasses" xmlns:if="ant:if"/>
-                              <available file="${jacoco.reportPath}" type="dir" property="jacocoDirCreated"/>
-                              <mkdir dir="${jacoco.reportPath}" unless:set="jacocoDirCreated" xmlns:unless="ant:unless"/>
-                           </target>
-                        </configuration>
-                     </execution>
-                  </executions>
                </plugin>
             </plugins>
          </build>
       </profile>
       <profile>
          <id>jacocoReport</id>
-
-         <build>
-            <plugins>
-               <plugin>
-                  <groupId>org.codehaus.mojo</groupId>
-                  <artifactId>properties-maven-plugin</artifactId>
-                  <version>1.2.1</version>
-                  <executions>
-                     <execution>
-                        <phase>validate</phase>
-                        <goals>
-                           <goal>set-system-properties</goal>
-                        </goals>
-                        <configuration>
-                           <properties>
-                              <property>
-                                 <name>jacoco.reportPath</name>
-                                 <value>${session.executionRootDirectory}/jacoco</value>
-                              </property>
-                           </properties>
-                        </configuration>
-                     </execution>
-                  </executions>
-               </plugin>
-
-               <plugin>
-                  <groupId>org.apache.maven.plugins</groupId>
-                  <artifactId>maven-antrun-plugin</artifactId>
-                  <executions>
-                     <execution>
-                        <id>delete-existing-jacoco-report</id>
-                        <phase>validate</phase>
-                        <goals>
-                           <goal>run</goal>
-                        </goals>
-                        <configuration>
-                           <target>
-                              <echo>Deleting existing Jacoco Report Directory.</echo>
-                              <delete dir="${dir.jacoco.report}"/>
-                              <delete dir="${dir.jacoco.merged}"/>
-                              <delete dir="${project.build.directory}/classes"/>
-                              <echo>Copying the generated classes file to ${project.build.directory}/classes
-                              </echo>
-                              <copydir dest="${project.build.directory}/classes"
-                                       src="${jacoco.reportPath}/classes"/>
-                           </target>
-                        </configuration>
-                     </execution>
-                  </executions>
-               </plugin>
-
-               <plugin>
-                  <groupId>org.codehaus.mojo</groupId>
-                  <artifactId>build-helper-maven-plugin</artifactId>
-                  <executions>
-                     <execution>
-                        <id>add-source</id>
-                        <phase>validate</phase>
-                        <goals>
-                           <goal>add-source</goal>
-                        </goals>
-                        <configuration>
-                           <sources>
-                              <source>${maven.multiModuleProjectDirectory}/anchored-keys/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/api/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/cdi/common/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/cdi/embedded/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/cdi/remote/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/cli/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/client/hotrod/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/client/hotrod-client/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/client/rest-client/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/commons/all/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/commons/jdk21/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/commons/spi/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/core/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/counter/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/counter-api/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/graalvm/client-hotrod/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/graalvm/commons/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/graalvm/core/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/gridfs/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/hibernate/cache-commons/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/hibernate/cache-spi/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/hibernate/cache-v62/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/jboss-marshalling/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/jcache/commons/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/jcache/embedded/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/jcache/remote/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/lock/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/multimap/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/object-filter/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/persistence/jdbc/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/persistence/jdbc-common/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/persistence/remote/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/persistence/rocksdb/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/persistence/sql/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/quarkus/cli/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/query-core/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/query/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/query-dsl/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/remote-query/remote-query-client/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/remote-query/remote-query-server/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/server/core/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/server/hotrod/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/server/insights/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/server/memcached/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/server/resp/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/server/rest/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/server/router/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/server/runtime/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/spring/spring6/spring6-common/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/spring/spring6/spring6-embedded/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/spring/spring6/spring6-remote/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/spring/spring-boot-3/embedded/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/spring/spring-boot-3/remote/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/tasks/api/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/tasks/manager/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/tasks/scripting/src/main/java</source>
-                              <source>${maven.multiModuleProjectDirectory}/tools/src/main/java</source>
-                           </sources>
-                        </configuration>
-                     </execution>
-                  </executions>
-               </plugin>
-
-               <plugin>
-                  <groupId>org.jacoco</groupId>
-                  <artifactId>jacoco-maven-plugin</artifactId>
-                  <version>${version.jacoco}</version>
-                  <executions>
-                     <execution>
-                        <id>default-merge</id>
-                        <goals>
-                           <goal>merge</goal>
-                        </goals>
-                        <phase>validate</phase>
-                        <configuration>
-                           <fileSets>
-                              <fileSet>
-                                 <directory>${dir.jacoco}</directory>
-                                 <includes>
-                                    <include>*.exec</include>
-                                 </includes>
-                              </fileSet>
-                           </fileSets>
-                           <destFile>${dir.jacoco.merged}/jacoco.exec</destFile>
-                        </configuration>
-                     </execution>
-                     <execution>
-                        <id>default-report</id>
-                        <goals>
-                           <goal>report</goal>
-                        </goals>
-                        <phase>validate</phase>
-                     </execution>
-                  </executions>
-                  <configuration>
-                     <dataFile>${dir.jacoco.merged}/jacoco.exec</dataFile>
-                     <outputDirectory>${dir.jacoco.report}</outputDirectory>
-                     <excludes>
-                        <exclude>**/logging/**</exclude>
-                     </excludes>
-                  </configuration>
-               </plugin>
-            </plugins>
-         </build>
-      </profile>
-      <profile>
-         <id>vthreads-tests</id>
-         <activation>
-            <activeByDefault>false</activeByDefault>
-         </activation>
-         <properties>
-            <org.infinispan.tests.threads.virtual>true</org.infinispan.tests.threads.virtual>
-            <infinispan.test.parallel.threads>${system.numCores}</infinispan.test.parallel.threads>
-         </properties>
+         <modules>
+            <module>jacoco-report-aggregator</module>
+         </modules>
       </profile>
    </profiles>
 </project>

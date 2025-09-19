@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.infinispan.Cache;
+import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.cache.StorageType;
@@ -43,7 +44,7 @@ public class DistributedStreamIteratorWithStoreAsBinaryTest extends MultipleCach
       ConfigurationBuilder builderUsed = new ConfigurationBuilder();
       builderUsed.clustering().cacheMode(cacheMode);
       builderUsed.clustering().hash().numOwners(1);
-      builderUsed.memory().storageType(StorageType.BINARY);
+      builderUsed.memory().storage(StorageType.HEAP).encoding().mediaType(MediaType.APPLICATION_PROTOSTREAM);
       createClusteredCaches(3, new StreamStoreAsBinarySerializationContextImpl(), builderUsed);
    }
 
@@ -149,7 +150,7 @@ public class DistributedStreamIteratorWithStoreAsBinaryTest extends MultipleCach
                MapPair.class,
          },
          schemaFileName = "core.stream.binary.proto",
-         schemaFilePath = "proto/generated",
+         schemaFilePath = "org/infinispan",
          schemaPackageName = "org.infinispan.test.core.stream.binary",
          service = false
    )

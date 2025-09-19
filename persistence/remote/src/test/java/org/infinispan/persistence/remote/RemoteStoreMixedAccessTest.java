@@ -37,7 +37,7 @@ public class RemoteStoreMixedAccessTest extends AbstractInfinispanTest {
    @BeforeClass
    public void setup() throws Exception {
       ConfigurationBuilder serverBuilder = TestCacheManagerFactory.getDefaultCacheConfiguration(false);
-      serverBuilder.memory().size(100)
+      serverBuilder.memory().maxCount(100)
             .expiration().wakeUpInterval(10L);
       serverCacheManager = TestCacheManagerFactory.createCacheManager(
             hotRodCacheConfiguration(serverBuilder));
@@ -46,11 +46,11 @@ public class RemoteStoreMixedAccessTest extends AbstractInfinispanTest {
 
       ConfigurationBuilder clientBuilder = TestCacheManagerFactory.getDefaultCacheConfiguration(false);
       clientBuilder.persistence().addStore(RemoteStoreConfigurationBuilder.class)
-         .rawValues(true)
          .segmented(false)
          .addServer()
             .host(hrServer.getHost())
-            .port(hrServer.getPort());
+            .port(hrServer.getPort())
+            .addProperty(RemoteStore.MIGRATION, "true");
       clientCacheManager = TestCacheManagerFactory.createCacheManager(clientBuilder);
       clientCache = clientCacheManager.getCache();
 
@@ -79,7 +79,7 @@ public class RemoteStoreMixedAccessTest extends AbstractInfinispanTest {
       assertEquals(120, mv1.getLifespan());
       String cv1 = clientCache.get("k1");
       assertEquals("v1", cv1);
-      InternalCacheEntry ice1 = clientCache.getAdvancedCache().getDataContainer().get("k1");
+      InternalCacheEntry ice1 = clientCache.getAdvancedCache().getDataContainer().peek("k1");
       assertEquals(120000, ice1.getLifespan());
    }
 
@@ -91,7 +91,7 @@ public class RemoteStoreMixedAccessTest extends AbstractInfinispanTest {
       assertEquals(30, mv1.getMaxIdle());
       String cv1 = clientCache.get("k1");
       assertEquals("v1", cv1);
-      InternalCacheEntry ice1 = clientCache.getAdvancedCache().getDataContainer().get("k1");
+      InternalCacheEntry ice1 = clientCache.getAdvancedCache().getDataContainer().peek("k1");
       assertEquals(120000, ice1.getLifespan());
       assertEquals(30000, ice1.getMaxIdle());
    }

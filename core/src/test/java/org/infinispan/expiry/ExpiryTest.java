@@ -43,7 +43,7 @@ public class ExpiryTest extends AbstractInfinispanTest {
 
    @BeforeMethod
    public void setUp() {
-      cm = TestCacheManagerFactory.createCacheManager(false);
+      cm = TestCacheManagerFactory.createCacheManager(true);
       timeService = new ControlledTimeService();
       TestingUtil.replaceComponent(cm, TimeService.class, timeService, true);
    }
@@ -60,7 +60,7 @@ public class ExpiryTest extends AbstractInfinispanTest {
       cache.put("k", "v", lifespan, MILLISECONDS);
 
       DataContainer dc = cache.getAdvancedCache().getDataContainer();
-      InternalCacheEntry se = dc.get("k");
+      InternalCacheEntry se = dc.peek("k");
       assert se.getKey().equals("k");
       assert se.getValue().equals("v");
       assert se.getLifespan() == lifespan;
@@ -82,7 +82,7 @@ public class ExpiryTest extends AbstractInfinispanTest {
       cache.put("k", "v", -1, MILLISECONDS, idleTime, MILLISECONDS);
 
       DataContainer dc = cache.getAdvancedCache().getDataContainer();
-      InternalCacheEntry se = dc.get("k");
+      InternalCacheEntry se = dc.peek("k");
       assert se.getKey().equals("k");
       assert se.getValue().equals("v");
       assert se.getLifespan() == -1;

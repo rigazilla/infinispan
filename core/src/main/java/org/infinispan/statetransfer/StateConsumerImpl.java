@@ -35,10 +35,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
-
-import jakarta.transaction.Transaction;
-import jakarta.transaction.TransactionManager;
 
 import org.infinispan.Cache;
 import org.infinispan.commands.CommandsFactory;
@@ -69,6 +68,7 @@ import org.infinispan.distribution.DistributionInfo;
 import org.infinispan.distribution.DistributionManager;
 import org.infinispan.distribution.ch.ConsistentHash;
 import org.infinispan.distribution.ch.KeyPartitioner;
+import org.infinispan.distribution.impl.DistributionManagerImpl;
 import org.infinispan.executors.LimitedExecutor;
 import org.infinispan.factories.annotations.ComponentName;
 import org.infinispan.factories.annotations.Inject;
@@ -111,6 +111,8 @@ import org.reactivestreams.Publisher;
 
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Flowable;
+import jakarta.transaction.Transaction;
+import jakarta.transaction.TransactionManager;
 import net.jcip.annotations.GuardedBy;
 
 /**
@@ -180,7 +182,7 @@ public class StateConsumerImpl implements StateConsumer {
    protected final AtomicBoolean waitingForState = new AtomicBoolean(false);
    protected CompletableFuture<Void> stateTransferFuture = CompletableFutures.completedNull();
 
-   protected final Object transferMapsLock = new Object();
+   protected final Lock transferMapsLock = new ReentrantLock();
 
    /**
     * A map that keeps track of current inbound state transfers by source address. There could be multiple transfers
@@ -235,8 +237,11 @@ public class StateConsumerImpl implements StateConsumer {
    }
 
    public boolean hasActiveTransfers() {
-      synchronized (transferMapsLock) {
+      transferMapsLock.lock();
+      try {
          return !transfersBySource.isEmpty();
+      } finally {
+         transferMapsLock.unlock();
       }
    }
 
@@ -261,8 +266,11 @@ public class StateConsumerImpl implements StateConsumer {
 
    @Override
    public long inflightRequestCount() {
-      synchronized(transferMapsLock) {
+      transferMapsLock.lock();
+      try {
          return transfersBySegment.size();
+      } finally {
+         transferMapsLock.unlock();
       }
    }
 
@@ -358,7 +366,10 @@ public class StateConsumerImpl implements StateConsumer {
          stateTransferLock.acquireExclusiveTopologyLock();
          try {
             this.cacheTopology = cacheTopology;
-            distributionManager.setCacheTopology(cacheTopology);
+            // Protect from mocks
+            if (distributionManager instanceof DistributionManagerImpl dm) {
+               dm.setCacheTopology(cacheTopology);
+            }
          } finally {
             stateTransferLock.releaseExclusiveTopologyLock();
          }
@@ -378,17 +389,17 @@ public class StateConsumerImpl implements StateConsumer {
          if (startConflictResolution || (!isTransactional && !isFetchEnabled)) {
             return CompletableFutures.completedNull();
          }
-         IntSet addedSegments, removedSegments;
+         IntSet addedSegments;
          if (previousWriteCh == null) {
             // If we have any segments assigned in the initial CH, it means we are the first member.
             // If we are not the first member, we can only add segments via rebalance.
-            removedSegments = IntSets.immutableEmptySet();
             addedSegments = IntSets.immutableEmptySet();
 
             if (log.isTraceEnabled()) {
                log.tracef("On cache %s we have: added segments: %s", cacheName, addedSegments);
             }
          } else {
+            IntSet removedSegments;
             IntSet previousSegments = getOwnedSegments(previousWriteCh);
 
             if (newWriteSegments.size() == numSegments) {
@@ -446,7 +457,7 @@ public class StateConsumerImpl implements StateConsumer {
             if (changed) {
                stopApplyingState(stateTransferTopologyId);
 
-               if (cacheNotifier.hasListener(DataRehashed.class)) {
+               if (cacheNotifier.hasListener(DataRehashed.class) && previousCacheTopology != null) {
                   return cacheNotifier.notifyDataRehashed(previousCacheTopology.getCurrentCH(),
                                                           previousCacheTopology.getPendingCH(),
                                                           previousCacheTopology.getUnionCH(),
@@ -629,15 +640,20 @@ public class StateConsumerImpl implements StateConsumer {
       }
       IntSet mySegments = IntSets.from(wCh.getSegmentsForOwner(rpcManager.getAddress()));
       Iterator<StateChunk> iterator = stateChunks.iterator();
-      return applyStateIteration(sender, mySegments, iterator).whenComplete((v, t) -> {
-         if (log.isTraceEnabled()) {
+      CompletionStage<?> stage = applyStateIteration(sender, mySegments, iterator);
+      if (log.isTraceEnabled()) {
+         stage = stage.whenComplete((v, t) -> {
             log.tracef("After applying the received state the data container of cache %s has %d keys", cacheName,
-                       dataContainer.sizeIncludingExpired());
-            synchronized (transferMapsLock) {
-               log.tracef("Segments not received yet for cache %s: %s", cacheName, transfersBySource);
+                  dataContainer.sizeIncludingExpired());
+            transferMapsLock.lock();
+            try {
+               log.tracef("Segments not received yet for cache %s: %s", cacheName, transfersBySegment.keySet());
+            } finally {
+               transferMapsLock.unlock();
             }
-         }
-      });
+         });
+      }
+      return stage;
    }
 
    private CompletionStage<?> applyStateIteration(Address sender, IntSet mySegments,
@@ -662,13 +678,16 @@ public class StateConsumerImpl implements StateConsumer {
 
       // Notify the inbound task that a chunk of cache entries was received
       InboundTransferTask inboundTransfer;
-      synchronized (transferMapsLock) {
+      transferMapsLock.lock();
+      try {
          List<InboundTransferTask> inboundTransfers = transfersBySegment.get(stateChunk.getSegmentId());
          if (inboundTransfers != null) {
             inboundTransfer = inboundTransfers.stream().filter(task -> task.getSource().equals(sender)).findFirst().orElse(null);
          } else {
             inboundTransfer = null;
          }
+      } finally {
+         transferMapsLock.unlock();
       }
       if (inboundTransfer != null) {
          return doApplyState(sender, stateChunk.getSegmentId(), stateChunk.getCacheEntries())
@@ -688,12 +707,16 @@ public class StateConsumerImpl implements StateConsumer {
    }
 
    private void onCompletedSegment(int segmentId, InboundTransferTask inboundTransfer) {
-      synchronized (transferMapsLock) {
+      transferMapsLock.lock();
+      try {
          List<InboundTransferTask> innerTransfers = transfersBySegment.get(segmentId);
          if (innerTransfers != null && innerTransfers.remove(inboundTransfer) && innerTransfers.isEmpty()) {
             commitManager.stopTrackFor(PUT_FOR_STATE_TRANSFER, segmentId);
             transfersBySegment.remove(segmentId);
+            progressTracker.removeTasks(1);
          }
+      } finally {
+         transferMapsLock.unlock();
       }
    }
 
@@ -858,7 +881,8 @@ public class StateConsumerImpl implements StateConsumer {
       running = false;
 
       try {
-         synchronized (transferMapsLock) {
+         transferMapsLock.lock();
+         try {
             // cancel all inbound transfers
             // make a copy and then clear both maps so that cancel doesn't interfere with the iteration
             Collection<List<InboundTransferTask>> transfers = new ArrayList<>(transfersBySource.values());
@@ -867,6 +891,8 @@ public class StateConsumerImpl implements StateConsumer {
             for (List<InboundTransferTask> inboundTransfers : transfers) {
                inboundTransfers.forEach(InboundTransferTask::cancel);
             }
+         } finally {
+            transferMapsLock.unlock();
          }
          requestedTransactionalSegments.clear();
          stateRequestExecutor.shutdownNow();
@@ -1094,7 +1120,8 @@ public class StateConsumerImpl implements StateConsumer {
     * @param removedSegments segments to be cancelled
     */
    protected void cancelTransfers(IntSet removedSegments) {
-      synchronized (transferMapsLock) {
+      transferMapsLock.lock();
+      try {
          List<Integer> segmentsToCancel = new ArrayList<>(removedSegments);
          while (!segmentsToCancel.isEmpty()) {
             int segmentId = segmentsToCancel.remove(0);
@@ -1113,6 +1140,8 @@ public class StateConsumerImpl implements StateConsumer {
                }
             }
          }
+      } finally {
+         transferMapsLock.unlock();
       }
    }
 
@@ -1189,7 +1218,8 @@ public class StateConsumerImpl implements StateConsumer {
     */
    private void restartBrokenTransfers(CacheTopology cacheTopology, IntSet addedSegments) {
       Set<Address> members = new HashSet<>(cacheTopology.getReadConsistentHash().getMembers());
-      synchronized (transferMapsLock) {
+      transferMapsLock.lock();
+      try {
          for (Iterator<Map.Entry<Address, List<InboundTransferTask>>> it =
               transfersBySource.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<Address, List<InboundTransferTask>> entry = it.next();
@@ -1215,6 +1245,8 @@ public class StateConsumerImpl implements StateConsumer {
 
          // exclude those that are already in progress from a valid source
          addedSegments.removeAll(transfersBySegment.keySet());
+      } finally {
+         transferMapsLock.unlock();
       }
    }
 
@@ -1226,7 +1258,8 @@ public class StateConsumerImpl implements StateConsumer {
    private void addTransfer(Address source, IntSet segmentsFromSource) {
       final InboundTransferTask inboundTransfer;
 
-      synchronized (transferMapsLock) {
+      transferMapsLock.lock();
+      try {
          if (log.isTraceEnabled()) {
             log.tracef("Adding transfer from %s for segments %s", source, segmentsFromSource);
          }
@@ -1241,6 +1274,8 @@ public class StateConsumerImpl implements StateConsumer {
          inboundTransfer = new InboundTransferTask(segmentsFromSource, source, cacheTopology.getTopologyId(),
                                                    rpcManager, commandsFactory, timeout, cacheName, true);
          addTransfer(inboundTransfer, segmentsFromSource);
+      } finally {
+         transferMapsLock.unlock();
       }
 
       stateRequestExecutor.executeAsync(() -> {
@@ -1263,7 +1298,8 @@ public class StateConsumerImpl implements StateConsumer {
    }
 
    protected void removeTransfer(InboundTransferTask inboundTransfer) {
-      synchronized (transferMapsLock) {
+      transferMapsLock.lock();
+      try {
          if (log.isTraceEnabled()) log.tracef("Removing inbound transfers from node %s for segments %s",
                inboundTransfer.getSegments(), inboundTransfer.getSource(), cacheName);
          List<InboundTransferTask> transfers = transfersBySource.get(inboundTransfer.getSource());
@@ -1281,8 +1317,11 @@ public class StateConsumerImpl implements StateConsumer {
             }
          }
 
-         if (!hasActiveTransfers())
+         if (transfersBySource.isEmpty()) {
             progressTracker.finishedAllTasks();
+         }
+      } finally {
+         transferMapsLock.unlock();
       }
    }
 

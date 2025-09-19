@@ -18,9 +18,7 @@ import org.infinispan.CacheSet;
 import org.infinispan.LockedStream;
 import org.infinispan.batch.BatchContainer;
 import org.infinispan.commons.CacheException;
-import org.infinispan.commons.dataconversion.Encoder;
 import org.infinispan.commons.dataconversion.MediaType;
-import org.infinispan.commons.dataconversion.Wrapper;
 import org.infinispan.container.DataContainer;
 import org.infinispan.container.entries.CacheEntry;
 import org.infinispan.context.Flag;
@@ -495,57 +493,6 @@ public abstract class AbstractDelegatingAdvancedCache<K, V> extends AbstractDele
    }
 
    @Override
-   public AdvancedCache<?, ?> withEncoding(Class<? extends Encoder> encoder) {
-      AdvancedCache encoderCache = cache.withEncoding(encoder);
-      if (encoderCache != cache) {
-         return rewrap(encoderCache);
-      } else {
-         return this;
-      }
-   }
-
-   @Override
-   public AdvancedCache withEncoding(Class<? extends Encoder> keyEncoder, Class<? extends Encoder> valueEncoder) {
-      AdvancedCache encoderCache = cache.withEncoding(keyEncoder, valueEncoder);
-      if (encoderCache != cache) {
-         return rewrap(encoderCache);
-      } else {
-         return this;
-      }
-   }
-
-   @Override
-   public AdvancedCache<?, ?> withKeyEncoding(Class<? extends Encoder> encoder) {
-      AdvancedCache encoderCache = cache.withKeyEncoding(encoder);
-      if (encoderCache != cache) {
-         return rewrap(encoderCache);
-      } else {
-         return this;
-      }
-   }
-
-   @Deprecated(forRemoval=true, since = "11.0")
-   @Override
-   public AdvancedCache<K, V> withWrapping(Class<? extends Wrapper> wrapper) {
-      AdvancedCache<K, V> encoderCache = cache.withWrapping(wrapper);
-      if (encoderCache != cache) {
-         return this.rewrap(encoderCache);
-      } else {
-         return this;
-      }
-   }
-
-   @Override
-   public AdvancedCache<?, ?> withMediaType(String keyMediaType, String valueMediaType) {
-      AdvancedCache encoderCache = this.cache.withMediaType(keyMediaType, valueMediaType);
-      if (encoderCache != cache) {
-         return rewrap(encoderCache);
-      } else {
-         return this;
-      }
-   }
-
-   @Override
    public <K1, V1> AdvancedCache<K1, V1> withMediaType(MediaType keyMediaType, MediaType valueMediaType) {
       AdvancedCache encoderCache = this.cache.withMediaType(keyMediaType, valueMediaType);
       if (encoderCache != cache) {
@@ -558,17 +505,6 @@ public abstract class AbstractDelegatingAdvancedCache<K, V> extends AbstractDele
    @Override
    public AdvancedCache<K, V> withStorageMediaType() {
       AdvancedCache<K, V> encoderCache = this.cache.withStorageMediaType();
-      if (encoderCache != cache) {
-         return rewrap(encoderCache);
-      } else {
-         return this;
-      }
-   }
-
-   @Deprecated(forRemoval=true, since = "11.0")
-   @Override
-   public AdvancedCache<K, V> withWrapping(Class<? extends Wrapper> keyWrapper, Class<? extends Wrapper> valueWrapper) {
-      AdvancedCache<K, V> encoderCache = cache.withWrapping(keyWrapper, valueWrapper);
       if (encoderCache != cache) {
          return rewrap(encoderCache);
       } else {

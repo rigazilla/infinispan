@@ -4,6 +4,7 @@ import static org.jboss.logging.Logger.Level.ERROR;
 import static org.jboss.logging.Logger.Level.WARN;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -29,8 +30,8 @@ import org.jboss.logging.annotations.ValidIdRange;
 @MessageLogger(projectCode = "ISPN")
 @ValidIdRange(min = 8001, max = 9000)
 public interface Log extends BasicLogger {
-   Log CONFIG = Logger.getMessageLogger(Log.class, org.infinispan.util.logging.Log.LOG_ROOT + "CONFIG");
-   Log PERSISTENCE = Logger.getMessageLogger(Log.class, org.infinispan.util.logging.Log.LOG_ROOT + "PERSISTENCE");
+   Log CONFIG = Logger.getMessageLogger(MethodHandles.lookup(), Log.class, org.infinispan.util.logging.Log.LOG_ROOT + "CONFIG");
+   Log PERSISTENCE = Logger.getMessageLogger(MethodHandles.lookup(), Log.class, org.infinispan.util.logging.Log.LOG_ROOT + "PERSISTENCE");
 
    @LogMessage(level = ERROR)
    @Message(value = "Failed clearing cache store", id = 8001)
@@ -83,9 +84,8 @@ public interface Log extends BasicLogger {
    @Message(value = "Could not find a connection in %s under the name '%s'", id = 8015)
    IllegalStateException connectionNotFound(String where, String dataSourceName);
 
-   @LogMessage(level = ERROR)
    @Message(value = "Could not lookup connection with datasource %s", id = 8016)
-   void namingExceptionLookingUpConnection(String dataSourceName, @Cause NamingException e);
+   PersistenceException namingExceptionLookingUpConnection(String dataSourceName, @Cause NamingException e);
 
    @LogMessage(level = WARN)
    @Message(value = "Failed to close naming context.", id = 8017)
@@ -277,4 +277,10 @@ public interface Log extends BasicLogger {
    @LogMessage(level = WARN)
    @Message(value = "There was no JDBC metadata present in table %s, unable to confirm if segments are properly configured! Segments are assumed to be properly configured.", id = 8072)
    void sqlMetadataNotPresent(String tableName);
+
+   @Message(value = "Either jndiUrl or dataSource must be set", id = 8073)
+   CacheConfigurationException jndiUrlOrDataSourceRequired();
+
+   @Message(value = "Both jndiUrl and dataSource must not be set", id = 8074)
+   CacheConfigurationException jndiUrlAndDataSourceSet();
 }

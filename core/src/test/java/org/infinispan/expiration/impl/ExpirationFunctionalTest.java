@@ -41,11 +41,9 @@ public class ExpirationFunctionalTest extends SingleCacheManagerTest {
    @Factory
    public Object[] factory() {
       return new Object[]{
-         new ExpirationFunctionalTest().cacheMode(CacheMode.LOCAL).withStorage(StorageType.BINARY),
-         new ExpirationFunctionalTest().cacheMode(CacheMode.LOCAL).withStorage(StorageType.OBJECT),
+         new ExpirationFunctionalTest().cacheMode(CacheMode.LOCAL).withStorage(StorageType.HEAP),
          new ExpirationFunctionalTest().cacheMode(CacheMode.LOCAL).withStorage(StorageType.OFF_HEAP),
-         new ExpirationFunctionalTest().cacheMode(CacheMode.DIST_SYNC).withStorage(StorageType.BINARY),
-         new ExpirationFunctionalTest().cacheMode(CacheMode.DIST_SYNC).withStorage(StorageType.OBJECT),
+         new ExpirationFunctionalTest().cacheMode(CacheMode.DIST_SYNC).withStorage(StorageType.HEAP),
          new ExpirationFunctionalTest().cacheMode(CacheMode.DIST_SYNC).withStorage(StorageType.OFF_HEAP)
       };
    }
@@ -66,6 +64,7 @@ public class ExpirationFunctionalTest extends SingleCacheManagerTest {
       // Create the cache manager, but don't start it until we replace the time service
       EmbeddedCacheManager cm = createCacheManager(builder);
       TestingUtil.replaceComponent(cm, TimeService.class, timeService, true);
+      cm.start();
       cache = cm.getCache();
       expirationManager = cache.getAdvancedCache().getExpirationManager();
       afterCacheCreated(cm);

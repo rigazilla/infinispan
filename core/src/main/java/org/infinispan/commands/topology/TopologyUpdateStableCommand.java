@@ -1,6 +1,7 @@
 package org.infinispan.commands.topology;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 
 import org.infinispan.commons.marshall.ProtoStreamTypeIds;
@@ -12,9 +13,7 @@ import org.infinispan.protostream.annotations.ProtoField;
 import org.infinispan.protostream.annotations.ProtoTypeId;
 import org.infinispan.remoting.transport.Address;
 import org.infinispan.remoting.transport.NodeVersion;
-import org.infinispan.remoting.transport.jgroups.JGroupsAddress;
 import org.infinispan.topology.CacheTopology;
-import org.infinispan.topology.PersistentUUID;
 
 /**
  * Update the stable topology.
@@ -31,7 +30,7 @@ public class TopologyUpdateStableCommand extends AbstractCacheControlCommand {
    final String cacheName;
 
    @ProtoField(2)
-   final List<PersistentUUID> persistentUUIDs;
+   final List<UUID> persistentUUIDs;
 
    @ProtoField(3)
    final int rebalanceId;
@@ -52,18 +51,18 @@ public class TopologyUpdateStableCommand extends AbstractCacheControlCommand {
    final boolean topologyRestored;
 
    @ProtoField(9)
-   List<JGroupsAddress> getActualMembers() {
-      return (List<JGroupsAddress>)(List<?>) actualMembers;
+   List<Address> getActualMembers() {
+      return actualMembers;
    }
 
    @ProtoFactory
-   TopologyUpdateStableCommand(String cacheName, List<PersistentUUID> persistentUUIDs, int rebalanceId, int topologyId,
-                               int viewId, WrappedMessage currentCH, WrappedMessage pendingCH, List<JGroupsAddress> actualMembers,
+   TopologyUpdateStableCommand(String cacheName, List<UUID> persistentUUIDs, int rebalanceId, int topologyId,
+                               int viewId, WrappedMessage currentCH, WrappedMessage pendingCH, List<Address> actualMembers,
                                boolean topologyRestored) {
       this.currentCH = currentCH;
       this.pendingCH = pendingCH;
       this.cacheName = cacheName;
-      this.actualMembers = (List<Address>)(List<?>) actualMembers;
+      this.actualMembers = actualMembers;
       this.persistentUUIDs = persistentUUIDs;
       this.rebalanceId = rebalanceId;
       this.topologyId = topologyId;

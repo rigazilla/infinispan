@@ -60,7 +60,7 @@ public class EagerNearCacheStressTest {
 
    RemoteCacheManager getRemoteCacheManager(int port, NearCacheMode nearCacheMode, int maxEntries) {
       ConfigurationBuilder builder = HotRodClientTestingUtil.newRemoteConfigurationBuilder();
-      builder.nearCache().mode(nearCacheMode).maxEntries(maxEntries);
+      builder.remoteCache("").nearCacheMode(nearCacheMode).nearCacheMaxEntries(maxEntries);
       builder.addServer().host("127.0.0.1").port(port);
       return new RemoteCacheManager(builder.build());
    }
@@ -117,7 +117,7 @@ public class EagerNearCacheStressTest {
       });
    }
 
-   static abstract class Runner implements Callable<Void> {
+   abstract static class Runner implements Callable<Void> {
 
       final CyclicBarrier barrier;
       final RemoteCache<Integer, String> remote;
@@ -143,7 +143,7 @@ public class EagerNearCacheStressTest {
       abstract void run();
    }
 
-   final static class Main extends Runner {
+   static final class Main extends Runner {
       static final ThreadLocalRandom R = ThreadLocalRandom.current();
 
       Main(CyclicBarrier barrier, RemoteCache<Integer, String> remote, double getRatio) {

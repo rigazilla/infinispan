@@ -31,7 +31,7 @@ public interface Invocation {
    Set<String> paths();
 
    /**
-    * The user friendly name of the invocation
+    * The user-friendly name of the invocation
     */
    default String getName() {
       return toString();
@@ -58,4 +58,11 @@ public interface Invocation {
    AuthorizationPermission permission();
 
    AuditContext auditContext();
+
+   /**
+    * Verify whether the invocation requires the cache manager to be started.
+    *
+    * @return <code>true</code> means the cache manager must be running. <code>false</code>, otherwise.
+    */
+   boolean requireCacheManagerStart();
 }

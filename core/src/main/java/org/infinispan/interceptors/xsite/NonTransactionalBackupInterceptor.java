@@ -25,7 +25,7 @@ import org.infinispan.container.impl.InternalEntryFactory;
 import org.infinispan.context.InvocationContext;
 import org.infinispan.distribution.DistributionInfo;
 import org.infinispan.distribution.LocalizedCacheTopology;
-import org.infinispan.encoding.DataConversion;
+import org.infinispan.encoding.impl.DataConversionInternal;
 import org.infinispan.factories.annotations.Inject;
 import org.infinispan.functional.impl.Params;
 import org.infinispan.interceptors.InvocationSuccessFunction;
@@ -153,7 +153,7 @@ public class NonTransactionalBackupInterceptor extends BaseBackupInterceptor {
          if (info.isPrimary() || (!ctx.isOriginLocal() && info.isWriteOwner())) {
             // track the update for the ASYNC cross-site
             // backup owner only track updates when the context is remote.
-            iracManager.trackUpdatedKey(info.segmentId(), key, writeCommand.getCommandInvocationId());
+            iracManager.trackUpdatedKey(info.segmentId(), key, writeCommand.getCommandInvocationId().getRequestUUID());
          }
          if (!info.isPrimary()) {
             if (log.isTraceEnabled()) {
@@ -174,8 +174,8 @@ public class NonTransactionalBackupInterceptor extends BaseBackupInterceptor {
       //TODO: Converters
       WriteCommand crossSiteCommand = commandsFactory.buildWriteOnlyManyEntriesCommand(map,
             MarshallableFunctions.setInternalCacheValueConsumer(),
-            Params.fromFlagsBitSet(writeCommand.getFlagsBitSet()), DataConversion.IDENTITY_KEY,
-            DataConversion.IDENTITY_VALUE);
+            Params.fromFlagsBitSet(writeCommand.getFlagsBitSet()), DataConversionInternal.IDENTITY_KEY,
+            DataConversionInternal.IDENTITY_VALUE);
       return backupSender.backupWrite(crossSiteCommand, writeCommand).thenReturn(ctx, writeCommand, rv);
    }
 }

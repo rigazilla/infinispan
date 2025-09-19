@@ -18,7 +18,6 @@ import org.infinispan.client.hotrod.test.SingleHotRodServerTest;
 import org.infinispan.commons.api.query.Query;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
-import org.infinispan.configuration.cache.PrivateIndexingConfigurationBuilder;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.protostream.SerializationContextInitializer;
 import org.infinispan.query.model.Sale;
@@ -44,13 +43,12 @@ public class LargePutAllPressureTest extends SingleHotRodServerTest {
    @Override
    protected EmbeddedCacheManager createCacheManager() throws Exception {
       ConfigurationBuilder config = hotRodCacheConfiguration(getDefaultClusteredCacheConfig(CacheMode.LOCAL, useTransactions()));
-      config.addModule(PrivateIndexingConfigurationBuilder.class).rebatchRequestsSize(200);
       config.indexing().enable()
             .storage(LOCAL_HEAP)
                .addIndexedEntity("Sale")
             .writer()
-               .queueCount(1)
-               .queueSize(200);
+               .queueCount(10)
+               .queueSize(100);
 
       return TestCacheManagerFactory.createServerModeCacheManager(contextInitializer(), config);
    }

@@ -43,7 +43,7 @@ public class CacheListenerVisibilityTest extends SingleCacheManagerTest {
 
    @Override
    protected EmbeddedCacheManager createCacheManager() throws Exception {
-      return TestCacheManagerFactory.createCacheManager(false);
+      return TestCacheManagerFactory.createCacheManager(true);
    }
 
    public void testSizeVisibility() throws Exception {
@@ -385,7 +385,7 @@ public class CacheListenerVisibilityTest extends SingleCacheManagerTest {
 
    }
 
-   public static abstract class WithAssertListener {
+   public abstract static class WithAssertListener {
 
       Log log = LogFactory.getLog(WithAssertListener.class);
 

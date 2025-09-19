@@ -491,7 +491,7 @@ public class EvictionWithConcurrentOperationsTest extends SingleCacheManagerTest
 
    protected void assertInMemory(Object key, Object value) {
       DataContainer<?, ?> container = cache.getAdvancedCache().getDataContainer();
-      InternalCacheEntry<?, ?> entry = container.get(key);
+      InternalCacheEntry<?, ?> entry = container.peek(key);
       assertNotNull("Key " + key + " does not exist in data container", entry);
       assertEquals("Wrong value for key " + key + " in data container", value, entry.getValue());
 
@@ -544,7 +544,7 @@ public class EvictionWithConcurrentOperationsTest extends SingleCacheManagerTest
    }
 
    protected void configureEviction(ConfigurationBuilder builder) {
-      builder.memory().size(1);
+      builder.memory().maxCount(1);
    }
 
    protected void configurePersistence(ConfigurationBuilder builder) {
@@ -775,7 +775,7 @@ public class EvictionWithConcurrentOperationsTest extends SingleCacheManagerTest
    @ProtoSchema(
          includeClasses = SameHashCodeKey.class,
          schemaFileName = "test.core.eviction.proto",
-         schemaFilePath = "proto/generated",
+         schemaFilePath = "org/infinispan",
          schemaPackageName = "org.infinispan.test.core.eviction",
          service = false
    )

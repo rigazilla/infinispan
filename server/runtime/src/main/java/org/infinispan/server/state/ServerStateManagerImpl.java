@@ -50,6 +50,8 @@ import io.netty.channel.group.ChannelGroup;
 import io.netty.handler.ipfilter.IpFilterRuleType;
 import io.netty.handler.ssl.SslHandler;
 
+import static java.util.Objects.requireNonNullElse;
+
 /**
  * Manages cluster-wide server state for a given {@link EmbeddedCacheManager}. This handles:
  * <ul>
@@ -67,18 +69,20 @@ public final class ServerStateManagerImpl implements ServerStateManager {
 
    private final EmbeddedCacheManager cacheManager;
    private final Server server;
-   private final Cache<ScopedState, Object> cache;
    private final IgnoredCaches ignored = new IgnoredCaches();
+   private volatile Cache<ScopedState, Object> cache;
    private volatile boolean hasIgnores;
 
-   public ServerStateManagerImpl(Server server, EmbeddedCacheManager cacheManager, GlobalConfigurationManager configurationManager) {
+   public ServerStateManagerImpl(Server server, EmbeddedCacheManager cacheManager) {
       this.server = server;
       this.cacheManager = cacheManager;
-      this.cache = configurationManager.getStateCache();
    }
 
    @Override
    public void start() {
+      GlobalConfigurationManager gcm = SecurityActions.getGlobalComponentRegistry(cacheManager)
+                  .getComponent(GlobalConfigurationManager.class);
+      this.cache = gcm.getStateCache();
       updateLocalIgnoredCaches((IgnoredCaches) cache.get(IGNORED_CACHES_KEY));
 
       // Register the listeners which will react on
@@ -164,7 +168,7 @@ public final class ServerStateManagerImpl implements ServerStateManager {
                ConnectionMetadata metadata = ConnectionMetadata.getInstance(ch);
                Json o = Json.object();
                o.set("id", metadata.id());
-               o.set("server-node-name", server.getCacheManager().getAddress().toString());
+               o.set("server-node-name", requireNonNullElse(cacheManager.getAddress(), "local").toString());
                o.set("name", metadata.clientName());
                o.set("created", metadata.created());
                o.set("principal", Security.getSubjectUserPrincipalName(metadata.subject()));

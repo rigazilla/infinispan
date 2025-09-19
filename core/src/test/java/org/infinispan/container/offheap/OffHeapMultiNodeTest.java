@@ -36,7 +36,7 @@ public class OffHeapMultiNodeTest extends MultipleCacheManagersTest {
    @Override
    protected void createCacheManagers() throws Throwable {
       ConfigurationBuilder dcc = getDefaultClusteredCacheConfig(CacheMode.DIST_SYNC, false);
-      dcc.memory().storageType(StorageType.OFF_HEAP);
+      dcc.memory().storage(StorageType.OFF_HEAP);
       dcc.clustering().stateTransfer().timeout(30, TimeUnit.SECONDS);
       createCluster(dcc, 4);
       waitForClusterToForm();
@@ -172,8 +172,8 @@ public class OffHeapMultiNodeTest extends MultipleCacheManagersTest {
       return (DataContainer<WrappedByteArray, WrappedByteArray>) obj;
    }
 
-   final static int KEY_SIZE = 20;
-   final static int VALUE_SIZE = 1024;
+   static final int KEY_SIZE = 20;
+   static final int VALUE_SIZE = 1024;
 
    byte[] randomBytes(int size) {
       byte[] bytes = new byte[size];

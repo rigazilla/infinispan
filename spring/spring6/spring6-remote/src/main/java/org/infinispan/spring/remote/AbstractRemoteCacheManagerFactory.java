@@ -96,17 +96,12 @@ public abstract class AbstractRemoteCacheManagerFactory {
          properties.setProperty(ConfigurationProperties.MARSHALLER, marshaller);
       }
 
-      if (!configurationPropertiesOverrides.containsProperty(ConfigurationProperties.JAVA_SERIAL_WHITELIST) &&
-          !configurationPropertiesOverrides.containsProperty(ConfigurationProperties.JAVA_SERIAL_ALLOWLIST)) {
+      if (!configurationPropertiesOverrides.containsProperty(ConfigurationProperties.JAVA_SERIAL_ALLOWLIST)) {
          Set<String> userRegexSet = new LinkedHashSet<>();
          Collections.addAll(userRegexSet, SPRING_JAVA_SERIAL_ALLOWLIST.split(","));
          String userAllowList = properties.getProperty(ConfigurationProperties.JAVA_SERIAL_ALLOWLIST);
          if (userAllowList != null && !userAllowList.isEmpty()) {
             Collections.addAll(userRegexSet, userAllowList.split(","));
-         }
-         String userWhiteList = properties.getProperty(ConfigurationProperties.JAVA_SERIAL_WHITELIST);
-         if (userWhiteList != null && !userWhiteList.isEmpty()) {
-            Collections.addAll(userRegexSet, userWhiteList.split(","));
          }
          String allowList = String.join(",", userRegexSet);
          properties.setProperty(ConfigurationProperties.JAVA_SERIAL_ALLOWLIST, allowList);
@@ -115,23 +110,10 @@ public abstract class AbstractRemoteCacheManagerFactory {
 
    private Properties loadPropertiesFromFile(final Resource propertiesFileLocation)
          throws IOException {
-      InputStream propsStream = null;
-      try {
-         propsStream = propertiesFileLocation.getInputStream();
+      try (InputStream propsStream = propertiesFileLocation.getInputStream()) {
          final Properties answer = new Properties();
          answer.load(propsStream);
-
          return answer;
-      } finally {
-         if (propsStream != null) {
-            try {
-               propsStream.close();
-            } catch (final IOException e) {
-               logger.warn(
-                     "Failed to close InputStream used to load configuration properties: "
-                           + e.getMessage(), e);
-            }
-         }
       }
    }
 
@@ -189,16 +171,6 @@ public abstract class AbstractRemoteCacheManagerFactory {
    }
 
    /**
-    * @param allowListRegex
-    * @see ConfigurationPropertiesOverrides#setClassAllowList(String)
-    * @deprecated Use {@link #setClassAllowList(String)} instead. Will be removed in 14.0.
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   public void setClassWhiteList(final String allowListRegex) {
-      setClassAllowList(allowListRegex);
-   }
-
-   /**
     * @param asyncExecutorFactory
     * @see ConfigurationPropertiesOverrides#setAsyncExecutorFactory(String)
     */
@@ -230,22 +202,6 @@ public abstract class AbstractRemoteCacheManagerFactory {
    }
 
    /**
-    * @deprecated Since 12.0, does nothing and will be removed in 15.0
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   public void setKeySizeEstimate(final int keySizeEstimate) {
-      this.configurationPropertiesOverrides.setKeySizeEstimate(keySizeEstimate);
-   }
-
-   /**
-    * @deprecated Since 12.0, does nothing and will be removed in 15.0
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   public void setValueSizeEstimate(final int valueSizeEstimate) {
-      this.configurationPropertiesOverrides.setValueSizeEstimate(valueSizeEstimate);
-   }
-
-   /**
     * @param forceReturnValues
     * @see ConfigurationPropertiesOverrides#setForceReturnValues(boolean)
     */
@@ -267,29 +223,5 @@ public abstract class AbstractRemoteCacheManagerFactory {
     */
    public void setWriteTimeout(final long writeTimeout) {
       this.configurationPropertiesOverrides.setWriteTimeout(writeTimeout);
-   }
-
-   /**
-    * @param mode
-    * @see ConfigurationPropertiesOverrides#setNearCacheMode(String)
-    */
-   public void setNearCacheMode(String mode) {
-      this.configurationPropertiesOverrides.setNearCacheMode(mode);
-   }
-
-   /**
-    * @param maxEntries
-    * @see ConfigurationPropertiesOverrides#setNearCacheMaxEntries(int)
-    */
-   public void setNearCacheMaxEntries(int maxEntries) {
-      this.configurationPropertiesOverrides.setNearCacheMaxEntries(maxEntries);
-   }
-
-   /**
-    * @param pattern
-    * @see ConfigurationPropertiesOverrides#setNearCacheNamePattern(String)
-    */
-   public void setNearCacheNamePattern(String pattern) {
-      this.configurationPropertiesOverrides.setNearCacheNamePattern(pattern);
    }
 }

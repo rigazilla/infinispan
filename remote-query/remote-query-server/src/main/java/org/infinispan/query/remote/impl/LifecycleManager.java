@@ -9,7 +9,6 @@ import javax.management.ObjectName;
 import org.infinispan.AdvancedCache;
 import org.infinispan.Cache;
 import org.infinispan.commons.CacheException;
-import org.infinispan.commons.dataconversion.ByteArrayWrapper;
 import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.commons.dataconversion.Transcoder;
 import org.infinispan.commons.internal.InternalCacheNames;
@@ -65,9 +64,6 @@ public final class LifecycleManager implements ModuleLifecycle {
    private void initProtobufMetadataManager(BasicComponentRegistry bcr) {
       ProtobufMetadataManagerImpl protobufMetadataManager = new ProtobufMetadataManagerImpl();
       bcr.registerComponent(ProtobufMetadataManager.class, protobufMetadataManager, true).running();
-
-      EncoderRegistry encoderRegistry = bcr.getComponent(EncoderRegistry.class).wired();
-      encoderRegistry.registerWrapper(ProtobufWrapper.INSTANCE);
    }
 
    @Override
@@ -128,8 +124,7 @@ public final class LifecycleManager implements ModuleLifecycle {
          SearchMappingCommonBuilding commonBuilding = cr.getComponent(SearchMappingCommonBuilding.class);
          SearchMapping searchMapping = cr.getComponent(SearchMapping.class);
          if (commonBuilding != null && searchMapping == null) {
-            AdvancedCache<?, ?> cache = cr.getComponent(Cache.class).getAdvancedCache().withStorageMediaType()
-                  .withWrapping(ByteArrayWrapper.class, ProtobufWrapper.class);
+            AdvancedCache<?, ?> cache = cr.getComponent(Cache.class).getAdvancedCache().withStorageMediaType();
 
             EntityLoaderFactory<?> entityLoader = new EntityLoaderFactory<>(cache, queryStatistics);
 

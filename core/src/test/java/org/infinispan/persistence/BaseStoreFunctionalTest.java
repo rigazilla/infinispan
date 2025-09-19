@@ -35,6 +35,7 @@ import org.infinispan.commons.util.ByRef;
 import org.infinispan.commons.util.CloseableIterator;
 import org.infinispan.commons.util.IntSet;
 import org.infinispan.commons.util.IntSets;
+import org.infinispan.commons.util.concurrent.CompletionStages;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
@@ -46,7 +47,6 @@ import org.infinispan.container.DataContainer;
 import org.infinispan.container.entries.InternalCacheEntry;
 import org.infinispan.container.impl.InternalDataContainer;
 import org.infinispan.distribution.ch.KeyPartitioner;
-import org.infinispan.eviction.EvictionType;
 import org.infinispan.factories.ComponentRegistry;
 import org.infinispan.factories.annotations.SurvivesRestarts;
 import org.infinispan.manager.EmbeddedCacheManager;
@@ -67,7 +67,6 @@ import org.infinispan.test.data.Sex;
 import org.infinispan.test.fwk.CheckPoint;
 import org.infinispan.test.fwk.TestCacheManagerFactory;
 import org.infinispan.transaction.TransactionMode;
-import org.infinispan.commons.util.concurrent.CompletionStages;
 import org.testng.annotations.Test;
 
 /**
@@ -107,11 +106,15 @@ public abstract class BaseStoreFunctionalTest extends SingleCacheManagerTest {
       global.globalState().persistentLocation(CommonsTestingUtil.tmpDirectory(this.getClass()));
       global.serialization().addContextInitializer(getSerializationContextInitializer());
       global.cacheContainer().security().authorization().enable();
-      return createCacheManager(false, global, new ConfigurationBuilder());
+      return createCacheManager(true, global, new ConfigurationBuilder());
    }
 
    protected EmbeddedCacheManager createCacheManager(boolean start, GlobalConfigurationBuilder global, ConfigurationBuilder cb) {
-      return TestCacheManagerFactory.newDefaultCacheManager(start, global, cb);
+      EmbeddedCacheManager embeddedCacheManager = TestCacheManagerFactory.newDefaultCacheManager(false, global, cb);
+      if (start) {
+         TestingUtil.startCacheManager(embeddedCacheManager);
+      }
+      return embeddedCacheManager;
    }
 
    protected SerializationContextInitializer getSerializationContextInitializer() {
@@ -174,13 +177,10 @@ public abstract class BaseStoreFunctionalTest extends SingleCacheManagerTest {
 
    public void testPreloadStoredAsBinary() {
       ConfigurationBuilder cb = getDefaultCacheConfiguration();
-      createCacheStoreConfig(cb.persistence(), "testPreloadStoredAsBinary", true).memory().storageType(StorageType.BINARY);
+      createCacheStoreConfig(cb.persistence(), "testPreloadStoredAsBinary", true).memory().storage(StorageType.HEAP).encoding().mediaType(MediaType.APPLICATION_PROTOSTREAM);
       TestingUtil.defineConfiguration(cacheManager, "testPreloadStoredAsBinary", cb.build());
       Cache<String, Person> cache = cacheManager.getCache("testPreloadStoredAsBinary");
       cache.start();
-
-      assert cache.getCacheConfiguration().persistence().preload();
-      assertEquals(StorageType.BINARY, cache.getCacheConfiguration().memory().storageType());
 
       byte[] pictureBytes = new byte[]{1, 82, 123, 19};
 
@@ -412,7 +412,7 @@ public abstract class BaseStoreFunctionalTest extends SingleCacheManagerTest {
    public void testReloadWithEviction() {
       int numberOfEntries = 10;
       ConfigurationBuilder cb = getDefaultCacheConfiguration();
-      createCacheStoreConfig(cb.persistence(), "testReloadWithEviction", false).memory().size(numberOfEntries / 2).evictionType(EvictionType.COUNT);
+      createCacheStoreConfig(cb.persistence(), "testReloadWithEviction", false).memory().maxCount(numberOfEntries / 2);
       TestingUtil.defineConfiguration(cacheManager, "testReloadWithEviction", cb.build());
       Cache<String, Object> cache = cacheManager.getCache("testReloadWithEviction");
 
@@ -441,7 +441,7 @@ public abstract class BaseStoreFunctionalTest extends SingleCacheManagerTest {
 
    private void assertCacheEntry(Cache cache, String key, String value, long lifespanMillis, long maxIdleMillis) {
       DataContainer dc = cache.getAdvancedCache().getDataContainer();
-      InternalCacheEntry ice = dc.get(toStorage(cache, key));
+      InternalCacheEntry ice = dc.peek(toStorage(cache, key));
       assertNotNull(ice);
       assertEquals(value, unwrap(fromStorage(cache, ice.getValue())));
       assertEquals(lifespanMillis, ice.getLifespan());

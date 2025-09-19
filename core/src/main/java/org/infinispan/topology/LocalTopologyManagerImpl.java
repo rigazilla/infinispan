@@ -15,7 +15,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -41,7 +43,7 @@ import org.infinispan.commons.util.concurrent.CompletableFutures;
 import org.infinispan.commons.util.concurrent.CompletionStages;
 import org.infinispan.configuration.cache.StoreConfiguration;
 import org.infinispan.distribution.ch.ConsistentHash;
-import org.infinispan.distribution.ch.ConsistentHashFactory;
+import org.infinispan.distribution.ch.PersistedConsistentHash;
 import org.infinispan.factories.ComponentRegistry;
 import org.infinispan.factories.GlobalComponentRegistry;
 import org.infinispan.factories.annotations.ComponentName;
@@ -58,14 +60,17 @@ import org.infinispan.globalstate.impl.ScopedPersistentStateImpl;
 import org.infinispan.jmx.annotations.DataType;
 import org.infinispan.jmx.annotations.MBean;
 import org.infinispan.jmx.annotations.ManagedAttribute;
+import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.notifications.cachemanagerlistener.CacheManagerNotifier;
 import org.infinispan.partitionhandling.AvailabilityMode;
 import org.infinispan.partitionhandling.impl.PartitionHandlingManager;
 import org.infinispan.persistence.manager.PersistenceManager;
+import org.infinispan.registry.InternalCacheRegistry;
 import org.infinispan.remoting.transport.Address;
 import org.infinispan.remoting.transport.Transport;
 import org.infinispan.remoting.transport.impl.VoidResponseCollector;
 import org.infinispan.remoting.transport.jgroups.SuspectException;
+import org.infinispan.security.actions.SecurityActions;
 import org.infinispan.util.KeyValuePair;
 import org.infinispan.util.concurrent.ActionSequencer;
 import org.infinispan.util.concurrent.BlockingManager;
@@ -103,6 +108,7 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager, GlobalSta
    @Inject PersistentUUIDManager persistentUUIDManager;
    @Inject EventLogManager eventLogManager;
    @Inject CacheManagerNotifier cacheManagerNotifier;
+   @Inject InternalCacheRegistry internalCacheRegistry;
 
    private TopologyManagementHelper helper;
    private ActionSequencer actionSequencer;
@@ -115,7 +121,7 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager, GlobalSta
    private volatile boolean running;
    @GuardedBy("runningCaches")
    private int latestStatusResponseViewId;
-   private PersistentUUID persistentUUID;
+   private UUID persistentUUID;
 
    private EventLoggerViewListener viewListener;
 
@@ -137,7 +143,7 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager, GlobalSta
          log.tracef("Starting LocalTopologyManager on %s", transport.getAddress());
       }
       if (persistentUUID == null) {
-         persistentUUID = PersistentUUID.randomUUID();
+         persistentUUID = UUID.randomUUID();
          globalStateManager.writeGlobalState();
       }
       persistentUUIDManager.addPersistentAddressMapping(transport.getAddress(), persistentUUID);
@@ -287,6 +293,11 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager, GlobalSta
                                                             CacheStatusResponse initialStatus) {
       log.debugf("Cache %s received join response %s", cacheName, initialStatus);
       CacheTopology ct = getJoinTopology(initialStatus);
+      if (initialStatus.availabilityMode == AvailabilityMode.STOPPED) {
+         stopCache(cacheName);
+         return CompletableFuture.completedFuture(ct);
+      }
+
       int viewId = transport.getViewId();
       return doHandleTopologyUpdate(cacheName, ct, initialStatus.getAvailabilityMode(),
                                     viewId, transport.getCoordinator(), cacheStatus, initialStatus)
@@ -327,10 +338,10 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager, GlobalSta
 
    private int getNumberMembersFromState(String cacheName, CacheJoinInfo joinInfo) {
       Optional<ScopedPersistentState> optional = globalStateManager.readScopedState(cacheName);
-      return optional.map(state -> {
-         ConsistentHash ch = joinInfo.getConsistentHashFactory().fromPersistentState(state);
-         return ch.getMembers().size();
-      }).orElse(-1);
+      return optional.map(state -> joinInfo.getConsistentHashFactory()
+                  .fromPersistentState(state, persistentUUIDManager.persistentUUIDToAddress()))
+            .map(PersistedConsistentHash::totalMembers)
+            .orElse(-1);
    }
 
    @Override
@@ -483,22 +494,20 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager, GlobalSta
       ConsistentHash pendingCH = cacheTopology.getPendingCH();
       ConsistentHash unionCH;
       if (pendingCH != null) {
-         ConsistentHashFactory chf = cacheStatus.getJoinInfo().getConsistentHashFactory();
-         switch (cacheTopology.getPhase()) {
-            case READ_NEW_WRITE_ALL:
-               // When removing members from topology, we have to make sure that the unionCH has
-               // owners from pendingCH (which is used as the readCH in this phase) before
-               // owners from currentCH, as primary owners must match in readCH and writeCH.
-               unionCH = chf.union(pendingCH, currentCH);
-               break;
-            default:
-               unionCH = chf.union(currentCH, pendingCH);
+         var chf = cacheStatus.getJoinInfo().getConsistentHashFactory();
+         if (Objects.requireNonNull(cacheTopology.getPhase()) == CacheTopology.Phase.READ_NEW_WRITE_ALL) {
+            // When removing members from topology, we have to make sure that the unionCH has
+            // owners from pendingCH (which is used as the readCH in this phase) before
+            // owners from currentCH, as primary owners must match in readCH and writeCH.
+            unionCH = chf.union(pendingCH, currentCH);
+         } else {
+            unionCH = chf.union(currentCH, pendingCH);
          }
       } else {
          unionCH = null;
       }
 
-      List<PersistentUUID> persistentUUIDs = persistentUUIDManager.mapAddresses(cacheTopology.getActualMembers());
+      var persistentUUIDs = persistentUUIDManager.mapAddresses(cacheTopology.getActualMembers());
       CacheTopology unionTopology = new CacheTopology(cacheTopology.getTopologyId(), cacheTopology.getRebalanceId(),
                                                       cacheTopology.wasTopologyRestoredFromState(),
                                                       currentCH, pendingCH, unionCH, cacheTopology.getPhase(),
@@ -667,9 +676,7 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager, GlobalSta
       eventLogger.context(cacheName)
             .info(EventLogCategory.LIFECYCLE, MESSAGES.cacheRebalanceStart(cacheTopology.getMembers(), cacheTopology.getPhase(), cacheTopology.getTopologyId()));
       return withView(viewId, cacheStatus.getJoinInfo().getTimeout(), MILLISECONDS)
-            .thenCompose(ignored -> orderOnCache(cacheName, () -> {
-               return doHandleRebalance(viewId, cacheStatus, cacheTopology, cacheName, sender);
-            }))
+            .thenCompose(ignored -> orderOnCache(cacheName, () -> doHandleRebalance(viewId, cacheStatus, cacheTopology, cacheName, sender)))
             .handle((ignore, throwable) -> {
                Collection<Address> members = cacheTopology.getMembers();
                int topologyId = cacheTopology.getTopologyId();
@@ -855,6 +862,7 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager, GlobalSta
    public CompletionStage<Void> handleCacheShutdown(String cacheName) {
       // The cache has shutdown, write the CH state
       writeCHState(cacheName);
+      stopCache(cacheName);
       return completedNull();
    }
 
@@ -894,12 +902,18 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager, GlobalSta
       CacheTopology topology = cacheStatus != null ? cacheStatus.getCurrentTopology() : null;
 
       if (cacheStatus != null && topology != null) {
-         topology.getCurrentCH().toScopedState(cacheState, persistentUUIDManager.addressToPersistentUUID().andThen(Object::toString));
+         topology.getCurrentCH().toScopedState(cacheState, persistentUUIDManager.addressToPersistentUUID());
          globalStateManager.writeScopedState(cacheState);
          if (log.isTraceEnabled()) log.tracef("Written CH state for cache %s, checksum=%s: %s", cacheName, cacheState.getChecksum(), topology.getCurrentCH());
       } else {
          log.tracef("Cache '%s' status not found (%s) to write CH or without topology", cacheName, cacheStatus);
       }
+   }
+
+   private void stopCache(String cacheName) {
+      EmbeddedCacheManager ecm = gcr.getCacheManager();
+      log.debugf("Stopping cache due to shutdown: %s", cacheName);
+      SecurityActions.stopCache(ecm, cacheName);
    }
 
    private void deleteCHState(String cacheName) {
@@ -924,11 +938,11 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager, GlobalSta
       if (!state.containsProperty("uuid")) {
          throw CONFIG.invalidPersistentState(ScopedPersistentState.GLOBAL_SCOPE);
       }
-      persistentUUID = PersistentUUID.fromString(state.getProperty("uuid"));
+      persistentUUID = UUID.fromString(state.getProperty("uuid"));
    }
 
    @Override
-   public PersistentUUID getPersistentUUID() {
+   public UUID getPersistentUUID() {
       return persistentUUID;
    }
 

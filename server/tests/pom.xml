@@ -143,8 +143,8 @@
          <scope>test</scope>
       </dependency>
       <dependency>
-         <groupId>com.oracle.ojdbc</groupId>
-         <artifactId>ojdbc8</artifactId>
+         <groupId>com.oracle.database.jdbc</groupId>
+         <artifactId>ojdbc11</artifactId>
          <scope>test</scope>
       </dependency>
       <dependency>
@@ -220,7 +220,7 @@
                   <usedefaultlisteners>false</usedefaultlisteners>
                   <listener>${junitListener},org.infinispan.server.test.junit4.InfinispanServerTestListener</listener>
                </properties>
-               <argLine>${forkJvmArgs} ${testjvm.jdkSpecificArgs} ${test.driverArgs} -Djdk.attach.allowAttachSelf=true -Ddir.jacoco=${dir.jacoco}</argLine>
+               <argLine>${forkJvmArgs} ${testjvm.jdkSpecificArgs} ${test.driverArgs} -Djdk.attach.allowAttachSelf=true</argLine>
             </configuration>
             <executions>
                <execution>
@@ -237,6 +237,45 @@
                <skipTests>true</skipTests>
             </configuration>
          </plugin>
+         <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <executions>
+               <execution>
+                  <id>artifacts</id>
+                  <phase>package</phase>
+                  <goals>
+                     <goal>java</goal>
+                  </goals>
+                  <configuration>
+                     <classpathScope>test</classpathScope>
+                     <mainClass>org.infinispan.server.test.artifacts.Artifacts</mainClass>
+                     <arguments>
+                        <argument>${project.build.directory}/artifacts</argument>
+                     </arguments>
+                  </configuration>
+               </execution>
+            </executions>
+         </plugin>
+         <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <executions>
+               <execution>
+                  <id>assemble</id>
+                  <phase>package</phase>
+                  <goals>
+                     <goal>single</goal>
+                  </goals>
+                  <configuration>
+                     <descriptors>
+                        <descriptor>src/assemblies/artifacts.xml</descriptor>
+                     </descriptors>
+                     <attach>true</attach>
+                  </configuration>
+               </execution>
+            </executions>
+         </plugin>
       </plugins>
    </build>
 
@@ -247,7 +286,7 @@
             <activeByDefault>false</activeByDefault>
          </activation>
          <properties>
-            <container.argLine>${forkJvmArgs} ${testjvm.jdkSpecificArgs} ${test.driverArgs} -Ddir.jacoco=${dir.jacoco}
+            <container.argLine>${forkJvmArgs} ${testjvm.jdkSpecificArgs} ${test.driverArgs}
                -Djdk.attach.allowAttachSelf=true -Dorg.infinispan.test.server.driver=CONTAINER
             </container.argLine>
          </properties>
@@ -283,6 +322,18 @@
                <scope>test</scope>
             </dependency>
          </dependencies>
+         <build>
+            <plugins>
+               <plugin>
+                  <artifactId>maven-failsafe-plugin</artifactId>
+                  <configuration>
+                     <systemPropertyVariables>
+                        <insights.enabled>true</insights.enabled>
+                     </systemPropertyVariables>
+                  </configuration>
+               </plugin>
+            </plugins>
+         </build>
       </profile>
    </profiles>
 </project>

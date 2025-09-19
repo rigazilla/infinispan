@@ -26,12 +26,12 @@ import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.VersionedValue;
 import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 import org.infinispan.client.hotrod.exceptions.TransportException;
+import org.infinispan.commons.configuration.StringConfiguration;
 import org.infinispan.commons.test.Exceptions;
-import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.server.functional.ClusteredIT;
-import org.infinispan.server.test.junit5.InfinispanServerExtension;
+import org.infinispan.server.test.api.TestClientDriver;
+import org.infinispan.server.test.junit5.InfinispanServer;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
@@ -45,8 +45,16 @@ public class HotRodCacheOperations<K, V> {
 
    private static final String TEST_OUTPUT = "{0}-{1}";
 
-   @RegisterExtension
-   public static InfinispanServerExtension SERVERS = ClusteredIT.SERVERS;
+   private static final String CACHE_CONFIGURATION = """
+         <distributed-cache name="%s">
+           <persistence passivation="false">
+             <file-store shared="false"/>
+           </persistence>
+         </distributed-cache>
+         """;
+
+   @InfinispanServer(ClusteredIT.class)
+   public static TestClientDriver SERVERS;
    static class ArgsProvider implements ArgumentsProvider {
       @Override
       public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
@@ -64,7 +72,11 @@ public class HotRodCacheOperations<K, V> {
    private RemoteCache<K, V> remoteCache(ProtocolVersion protocolVersion, boolean frv) {
       ConfigurationBuilder builder = new ConfigurationBuilder();
       builder.version(protocolVersion).forceReturnValues(frv);
-      return SERVERS.hotrod().withClientConfiguration(builder).withCacheMode(CacheMode.DIST_SYNC).create();
+      String xml = CACHE_CONFIGURATION.formatted(SERVERS.getMethodName());
+      return SERVERS.hotrod()
+            .withServerConfiguration(new StringConfiguration(xml))
+            .withClientConfiguration(builder)
+            .create();
    }
 
    private RemoteCache<K, V> remoteCache(ProtocolVersion protocolVersion) {

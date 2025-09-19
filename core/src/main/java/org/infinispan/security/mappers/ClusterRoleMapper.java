@@ -1,23 +1,5 @@
 package org.infinispan.security.mappers;
 
-import org.infinispan.Cache;
-import org.infinispan.commons.marshall.ProtoStreamTypeIds;
-import org.infinispan.configuration.cache.CacheMode;
-import org.infinispan.configuration.cache.ConfigurationBuilder;
-import org.infinispan.configuration.global.GlobalConfiguration;
-import org.infinispan.context.Flag;
-import org.infinispan.factories.annotations.Inject;
-import org.infinispan.factories.annotations.Start;
-import org.infinispan.factories.scopes.Scope;
-import org.infinispan.factories.scopes.Scopes;
-import org.infinispan.manager.EmbeddedCacheManager;
-import org.infinispan.protostream.annotations.ProtoFactory;
-import org.infinispan.protostream.annotations.ProtoField;
-import org.infinispan.protostream.annotations.ProtoTypeId;
-import org.infinispan.registry.InternalCacheRegistry;
-import org.infinispan.security.MutablePrincipalRoleMapper;
-import org.infinispan.security.actions.SecurityActions;
-
 import java.security.Principal;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -27,6 +9,25 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.infinispan.Cache;
+import org.infinispan.commons.api.Lifecycle;
+import org.infinispan.commons.marshall.ProtoStreamTypeIds;
+import org.infinispan.configuration.cache.CacheMode;
+import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.configuration.global.GlobalConfiguration;
+import org.infinispan.context.Flag;
+import org.infinispan.factories.annotations.Inject;
+import org.infinispan.factories.scopes.Scope;
+import org.infinispan.factories.scopes.Scopes;
+import org.infinispan.manager.EmbeddedCacheManager;
+import org.infinispan.protostream.annotations.ProtoFactory;
+import org.infinispan.protostream.annotations.ProtoField;
+import org.infinispan.protostream.annotations.ProtoTypeId;
+import org.infinispan.registry.InternalCacheRegistry;
+import org.infinispan.security.MutablePrincipalRoleMapper;
+import org.infinispan.security.PrincipalRoleMapper;
+import org.infinispan.security.actions.SecurityActions;
+
 /**
  * ClusterRoleMapper. This class implements both a {@link MutablePrincipalRoleMapper} storing the mappings in a
  * persistent replicated internal cache named <code>org.infinispan.ROLES</code>
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
  * @since 7.0
  */
 @Scope(Scopes.GLOBAL)
-public class ClusterRoleMapper implements MutablePrincipalRoleMapper {
+public class ClusterRoleMapper implements MutablePrincipalRoleMapper, Lifecycle {
    @Inject
    EmbeddedCacheManager cacheManager;
    @Inject
@@ -45,11 +46,20 @@ public class ClusterRoleMapper implements MutablePrincipalRoleMapper {
    private Cache<String, RoleSet> clusterRoleReadMap;
    private NameRewriter nameRewriter = NameRewriter.IDENTITY_REWRITER;
 
-   @Start
-   void start() {
+   @Override
+   public void start() {
       initializeInternalCache();
       clusterRoleMap = cacheManager.getCache(CLUSTER_ROLE_MAPPER_CACHE);
       clusterRoleReadMap = clusterRoleMap.getAdvancedCache().withFlags(Flag.SKIP_CACHE_LOAD, Flag.CACHE_MODE_LOCAL);
+   }
+
+   @Override
+   public void stop() { }
+
+   public static void includeMapperDependency(PrincipalRoleMapper prm, String cacheName) {
+      if (CLUSTER_ROLE_MAPPER_CACHE.equals(cacheName) || !(prm instanceof ClusterRoleMapper crm)) return;
+
+      SecurityActions.addCacheDependency(crm.cacheManager, cacheName, ClusterRoleMapper.CLUSTER_ROLE_MAPPER_CACHE);
    }
 
    @Override

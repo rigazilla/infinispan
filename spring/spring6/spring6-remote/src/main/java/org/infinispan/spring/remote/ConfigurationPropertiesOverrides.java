@@ -3,16 +3,11 @@ package org.infinispan.spring.remote;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.ASYNC_EXECUTOR_FACTORY;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.FORCE_RETURN_VALUES;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.JAVA_SERIAL_ALLOWLIST;
-import static org.infinispan.client.hotrod.impl.ConfigurationProperties.KEY_SIZE_ESTIMATE;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.MARSHALLER;
-import static org.infinispan.client.hotrod.impl.ConfigurationProperties.NEAR_CACHE_MAX_ENTRIES;
-import static org.infinispan.client.hotrod.impl.ConfigurationProperties.NEAR_CACHE_MODE;
-import static org.infinispan.client.hotrod.impl.ConfigurationProperties.NEAR_CACHE_NAME_PATTERN;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.REQUEST_BALANCING_STRATEGY;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.SERVER_LIST;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.TCP_KEEP_ALIVE;
 import static org.infinispan.client.hotrod.impl.ConfigurationProperties.TCP_NO_DELAY;
-import static org.infinispan.client.hotrod.impl.ConfigurationProperties.VALUE_SIZE_ESTIMATE;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -100,23 +95,6 @@ public class ConfigurationPropertiesOverrides {
    }
 
    /**
-    * @deprecated Since 12.0, does nothing and will be removed in 15.0
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   public void setKeySizeEstimate(final int keySizeEstimate) {
-      this.overridingProperties.setProperty(KEY_SIZE_ESTIMATE, Integer.toString(keySizeEstimate));
-   }
-
-   /**
-    * @deprecated Since 12.0, does nothing and will be removed in 15.0
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   public void setValueSizeEstimate(final int valueSizeEstimate) {
-      this.overridingProperties.setProperty(VALUE_SIZE_ESTIMATE,
-                                            Integer.toString(valueSizeEstimate));
-   }
-
-   /**
     * @param forceReturnValues
     */
    public void setForceReturnValues(final boolean forceReturnValues) {
@@ -130,18 +108,6 @@ public class ConfigurationPropertiesOverrides {
 
    public void setWriteTimeout(long writeTimeout) {
       this.overridingProperties.setProperty(OPERATION_WRITE_TIMEOUT, Long.toString(writeTimeout));
-   }
-
-   public void setNearCacheMode(String mode) {
-      this.overridingProperties.setProperty(NEAR_CACHE_MODE, mode);
-   }
-
-   public void setNearCacheMaxEntries(int maxEntries) {
-      this.overridingProperties.setProperty(NEAR_CACHE_MAX_ENTRIES, Integer.toString(maxEntries));
-   }
-
-   public void setNearCacheNamePattern(String pattern) {
-      this.overridingProperties.setProperty(NEAR_CACHE_NAME_PATTERN, pattern);
    }
 
    /**

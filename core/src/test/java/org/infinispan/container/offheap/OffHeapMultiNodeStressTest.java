@@ -26,7 +26,7 @@ public class OffHeapMultiNodeStressTest extends MultipleCacheManagersTest {
    @Override
    protected void createCacheManagers() throws Throwable {
       ConfigurationBuilder dcc = getDefaultClusteredCacheConfig(CacheMode.DIST_SYNC, false);
-      dcc.memory().storageType(StorageType.OFF_HEAP);
+      dcc.memory().storage(StorageType.OFF_HEAP);
       createCluster(dcc, 4);
       waitForClusterToForm();
    }
@@ -125,7 +125,7 @@ public class OffHeapMultiNodeStressTest extends MultipleCacheManagersTest {
                for (int j = 0; j < EXECUTECOUNT; ++j) {
                   DataContainer<WrappedByteArray, WrappedByteArray> container =
                         castDC(bchm.getAdvancedCache().getDataContainer());
-                  container.forEach(ice -> assertEquals(ice, container.get(ice.getKey())));
+                  container.forEach(ice -> assertEquals(ice, container.peek(ice.getKey())));
                }
                return null;
             });
@@ -144,7 +144,7 @@ public class OffHeapMultiNodeStressTest extends MultipleCacheManagersTest {
       }
    }
 
-   final static int KEY_SIZE = 20;
+   static final int KEY_SIZE = 20;
 
    byte[] randomBytes(int size) {
       byte[] bytes = new byte[size];

@@ -1,0 +1,62 @@
+<config xmlns="urn:org:jgroups"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="urn:org:jgroups http://www.jgroups.org/schema/jgroups-5.4.xsd">
+   <TUNNEL bind_addr="${jgroups.tunnel.address,jgroups.bind.address:SITE_LOCAL}"
+           bind_port="${jgroups.tunnel.port,jgroups.bind.port:0}"
+           port_range="${jgroups.port_range:0}"
+
+           diag.enabled="${jgroups.diag.enabled:false}"
+           diag.enable_tcp="${jgroups.diag.enable_tcp:true}"
+           diag.enable_udp="${jgroups.diag.enable_udp:false}"
+
+           thread_naming_pattern="pl"
+           linger="${jgroups.tcp.linger:-1}"
+           tcp_nodelay="${jgroups.tcp_nodelay:true}"
+           bundler_type="${jgroups.bundler.type:transfer-queue}"
+           bundler.max_size="${jgroups.bundler.max_size:64k}"
+           non_blocking_sends="${jgroups.non_blocking_sends:false}"
+
+           thread_pool.min_threads="${jgroups.thread_pool.min_threads:0}"
+           thread_pool.max_threads="${jgroups.thread_pool.max_threads:200}"
+           thread_pool.keep_alive_time="1m"
+           thread_pool.thread_dumps_enabled="${jgroups.thread_dumps_enabled:false}"
+
+           use_vthreads="${jgroups.thread.virtual,org.infinispan.threads.virtual:true}"
+
+           gossip_router_hosts="${jgroups.tunnel.hosts}"
+           heartbeat_interval="${jgroups.tunnel.heartbeat.interval:10000}"
+           heartbeat_timeout="${jgroups.tunnel.heartbeat.timeout:30000}"
+   />
+   <RED/>
+   <PING num_discovery_runs="3"/>
+   <MERGE3 min_interval="10s"
+           max_interval="30s"
+   />
+   <!-- FD_SOCK2 removed: TUNNEL is used in firewalled environment so FD_SOCK* won't work. -->
+   <FD_ALL3/>
+   <VERIFY_SUSPECT2 timeout="1s"/>
+   <pbcast.NAKACK2 xmit_interval="100ms"
+                   xmit_table_num_rows="50"
+                   xmit_table_msgs_per_row="1024"
+                   xmit_table_max_compaction_time="30s"
+                   resend_last_seqno="true"
+   />
+   <UNICAST3 xmit_interval="100ms"
+             xmit_table_num_rows="50"
+             xmit_table_msgs_per_row="1024"
+             xmit_table_max_compaction_time="30s"
+   />
+   <pbcast.STABLE desired_avg_gossip="5s"
+                  max_bytes="1M"
+   />
+   <pbcast.GMS print_local_addr="false"
+               join_timeout="${jgroups.join_timeout:2s}"
+   />
+   <UFC max_credits="${jgroups.max_credits:4m}"
+        min_threshold="0.40"
+   />
+   <MFC max_credits="${jgroups.max_credits:4m}"
+        min_threshold="0.40"
+   />
+   <FRAG4 frag_size="${jgroups.frag_size:60k}"/>
+</config>

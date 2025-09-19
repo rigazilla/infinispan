@@ -12,11 +12,11 @@ import org.infinispan.commons.util.Util;
  **/
 public class ThreadCreator {
 
-   private static boolean useVirtualThreads = Boolean.getBoolean("org.infinispan.threads.virtual");
+   private static boolean useVirtualThreads = Boolean.parseBoolean(System.getProperty("org.infinispan.threads.virtual", "true"));
    private static org.infinispan.commons.spi.ThreadCreator INSTANCE = getInstance(useVirtualThreads);
 
    public static void useVirtualThreads(boolean useVirtualThreads) {
-      if (useVirtualThreads != ThreadCreator.useVirtualThreads) {
+      if (useVirtualThreads != useVirtualThreads()) {
          ThreadCreator.useVirtualThreads = useVirtualThreads;
          INSTANCE = getInstance(useVirtualThreads);
       }
@@ -24,6 +24,10 @@ public class ThreadCreator {
 
    public static boolean useVirtualThreads() {
       return useVirtualThreads;
+   }
+
+   public static boolean isVirtualThreadsEnabled() {
+      return INSTANCE.isVirtualThreadsEnabled();
    }
 
    public static Thread createThread(ThreadGroup threadGroup, Runnable target, boolean useVirtualThread) {
@@ -65,6 +69,11 @@ public class ThreadCreator {
 
       @Override
       public boolean isVirtual(Thread thread) {
+         return false;
+      }
+
+      @Override
+      public boolean isVirtualThreadsEnabled() {
          return false;
       }
    }

@@ -10,7 +10,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.infinispan.Cache;
-import org.infinispan.commons.executors.BlockingThreadPoolExecutorFactory;
 import org.infinispan.commons.test.TestResourceTracker;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.Configuration;
@@ -37,8 +36,8 @@ import org.testng.annotations.Test;
 @Test(groups = "stress", testName = "notifications.cachelistener.cluster.ClusterListenerStressTest", timeOut = 15*60*1000)
 @InCacheMode({ CacheMode.DIST_SYNC })
 public class ClusterListenerStressTest extends MultipleCacheManagersTest {
-   protected final static String CACHE_NAME = "cluster-listener";
-   protected final static String KEY = "ClusterListenerStressTestKey";
+   protected static final String CACHE_NAME = "cluster-listener";
+   protected static final String KEY = "ClusterListenerStressTestKey";
    private static final int NUM_NODES = 3;
 
    protected ConfigurationBuilder builderUsed;
@@ -49,9 +48,6 @@ public class ClusterListenerStressTest extends MultipleCacheManagersTest {
       for (int i = 0; i < NUM_NODES; i++) {
          GlobalConfigurationBuilder gcb = new GlobalConfigurationBuilder();
          gcb.transport().defaultTransport().nodeName(TestResourceTracker.getNameForIndex(i));
-         BlockingThreadPoolExecutorFactory remoteExecutorFactory = new BlockingThreadPoolExecutorFactory(
-               10, 1, 0, 60000);
-         gcb.transport().remoteCommandThreadPool().threadPoolFactory(remoteExecutorFactory);
          EmbeddedCacheManager cm = new DefaultCacheManager(gcb.build());
          registerCacheManager(cm);
          cm.defineConfiguration(CACHE_NAME, distConfig);

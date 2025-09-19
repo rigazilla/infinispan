@@ -58,9 +58,7 @@ import org.infinispan.commands.write.ValueMatcher;
 import org.infinispan.commons.CacheException;
 import org.infinispan.commons.api.query.ContinuousQuery;
 import org.infinispan.commons.api.query.Query;
-import org.infinispan.commons.dataconversion.Encoder;
 import org.infinispan.commons.dataconversion.MediaType;
-import org.infinispan.commons.dataconversion.Wrapper;
 import org.infinispan.commons.util.EnumUtil;
 import org.infinispan.commons.util.InfinispanCollections;
 import org.infinispan.commons.util.Version;
@@ -763,42 +761,12 @@ public class CacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache<K, V>
    }
 
    @Override
-   public AdvancedCache<K, V> withEncoding(Class<? extends Encoder> encoderClass) {
-      throw new UnsupportedOperationException("Encoding requires EncoderCache");
-   }
-
-   @Override
-   public AdvancedCache<?, ?> withKeyEncoding(Class<? extends Encoder> encoderClass) {
-      throw new UnsupportedOperationException("Encoding requires EncoderCache");
-   }
-
-   @Override
-   public AdvancedCache<K, V> withEncoding(Class<? extends Encoder> keyEncoderClass, Class<? extends Encoder> valueEncoderClass) {
-      throw new UnsupportedOperationException("Encoding requires EncoderCache");
-   }
-
-   @Override
-   public AdvancedCache<K, V> withWrapping(Class<? extends Wrapper> wrapperClass) {
-      throw new UnsupportedOperationException("Wrapping requires EncoderCache");
-   }
-
-   @Override
-   public AdvancedCache<K, V> withMediaType(String keyMediaType, String valueMediaType) {
-      throw new UnsupportedOperationException("Conversion requires EncoderCache");
-   }
-
-   @Override
    public <K1, V1> AdvancedCache<K1, V1> withMediaType(MediaType keyMediaType, MediaType valueMediaType) {
       throw new UnsupportedOperationException("Conversion requires EncoderCache");
    }
 
    @Override
    public AdvancedCache<K, V> withStorageMediaType() {
-      throw new UnsupportedOperationException("Conversion requires EncoderCache");
-   }
-
-   @Override
-   public AdvancedCache<K, V> withWrapping(Class<? extends Wrapper> keyWrapperClass, Class<? extends Wrapper> valueWrapperClass) {
       throw new UnsupportedOperationException("Conversion requires EncoderCache");
    }
 
@@ -1034,6 +1002,7 @@ public class CacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache<K, V>
    )
    public void start() {
       componentRegistry.start();
+      componentRegistry.postStart();
       queryProducer = componentRegistry.getComponent(QueryProducer.class);
 
       if (stateTransferManager != null) {
@@ -1045,6 +1014,7 @@ public class CacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache<K, V>
             throw t;
          }
       }
+      componentRegistry.blameInitialization();
       log.debugf("Started cache %s on %s", getName(), managerIdentifier());
    }
 

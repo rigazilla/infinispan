@@ -29,10 +29,10 @@ public class HealthCheckResource implements ResourceHandler {
    public Invocations getInvocations() {
       return new Invocations.Builder()
 
-            .invocation().methods(GET, HEAD).anonymous(true).path("/health/live")
+            .invocation().methods(GET, HEAD).anonymous(true).path("/health/live").requireCacheManagerStart(false)
             .handleWith(this::notifyServerRunning)
 
-            .invocation().methods(GET, HEAD).anonymous(true).path("/health/ready")
+            .invocation().methods(GET, HEAD).anonymous(true).path("/health/ready").requireCacheManagerStart(false)
             .handleWith(this::verifyServerReady)
 
             .create();
@@ -47,10 +47,11 @@ public class HealthCheckResource implements ResourceHandler {
       NettyRestResponse.Builder builder = helper.newResponse(request);
       DefaultCacheManager dcm = helper.getServer().getCacheManager();
       HttpResponseStatus status = HttpResponseStatus.SERVICE_UNAVAILABLE;
-      if (dcm.getStatus().allowInvocations()) {
+      if (dcm.getStatus().allowInvocations() && helper.getProtocolServer().isStarted()) {
+         status = HttpResponseStatus.OK;
          CacheManagerInfo cmi = dcm.getCacheManagerInfo();
-         if (cmi.allCachesReady())
-            status = HttpResponseStatus.OK;
+         if (cmi.allCachesStopped())
+            status = HttpResponseStatus.SERVICE_UNAVAILABLE;
       }
 
       return CompletableFuture.completedFuture(builder.status(status).build());

@@ -17,7 +17,6 @@ import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.cache.StorageType;
 import org.infinispan.container.DataContainer;
 import org.infinispan.container.entries.InternalCacheEntry;
-import org.infinispan.eviction.EvictionType;
 import org.testng.annotations.Test;
 
 /**
@@ -31,8 +30,7 @@ public class OffHeapBoundedSingleNodeStressTest extends OffHeapMultiNodeStressTe
 
    @Override protected void createCacheManagers() throws Throwable {
       ConfigurationBuilder dcc = getDefaultClusteredCacheConfig(CacheMode.LOCAL, false);
-      dcc.memory().storageType(StorageType.OFF_HEAP).evictionType(EvictionType.COUNT)
-            .size(500);
+      dcc.memory().storage(StorageType.OFF_HEAP).maxCount(500);
       // Only start up the 1 cache
       addClusterEnabledCacheManager(dcc);
    }
@@ -105,7 +103,7 @@ public class OffHeapBoundedSingleNodeStressTest extends OffHeapMultiNodeStressTe
                KeyGenerator generator = new KeyGenerator();
                while (!Thread.interrupted()) {
                   WrappedByteArray key = generator.getNextKey();
-                  InternalCacheEntry<WrappedBytes, WrappedBytes> innerV = map.get(key);
+                  InternalCacheEntry<WrappedBytes, WrappedBytes> innerV = map.peek(key);
                   // Here just to make sure get doesn't get optimized away
                   if (innerV != null && innerV.equals(cache)) {
                      System.out.println(System.currentTimeMillis());

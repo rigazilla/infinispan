@@ -38,7 +38,7 @@ import org.infinispan.container.impl.InternalEntryFactoryImpl;
 import org.infinispan.context.InvocationContext;
 import org.infinispan.context.impl.NonTxInvocationContext;
 import org.infinispan.distribution.ch.KeyPartitioner;
-import org.infinispan.encoding.DataConversion;
+import org.infinispan.encoding.impl.DataConversionInternal;
 import org.infinispan.factories.ComponentRegistry;
 import org.infinispan.factories.KnownComponentNames;
 import org.infinispan.factories.impl.BasicComponentRegistry;
@@ -136,8 +136,8 @@ public abstract class BaseCacheNotifierImplInitialTransferTest extends AbstractI
       EmbeddedCacheManager cacheManager = mock(EmbeddedCacheManager.class);
       when(mockCache.getCacheManager()).thenReturn(cacheManager);
       when(mockCache.getAdvancedCache()).thenReturn(mockCache);
-      when(mockCache.getKeyDataConversion()).thenReturn(DataConversion.IDENTITY_KEY);
-      when(mockCache.getValueDataConversion()).thenReturn(DataConversion.IDENTITY_VALUE);
+      when(mockCache.getKeyDataConversion()).thenReturn(DataConversionInternal.IDENTITY_KEY);
+      when(mockCache.getValueDataConversion()).thenReturn(DataConversionInternal.IDENTITY_VALUE);
       Configuration config = new ConfigurationBuilder().clustering().cacheMode(cacheMode).build();
       GlobalConfiguration globalConfig = GlobalConfigurationBuilder.defaultClusteredBuilder().build();
       when(mockCache.getStatus()).thenReturn(ComponentStatus.INITIALIZING);
@@ -522,7 +522,7 @@ public abstract class BaseCacheNotifierImplInitialTransferTest extends AbstractI
       return listener.getClass().getAnnotation(Listener.class).clustered();
    }
 
-   protected static abstract class StateListener<K, V> {
+   private abstract static class StateListener<K, V> {
       final List<CacheEntryEvent<K, V>> events = new ArrayList<>();
       private static final Log log = LogFactory.getLog(MethodHandles.lookup().lookupClass());
 

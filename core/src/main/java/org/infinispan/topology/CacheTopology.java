@@ -2,6 +2,8 @@ package org.infinispan.topology;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 import org.infinispan.commons.marshall.ProtoStreamTypeIds;
 import org.infinispan.distribution.ch.ConsistentHash;
@@ -11,7 +13,6 @@ import org.infinispan.protostream.annotations.ProtoFactory;
 import org.infinispan.protostream.annotations.ProtoField;
 import org.infinispan.protostream.annotations.ProtoTypeId;
 import org.infinispan.remoting.transport.Address;
-import org.infinispan.remoting.transport.jgroups.JGroupsAddress;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
 
@@ -40,25 +41,25 @@ public class CacheTopology {
    private final Phase phase;
    private final List<Address> actualMembers;
    // The persistent UUID of each actual member
-   private final List<PersistentUUID> persistentUUIDs;
+   private final List<UUID> persistentUUIDs;
 
    public CacheTopology(int topologyId, int rebalanceId, ConsistentHash currentCH, ConsistentHash pendingCH,
-                        Phase phase, List<Address> actualMembers, List<PersistentUUID> persistentUUIDs) {
+                        Phase phase, List<Address> actualMembers, List<UUID> persistentUUIDs) {
       this(topologyId, rebalanceId, currentCH, pendingCH, null, phase, actualMembers, persistentUUIDs);
    }
 
    public CacheTopology(int topologyId, int rebalanceId, boolean restoredTopology, ConsistentHash currentCH, ConsistentHash pendingCH,
-                        Phase phase, List<Address> actualMembers, List<PersistentUUID> persistentUUIDs) {
+                        Phase phase, List<Address> actualMembers, List<UUID> persistentUUIDs) {
       this(topologyId, rebalanceId, restoredTopology, currentCH, pendingCH, null, phase, actualMembers, persistentUUIDs);
    }
 
    public CacheTopology(int topologyId, int rebalanceId, ConsistentHash currentCH, ConsistentHash pendingCH,
-                        ConsistentHash unionCH, Phase phase, List<Address> actualMembers, List<PersistentUUID> persistentUUIDs) {
+                        ConsistentHash unionCH, Phase phase, List<Address> actualMembers, List<UUID> persistentUUIDs) {
       this(topologyId, rebalanceId, false, currentCH, pendingCH, unionCH, phase, actualMembers, persistentUUIDs);
    }
 
    public CacheTopology(int topologyId, int rebalanceId, boolean restoredTopology, ConsistentHash currentCH, ConsistentHash pendingCH,
-                        ConsistentHash unionCH, Phase phase, List<Address> actualMembers, List<PersistentUUID> persistentUUIDs) {
+                        ConsistentHash unionCH, Phase phase, List<Address> actualMembers, List<UUID> persistentUUIDs) {
       if (pendingCH != null && !pendingCH.getMembers().containsAll(currentCH.getMembers())) {
          throw new IllegalArgumentException("A cache topology's pending consistent hash must " +
                "contain all the current consistent hash's members: currentCH=" + currentCH + ", pendingCH=" + pendingCH);
@@ -78,9 +79,9 @@ public class CacheTopology {
    }
 
    @ProtoFactory
-   CacheTopology(int topologyId, int rebalanceId, boolean restoredFromState, Phase phase, List<PersistentUUID> membersPersistentUUIDs,
+   CacheTopology(int topologyId, int rebalanceId, boolean restoredFromState, Phase phase, List<UUID> membersPersistentUUIDs,
                  MarshallableObject<ConsistentHash> wrappedCurrentCH, MarshallableObject<ConsistentHash> wrappedPendingCH,
-                 MarshallableObject<ConsistentHash> wrappedUnionCH, List<JGroupsAddress> jGroupsMembers) {
+                 MarshallableObject<ConsistentHash> wrappedUnionCH, List<Address> actualMembers) {
       this.topologyId = topologyId;
       this.rebalanceId = rebalanceId;
       this.restoredFromState = restoredFromState;
@@ -89,7 +90,7 @@ public class CacheTopology {
       this.unionCH = MarshallableObject.unwrap(wrappedUnionCH);
       this.phase = phase;
       this.persistentUUIDs = membersPersistentUUIDs;
-      this.actualMembers = (List<Address>)(List<?>) jGroupsMembers;
+      this.actualMembers = actualMembers;
    }
 
    @ProtoField(1)
@@ -116,7 +117,7 @@ public class CacheTopology {
    }
 
    @ProtoField(5)
-   public List<PersistentUUID> getMembersPersistentUUIDs() {
+   public List<UUID> getMembersPersistentUUIDs() {
       return persistentUUIDs;
    }
 
@@ -135,9 +136,14 @@ public class CacheTopology {
       return MarshallableObject.create(unionCH);
    }
 
+   /**
+    * @return The nodes that are active members of the cache. It should be equal to {@link #getMembers()} when the
+    *    cache is available, and a strict subset if the cache is in degraded mode.
+    * @see org.infinispan.partitionhandling.AvailabilityMode
+    */
    @ProtoField(9)
-   List<JGroupsAddress> getJGroupsMembers() {
-      return (List<JGroupsAddress>)(List<?>) actualMembers;
+   public List<Address> getActualMembers() {
+      return actualMembers;
    }
 
    /**
@@ -174,15 +180,6 @@ public class CacheTopology {
          return currentCH.getMembers();
       else
          return Collections.emptyList();
-   }
-
-   /**
-    * @return The nodes that are active members of the cache. It should be equal to {@link #getMembers()} when the
-    *    cache is available, and a strict subset if the cache is in degraded mode.
-    * @see org.infinispan.partitionhandling.AvailabilityMode
-    */
-   public List<Address> getActualMembers() {
-      return actualMembers;
    }
 
    public boolean wasTopologyRestoredFromState() {
@@ -245,12 +242,10 @@ public class CacheTopology {
       if (topologyId != that.topologyId) return false;
       if (rebalanceId != that.rebalanceId) return false;
       if (phase != that.phase) return false;
-      if (currentCH != null ? !currentCH.equals(that.currentCH) : that.currentCH != null) return false;
-      if (pendingCH != null ? !pendingCH.equals(that.pendingCH) : that.pendingCH != null) return false;
-      if (unionCH != null ? !unionCH.equals(that.unionCH) : that.unionCH != null) return false;
-      if (actualMembers != null ? !actualMembers.equals(that.actualMembers) : that.actualMembers != null) return false;
-
-      return true;
+      if (!Objects.equals(currentCH, that.currentCH)) return false;
+      if (!Objects.equals(pendingCH, that.pendingCH)) return false;
+      if (!Objects.equals(unionCH, that.unionCH)) return false;
+      return Objects.equals(actualMembers, that.actualMembers);
    }
 
    @Override

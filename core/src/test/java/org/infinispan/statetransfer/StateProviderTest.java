@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
@@ -50,10 +51,8 @@ import org.infinispan.reactive.publisher.impl.Notifications;
 import org.infinispan.reactive.publisher.impl.SegmentAwarePublisherSupplier;
 import org.infinispan.remoting.rpc.RpcManager;
 import org.infinispan.remoting.transport.Address;
-import org.infinispan.remoting.transport.jgroups.JGroupsAddress;
 import org.infinispan.test.TestingUtil;
 import org.infinispan.topology.CacheTopology;
-import org.infinispan.topology.PersistentUUID;
 import org.infinispan.topology.PersistentUUIDManager;
 import org.infinispan.topology.PersistentUUIDManagerImpl;
 import org.infinispan.transaction.impl.TransactionOriginatorChecker;
@@ -78,17 +77,17 @@ public class StateProviderTest {
 
    // Number of segments must be a power of 2 for keyPartition4Segments to work
    private static final int NUM_SEGMENTS = 4;
-   private static final Address A = JGroupsAddress.random("A");
-   private static final Address B = JGroupsAddress.random("B");
-   private static final Address C = JGroupsAddress.random("C");
-   private static final Address D = JGroupsAddress.random("D");
-   private static final Address E = JGroupsAddress.random("E");
-   private static final Address F = JGroupsAddress.random("F");
-   private static final Address G = JGroupsAddress.random("G");
+   private static final Address A = Address.random("A");
+   private static final Address B = Address.random("B");
+   private static final Address C = Address.random("C");
+   private static final Address D = Address.random("D");
+   private static final Address E = Address.random("E");
+   private static final Address F = Address.random("F");
+   private static final Address G = Address.random("G");
 
    private static final PersistentUUIDManager persistentUUIDManager = new PersistentUUIDManagerImpl();
    static {
-      Arrays.asList(A, B, C, D, E, F, G).forEach(address -> persistentUUIDManager.addPersistentAddressMapping(address, PersistentUUID.randomUUID()));
+      Arrays.asList(A, B, C, D, E, F, G).forEach(address -> persistentUUIDManager.addPersistentAddressMapping(address, UUID.randomUUID()));
    }
 
    private Configuration configuration;

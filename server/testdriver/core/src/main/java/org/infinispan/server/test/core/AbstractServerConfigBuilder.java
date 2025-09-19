@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.jboss.shrinkwrap.api.Archive;
 
 /**
  * Common code for JUnit 4 and Junit 5 Extension
@@ -21,7 +21,7 @@ public abstract class AbstractServerConfigBuilder<T extends AbstractServerConfig
    private int numServers = 2;
    private int expectedServers = -1;
    private ServerRunMode runMode = ServerRunMode.DEFAULT;
-   private JavaArchive[] archives;
+   private Archive<?>[] archives;
    private String[] features;
    private boolean jmx;
    private boolean parallelStartup = true;
@@ -85,7 +85,7 @@ public abstract class AbstractServerConfigBuilder<T extends AbstractServerConfig
    /**
     * Deployments
     */
-   public T artifacts(JavaArchive... archives) {
+   public T artifacts(Archive<?>... archives) {
       this.archives = archives;
       return (T) this;
    }
@@ -95,6 +95,16 @@ public abstract class AbstractServerConfigBuilder<T extends AbstractServerConfig
     */
    public T property(String name, String value) {
       this.properties.setProperty(name, value);
+      return (T) this;
+   }
+
+   /**
+    * Removes a property that was either previously defined or imported from the current running system properties
+    * @param name the name of the property to remove
+    * @return this to allow chain invocation
+    */
+   public T removeProperty(String name) {
+      this.properties.remove(name);
       return (T) this;
    }
 
@@ -125,6 +135,10 @@ public abstract class AbstractServerConfigBuilder<T extends AbstractServerConfig
    public T site(String site) {
       this.siteName = site;
       return (T) this;
+   }
+
+   public String site() {
+      return this.siteName;
    }
 
    public T portOffset(int port) {

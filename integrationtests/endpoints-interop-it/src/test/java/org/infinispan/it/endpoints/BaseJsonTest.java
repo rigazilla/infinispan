@@ -63,7 +63,7 @@ public abstract class BaseJsonTest extends AbstractInfinispanTest {
    @BeforeClass
    protected void setup() throws Exception {
       cacheManager = TestCacheManagerFactory.createServerModeCacheManager(EndpointITSCI.INSTANCE, new ConfigurationBuilder());
-      cacheManager.getClassWhiteList().addRegexps(".*");
+      cacheManager.getClassAllowList().addRegexps(".*");
       cacheManager.defineConfiguration(CACHE_NAME, getIndexCacheConfiguration().build());
 
       RestServerConfigurationBuilder builder = new RestServerConfigurationBuilder();
@@ -74,6 +74,7 @@ public abstract class BaseJsonTest extends AbstractInfinispanTest {
       restServer = new RestServer();
       restServer.setServerManagement(new DummyServerManagement(), true);
       restServer.start(builder.build(), cacheManager);
+      restServer.postStart();
       restClient = RestClient.forConfiguration(new RestClientConfigurationBuilder().addServer().host(restServer.getHost()).port(restServer.getPort()).build());
       restCacheClient = restClient.cache(CACHE_NAME);
       hotRodServer = startHotRodServer(cacheManager);

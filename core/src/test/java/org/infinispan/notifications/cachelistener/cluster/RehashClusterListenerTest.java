@@ -9,6 +9,7 @@ import java.util.List;
 import org.infinispan.Cache;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.configuration.internal.PrivateCacheConfigurationBuilder;
 import org.infinispan.context.Flag;
 import org.infinispan.notifications.Listener;
 import org.infinispan.notifications.cachelistener.annotation.CacheEntryCreated;
@@ -30,9 +31,9 @@ import org.testng.annotations.Test;
  */
 @Test(groups = "functional", testName = "org.infinispan.notifications.cachelistener.cluster.RehashClusterListenerTest")
 public class RehashClusterListenerTest extends MultipleCacheManagersTest {
-   protected final static String CACHE_NAME = "cluster-listener";
-   protected final static String KEY = "key";
-   protected final static String VALUE = "value";
+   protected static final String CACHE_NAME = "cluster-listener";
+   protected static final String KEY = "key";
+   protected static final String VALUE = "value";
 
    protected ConfigurationBuilder builderUsed;
 
@@ -63,7 +64,8 @@ public class RehashClusterListenerTest extends MultipleCacheManagersTest {
    @Override
    protected void createCacheManagers() throws Throwable {
       builderUsed = new ConfigurationBuilder();
-      builderUsed.clustering().cacheMode(cacheMode).hash().consistentHashFactory(factory).numSegments(1);
+      builderUsed.clustering().cacheMode(cacheMode).hash().numSegments(1);
+      builderUsed.addModule(PrivateCacheConfigurationBuilder.class).consistentHashFactory(factory);
       createClusteredCaches(3, ControlledConsistentHashFactory.SCI.INSTANCE, CACHE_NAME, builderUsed);
    }
 

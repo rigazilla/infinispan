@@ -26,6 +26,7 @@ import org.infinispan.commands.remote.ClusteredGetCommand;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
+import org.infinispan.configuration.internal.PrivateCacheConfigurationBuilder;
 import org.infinispan.context.InvocationContext;
 import org.infinispan.context.impl.FlagBitSets;
 import org.infinispan.distribution.BlockingInterceptor;
@@ -793,9 +794,9 @@ public class RemoteGetDuringStateTransferTest extends MultipleCacheManagersTest 
              .hash()
              .numSegments(1)
              .numOwners(1)
-             .consistentHashFactory(new SingleKeyConsistentHashFactory())
              .stateTransfer()
              .timeout(30, TimeUnit.SECONDS);
+      builder.addModule(PrivateCacheConfigurationBuilder.class).consistentHashFactory(new SingleKeyConsistentHashFactory());
       return builder;
    }
 
@@ -885,7 +886,7 @@ public class RemoteGetDuringStateTransferTest extends MultipleCacheManagersTest 
    @ProtoSchema(
          includeClasses = SingleKeyConsistentHashFactory.class,
          schemaFileName = "test.core.RemoteGetDuringStateTransferTest.proto",
-         schemaFilePath = "proto/generated",
+         schemaFilePath = "org/infinispan",
          schemaPackageName = "org.infinispan.test.core.RemoteGetDuringStateTransferTest",
          service = false
    )

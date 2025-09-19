@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.infinispan.distribution.ch.ConsistentHash;
-import org.infinispan.distribution.ch.ConsistentHashFactory;
 import org.infinispan.remoting.transport.Address;
 
 /**
@@ -66,7 +65,7 @@ public abstract class AbstractConsistentHashFactory<CH extends ConsistentHash> i
       return best;
    }
 
-   static abstract class Builder {
+   abstract static class Builder {
       protected final OwnershipStatistics stats;
       protected final List<Address> members;
       protected final Map<Address, Float> capacityFactors;

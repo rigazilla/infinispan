@@ -314,7 +314,7 @@ public abstract class BaseStreamTest extends MultipleCacheManagersTest {
       }
    }
 
-   private static abstract class AbstractForEach implements CacheAware<Integer, String> {
+   private abstract static class AbstractForEach implements CacheAware<Integer, String> {
       Cache<?, ?> cache;
 
       @ProtoField(1)
@@ -455,7 +455,7 @@ public abstract class BaseStreamTest extends MultipleCacheManagersTest {
 
          int lueCount = 0;
          for (String string : queue) {
-            if (string.equals("lue")) lueCount++;
+            if ("lue".equals(string)) lueCount++;
          }
          assertEquals(10, lueCount);
       } finally {
@@ -2308,7 +2308,7 @@ public abstract class BaseStreamTest extends MultipleCacheManagersTest {
                KeyValuePairArrayAdapter.class
          },
          schemaFileName = "test.core.BaseStreamTest.proto",
-         schemaFilePath = "proto/generated",
+         schemaFilePath = "org/infinispan",
          schemaPackageName = "org.infinispan.test.core.BaseStreamTest",
          service = false,
          syntax = ProtoSyntax.PROTO3

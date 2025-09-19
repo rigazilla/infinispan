@@ -42,6 +42,10 @@
          <scope>compile</scope>
       </dependency>
       <dependency>
+         <groupId>org.junit.jupiter</groupId>
+         <artifactId>junit-jupiter-params</artifactId>
+      </dependency>
+      <dependency>
          <groupId>org.infinispan</groupId>
          <artifactId>infinispan-server-testdriver-core</artifactId>
          <scope>compile</scope>
@@ -63,7 +67,7 @@
                   <usedefaultlisteners>false</usedefaultlisteners>
                   <listener>org.infinispan.server.test.junit5.InfinispanServerTestListener</listener>
                </properties>
-               <argLine>${forkJvmArgs} ${testjvm.jdkSpecificArgs} -Dorg.infinispan.test.server.dir=${org.infinispan.test.server.dir} -Djdk.attach.allowAttachSelf=true -Ddir.jacoco=${dir.jacoco}</argLine>
+               <argLine>${forkJvmArgs} ${testjvm.jdkSpecificArgs} -Dorg.infinispan.test.server.dir=${org.infinispan.test.server.dir} -Djdk.attach.allowAttachSelf=true</argLine>
             </configuration>
             <dependencies>
                <dependency>

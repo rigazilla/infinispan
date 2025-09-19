@@ -1,15 +1,15 @@
 package org.infinispan.cdi.embedded.test.cachemanager.external;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Disposes;
-import jakarta.enterprise.inject.Produces;
-
 import org.infinispan.cdi.embedded.ConfigureCache;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.test.TestingUtil;
 import org.infinispan.test.fwk.TestCacheManagerFactory;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Disposes;
+import jakarta.enterprise.inject.Produces;
 
 /**
  * Creates a number of caches, based on some external mechanism.
@@ -43,16 +43,16 @@ public class Config {
    @ApplicationScoped
    @SuppressWarnings("unused")
    public EmbeddedCacheManager defaultCacheManager() {
-      EmbeddedCacheManager externalCacheContainerManager = TestCacheManagerFactory.createCacheManager(false);
+      EmbeddedCacheManager externalCacheContainerManager = TestCacheManagerFactory.createCacheManager(true);
 
       // define large configuration
       externalCacheContainerManager.defineConfiguration("large", new ConfigurationBuilder()
-            .memory().size(100)
+            .memory().maxCount(100)
             .build());
 
       // define quick configuration
       externalCacheContainerManager.defineConfiguration("quick", new ConfigurationBuilder()
-            .expiration().wakeUpInterval(1l)
+            .expiration().wakeUpInterval(1L)
             .build());
 
       return externalCacheContainerManager;

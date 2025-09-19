@@ -14,8 +14,8 @@ import org.infinispan.metadata.impl.PrivateMetadata;
 import org.infinispan.protostream.SerializationContextInitializer;
 import org.infinispan.protostream.annotations.ProtoSchema;
 import org.infinispan.protostream.annotations.ProtoSyntax;
+import org.infinispan.remoting.transport.Address;
 import org.infinispan.remoting.transport.NodeVersion;
-import org.infinispan.remoting.transport.jgroups.JGroupsAddress;
 import org.infinispan.security.AuthorizationPermission;
 import org.infinispan.security.impl.CacheRoleImpl;
 import org.infinispan.security.mappers.ClusterRoleMapper;
@@ -32,6 +32,7 @@ import org.infinispan.util.logging.events.EventLogLevel;
  */
 @ProtoSchema(
       dependsOn = {
+            org.infinispan.protostream.types.java.CommonTypes.class,
             org.infinispan.commons.marshall.PersistenceContextInitializer.class,
             org.infinispan.counter.api._private.PersistenceContextInitializer.class
       },
@@ -43,7 +44,7 @@ import org.infinispan.util.logging.events.EventLogLevel;
             EmbeddedMetadata.EmbeddedMaxIdleExpirableMetadata.class,
             EventLogCategory.class,
             EventLogLevel.class,
-            JGroupsAddress.class,
+            Address.class,
             MarshalledValueImpl.class,
             MetaParamsInternalMetadata.class,
             NodeVersion.class,
@@ -62,7 +63,7 @@ import org.infinispan.util.logging.events.EventLogLevel;
             SubjectAdapter.class
       },
       schemaFileName = "persistence.core.proto",
-      schemaFilePath = "proto/generated",
+      schemaFilePath = "org/infinispan",
       schemaPackageName = PersistenceContextInitializer.PACKAGE_NAME,
       service = false,
       syntax = ProtoSyntax.PROTO2

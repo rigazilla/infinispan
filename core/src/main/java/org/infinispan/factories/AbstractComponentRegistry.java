@@ -9,6 +9,7 @@ import org.infinispan.commons.CacheConfigurationException;
 import org.infinispan.commons.CacheException;
 import org.infinispan.commons.api.Lifecycle;
 import org.infinispan.commons.time.TimeService;
+import org.infinispan.commons.util.concurrent.CompletionStages;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.factories.annotations.DefaultFactoryFor;
 import org.infinispan.factories.annotations.Inject;
@@ -17,7 +18,6 @@ import org.infinispan.factories.impl.BasicComponentRegistryImpl;
 import org.infinispan.factories.impl.ComponentRef;
 import org.infinispan.lifecycle.ComponentStatus;
 import org.infinispan.manager.ModuleRepository;
-import org.infinispan.commons.util.concurrent.CompletionStages;
 import org.infinispan.util.logging.Log;
 
 /**
@@ -70,6 +70,11 @@ public abstract class AbstractComponentRegistry implements Lifecycle {
    protected abstract ClassLoader getClassLoader();
 
    protected abstract Log getLog();
+
+   public final void blameInitialization() {
+      if (state.allowInvocations())
+         basicComponentRegistry.blameInitialization();
+   }
 
    /**
     * Wires an object instance with dependencies annotated with the {@link Inject} annotation, creating more components
@@ -210,6 +215,9 @@ public abstract class AbstractComponentRegistry implements Lifecycle {
    /**
     * This starts the components in the registry, connecting to channels, starting service threads, etc.  If the component is
     * not in the {@link org.infinispan.lifecycle.ComponentStatus#INITIALIZING} state, it will be initialized first.
+    * <p>
+    * You need to call {@link #postStart()} after this completes with no error to complete startup. This is necessary
+    * as some post start steps can fail and this allows the user to handle that case before stopping the registry.
     */
    @Override
    public void start() {
@@ -235,14 +243,12 @@ public abstract class AbstractComponentRegistry implements Lifecycle {
          CompletionStage<Void> cs = delayStart();
          if (cs == null || CompletionStages.isCompletedSuccessfully(cs)) {
             updateStatusRunning();
-            postStart();
          } else {
             cs.whenComplete((ignore, t) -> {
                if (t != null) {
                   componentFailed(t);
                } else {
                   updateStatusRunning();
-                  postStart();
                }
             });
          }
@@ -258,7 +264,7 @@ public abstract class AbstractComponentRegistry implements Lifecycle {
       }
    }
 
-   private void componentFailed(Throwable t) {
+   public void componentFailed(Throwable t) {
       synchronized (this) {
          state = ComponentStatus.FAILED;
          notifyAll();
@@ -278,9 +284,9 @@ public abstract class AbstractComponentRegistry implements Lifecycle {
 
    protected abstract void preStart();
 
-   protected abstract void postStart();
+   public abstract void postStart();
 
-   abstract protected CompletionStage<Void> delayStart();
+   protected abstract CompletionStage<Void> delayStart();
 
    /**
     * Stops the component and sets its status to {@link org.infinispan.lifecycle.ComponentStatus#TERMINATED} once it
@@ -358,6 +364,10 @@ public abstract class AbstractComponentRegistry implements Lifecycle {
       // Start all the components. The order doesn't matter, as starting one component starts its dependencies as well
       Collection<ComponentRef<?>> components = basicComponentRegistry.getRegisteredComponents();
       for (ComponentRef<?> component : components) {
+         if (state.isStopping() || state.isTerminated()) {
+            getLog().tracef("Component %s not started because the registry was stopped or terminated", getName());
+            break;
+         }
          component.running();
       }
 

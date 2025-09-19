@@ -22,7 +22,6 @@ import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 import org.infinispan.client.rest.RestCacheClient;
 import org.infinispan.client.rest.RestClient;
 import org.infinispan.client.rest.configuration.RestClientConfigurationBuilder;
-import org.infinispan.commons.dataconversion.IdentityEncoder;
 import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.commons.dataconversion.TranscoderMarshallerAdapter;
 import org.infinispan.commons.marshall.Marshaller;
@@ -178,6 +177,7 @@ public class EndpointsCacheFactory<K, V> {
          rest = new RestServer();
          rest.setServerManagement(new DummyServerManagement(), true);
          rest.start(builder.build(), cacheManager);
+         rest.postStart();
          return rest;
       });
       RestClientConfigurationBuilder builder = new RestClientConfigurationBuilder();
@@ -196,6 +196,7 @@ public class EndpointsCacheFactory<K, V> {
          }
          MemcachedServer server = new MemcachedServer();
          server.start(builder.build(), cacheManager);
+         server.postStart();
          return server;
       });
       memcachedClient = createMemcachedClient(60000, memcached.getPort());
@@ -250,7 +251,7 @@ public class EndpointsCacheFactory<K, V> {
    }
 
    public Cache<K, V> getEmbeddedCache() {
-      return (Cache<K, V>) embeddedCache.getAdvancedCache().withEncoding(IdentityEncoder.class);
+      return embeddedCache.getAdvancedCache();
    }
 
    public RemoteCache<K, V> getHotRodCache() {

@@ -94,6 +94,8 @@ import org.infinispan.remoting.transport.impl.XSiteResponseImpl;
 import org.infinispan.remoting.transport.raft.RaftManager;
 import org.infinispan.telemetry.InfinispanSpan;
 import org.infinispan.telemetry.InfinispanTelemetry;
+import org.infinispan.telemetry.SafeAutoClosable;
+import org.infinispan.telemetry.impl.DisabledInfinispanSpan;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
 import org.infinispan.xsite.XSiteBackup;
@@ -159,7 +161,7 @@ public class JGroupsTransport implements Transport {
    public static final short REPLY_FLAGS =
          (short) (Message.Flag.NO_FC.value() | Message.Flag.OOB.value() |
                Message.Flag.NO_TOTAL_ORDER.value());
-   protected static final String DEFAULT_JGROUPS_CONFIGURATION_FILE = "default-configs/default-jgroups-udp.xml";
+   protected static final String DEFAULT_JGROUPS_CONFIGURATION_FILE = "org/infinispan/configuration/default-jgroups-udp.xml";
    public static final Log log = LogFactory.getLog(JGroupsTransport.class);
    private static final CompletableFuture<Map<Address, Response>> EMPTY_RESPONSES_FUTURE =
          CompletableFuture.completedFuture(Collections.emptyMap());
@@ -357,9 +359,8 @@ public class JGroupsTransport implements Transport {
       DeliverOrder order = backup.isSync() ? DeliverOrder.NONE : DeliverOrder.PER_SENDER;
       long timeout = backup.getTimeout();
       XSiteResponseImpl<O> xSiteResponse = new XSiteResponseImpl<>(timeService, backup);
-      try {
-         traceRequest(request, rpcCommand);
-         sendCommand(recipient, rpcCommand, request.getRequestId(), order, false);
+      try (var ignored = traceRequest(request, rpcCommand)) {
+         doSendForCrossSite(recipient, rpcCommand, request.getRequestId(), order);
          if (timeout > 0) {
             request.setTimeout(timeoutExecutor, timeout, TimeUnit.MILLISECONDS);
          }
@@ -391,12 +392,11 @@ public class JGroupsTransport implements Transport {
       if (channel == null) {
          return List.of();
       }
-      var ipAddress = channel.getProtocolStack().getTransport().localPhysicalAddress();
+      org.jgroups.PhysicalAddress ipAddress = channel.getProtocolStack().getTransport().localPhysicalAddress();
       if (ipAddress == null) {
          return List.of();
       }
-      assert ipAddress instanceof IpAddress;
-      return List.of(new PhysicalAddress(((IpAddress) ipAddress).getIpAddress(), ((IpAddress) ipAddress).getPort()));
+      return List.of(new PhysicalAddress(ipAddress.getIpAddress(), ipAddress.getPort()));
    }
 
    @Override
@@ -709,55 +709,64 @@ public class JGroupsTransport implements Transport {
       if (address == null) {
          org.jgroups.Address jgroupsAddress = channel.getAddress();
          assert jgroupsAddress instanceof ExtendedUUID;
-         this.address = JGroupsAddressCache.fromExtendedUUID((ExtendedUUID) jgroupsAddress);
+         this.address = AddressCache.fromExtendedUUID((ExtendedUUID) jgroupsAddress);
          if (log.isTraceEnabled()) {
             String uuid = ((org.jgroups.util.UUID) jgroupsAddress).toStringLong();
             log.tracef("Local address %s, uuid %s", jgroupsAddress, uuid);
          }
       }
-      if (installIfFirst && clusterView.getViewId() != ClusterView.INITIAL_VIEW_ID) {
-         return;
-      }
-      long viewId = newView.getViewId().getId();
-      var newClusterView = new ClusterView((int) viewId, newView.getMembers().stream().map(ExtendedUUID.class::cast).toList(), (ExtendedUUID) channel.getAddress(), version);
+
+      ClusterView newClusterView;
+      ClusterView oldClusterView;
       List<List<Address>> subGroups;
-      if (newView instanceof MergeView) {
-         if (!(channel instanceof ForkChannel)) {
-            CLUSTER.receivedMergedView(channel.clusterName(), newView);
-         }
-         subGroups = new ArrayList<>();
-         List<View> jgroupsSubGroups = ((MergeView) newView).getSubgroups();
-         for (View group : jgroupsSubGroups) {
-            var mapped = group.getMembers().stream()
-                  .map(ExtendedUUID.class::cast)
-                  .map(JGroupsAddressCache::fromExtendedUUID)
-                  .map(Address.class::cast)
-                  .toList();
-            subGroups.add(mapped);
-         }
-      } else {
-         if (!(channel instanceof ForkChannel)) {
-            CLUSTER.receivedClusterView(channel.clusterName(), newView);
-         }
-         subGroups = Collections.emptyList();
-      }
-
-      if (newView.getMembers().isEmpty()) {
-         return;
-      }
-
-      ClusterView oldView = this.clusterView;
-
-      // Update every view-related field while holding the lock so that waitForView only returns
-      // after everything was updated.
       CompletableFuture<Void> oldFuture = null;
+      int viewId = (int) newView.getViewId().getId();
+
       viewUpdateLock.lock();
       try {
+         oldClusterView = this.clusterView;
+         if (installIfFirst && oldClusterView.getViewId() != ClusterView.INITIAL_VIEW_ID) {
+            log.debugf("Rejected because installIfFirst is set to true and the current view id is %s", oldClusterView.getViewId());
+            return;
+         }
+
+         if (oldClusterView.getViewId() >= viewId) {
+            log.rejectOutdatedView(oldClusterView.getViewId(), String.valueOf(newView));
+            return;
+         }
+
+         newClusterView = new ClusterView(viewId, newView.getMembers().stream().map(ExtendedUUID.class::cast).toList(), (ExtendedUUID) channel.getAddress(), version);
+         if (newView instanceof MergeView) {
+            if (!(channel instanceof ForkChannel)) {
+               CLUSTER.receivedMergedView(channel.clusterName(), newView);
+            }
+            subGroups = new ArrayList<>();
+            List<View> jgroupsSubGroups = ((MergeView) newView).getSubgroups();
+            for (View group : jgroupsSubGroups) {
+               var mapped = group.getMembers().stream()
+                     .map(ExtendedUUID.class::cast)
+                     .map(AddressCache::fromExtendedUUID)
+                     .toList();
+               subGroups.add(mapped);
+            }
+         } else {
+            if (!(channel instanceof ForkChannel)) {
+               CLUSTER.receivedClusterView(channel.clusterName(), newView);
+            }
+            subGroups = Collections.emptyList();
+         }
+
+         if (newView.getMembers().isEmpty()) {
+            return;
+         }
+
+         // Update every view-related field while holding the lock so that waitForView only returns
+         // after everything was updated.
          // Delta view debug log for large cluster
-         if (log.isDebugEnabled() && oldView.getMembers() != null) {
+         if (log.isDebugEnabled() && oldClusterView.getMembers() != null) {
             List<Address> joined = new ArrayList<>(newClusterView.getMembers());
-            joined.removeAll(oldView.getMembers());
-            List<Address> left = new ArrayList<>(oldView.getMembers());
+            joined.removeAll(oldClusterView.getMembers());
+            List<Address> left = new ArrayList<>(oldClusterView.getMembers());
             left.removeAll(newClusterView.getMembers());
             log.debugf("Joined: %s, Left: %s", joined, left);
          }
@@ -786,9 +795,9 @@ public class JGroupsTransport implements Transport {
       if (hasNotifier) {
          if (!subGroups.isEmpty()) {
             final Address address1 = getAddress();
-            CompletionStages.join(notifier.notifyMerge(newClusterView.getMembers(), oldView.getMembers(), address1, (int) viewId, subGroups));
+            CompletionStages.join(notifier.notifyMerge(newClusterView.getMembers(), oldClusterView.getMembers(), address1, viewId, subGroups));
          } else {
-            CompletionStages.join(notifier.notifyViewChange(newClusterView.getMembers(), oldView.getMembers(), getAddress(), (int) viewId));
+            CompletionStages.join(notifier.notifyViewChange(newClusterView.getMembers(), oldClusterView.getMembers(), getAddress(), viewId));
          }
       }
 
@@ -800,7 +809,7 @@ public class JGroupsTransport implements Transport {
          }
       });
 
-      JGroupsAddressCache.pruneAddressCache();
+      AddressCache.pruneAddressCache();
    }
 
    @Stop
@@ -917,8 +926,7 @@ public class JGroupsTransport implements Transport {
             .map(RELAY2::siteMasters)
             .map(addresses -> addresses.stream()
                   .map(ExtendedUUID.class::cast)
-                  .map(JGroupsAddressCache::fromExtendedUUID)
-                  .map(Address.class::cast)
+                  .map(AddressCache::fromExtendedUUID)
                   .toList())
             .orElse(Collections.emptyList());
    }
@@ -946,15 +954,17 @@ public class JGroupsTransport implements Transport {
       logRequest(requestId, command, target, "single");
       SingleTargetRequest<T> request = new SingleTargetRequest<>(collector, requestId, requests, metricsManager.trackRequest(target));
       addRequest(request);
-      var view = clusterView;
-      if (!request.onNewView(view.getMembersSet())) {
-         traceRequest(request, command);
-         sendCommand(view.getAddressFromView(target), command, requestId, deliverOrder, true);
+      if (request.onNewView(clusterView.getMembersSet())) {
+         // The request is completed, destination not found in view. We can return immediately.
+         return request;
       }
-      if (timeout > 0) {
-         request.setTimeout(timeoutExecutor, timeout, unit);
+      try (var ignored = traceRequest(request, command)) {
+         sendCommandCheckingView(target, command, requestId, deliverOrder);
+         if (timeout > 0) {
+            request.setTimeout(timeoutExecutor, timeout, unit);
+         }
+         return request;
       }
-      return request;
    }
 
    @Override
@@ -976,9 +986,8 @@ public class JGroupsTransport implements Transport {
       if (request.isDone()) {
          return request;
       }
-      try {
+      try (var ignored = traceRequest(request, command)) {
          addRequest(request);
-         traceRequest(request, command);
          request.onNewView(clusterView.getMembersSet());
          if (request.isDone()) {
             return request;
@@ -1009,9 +1018,8 @@ public class JGroupsTransport implements Transport {
       if (request.isDone()) {
          return request;
       }
-      try {
+      try (var ignored = traceRequest(request, command)) {
          addRequest(request);
-         traceRequest(request, command);
          request.onNewView(clusterView.getMembersSet());
          sendCommandToAll(command, requestId, deliverOrder);
       } catch (Throwable t) {
@@ -1040,12 +1048,11 @@ public class JGroupsTransport implements Transport {
       if (request.isDone()) {
          return request;
       }
-      try {
+      try (var ignored = traceRequest(request, command)) {
          if (isCommandUnsupported(command)) {
             return commandUnsupportedFuture(command);
          }
          addRequest(request);
-         traceRequest(request, command);
          request.onNewView(clusterView.getMembersSet());
          sendCommandToAll(command, requestId, deliverOrder);
       } catch (Throwable t) {
@@ -1070,9 +1077,8 @@ public class JGroupsTransport implements Transport {
       StaggeredRequest<T> request =
             new StaggeredRequest<>(collector, requestId, requests, targets, getAddress(), command, deliverOrder,
                   timeout, unit, this);
-      try {
+      try (var ignored = traceRequest(request, command)) {
          addRequest(request);
-         traceRequest(request, command);
          request.onNewView(clusterView.getMembersSet());
          request.sendNextMessage();
       } catch (Throwable t) {
@@ -1105,7 +1111,11 @@ public class JGroupsTransport implements Transport {
       }
       addRequest(request);
       var view = clusterView;
-      boolean checkView = request.onNewView(view.getMembersSet());
+      request.onNewView(view.getMembersSet());
+      if (request.isDone()) {
+         // The request is completed.
+         return request;
+      }
       try {
          for (Address target : targets) {
             if (target.equals(excludedTarget))
@@ -1113,11 +1123,8 @@ public class JGroupsTransport implements Transport {
 
             ReplicableCommand command = commandGenerator.apply(target);
             logRequest(requestId, command, target, "mixed");
-            traceRequest(request, command); // TODO is correct?
-            if (checkView) {
+            try (var ignored = traceRequest(request, command)) { // TODO is correct?
                sendCommandCheckingView(target, command, requestId, deliverOrder);
-            } else {
-               sendCommand(view.getAddressFromView(target), command, requestId, deliverOrder, true);
             }
          }
       } catch (Throwable t) {
@@ -1149,36 +1156,39 @@ public class JGroupsTransport implements Transport {
       }
    }
 
-   private void traceRequest(AbstractRequest<?, ?> request, TracedCommand command) {
+   private SafeAutoClosable traceRequest(AbstractRequest<?, ?> request, TracedCommand command) {
       var traceSpan = command.getSpanAttributes();
       if (traceSpan != null) {
          InfinispanSpan<Object> span = telemetry.startTraceRequest(command.getOperationName(), traceSpan);
          request.whenComplete(span);
+         return span.makeCurrent();
+      } else {
+         return DisabledInfinispanSpan.instance().makeCurrent();
       }
    }
 
    void sendCommandCheckingView(Address destination, Object command, long requestId, DeliverOrder deliverOrder) {
-      var target = clusterView.getAddressFromView(destination);
+      ExtendedUUID target = clusterView.getAddressFromView(destination);
       if (target == null) {
          // not in view
          return;
       }
-      sendCommand(target, command, requestId, deliverOrder, true);
+      doSendForCluster(destination, target, command, requestId, deliverOrder);
    }
 
-   void sendCommand(org.jgroups.Address target, Object command, long requestId, DeliverOrder deliverOrder,
-                    boolean noRelay) {
+   void doSendForCrossSite(SiteAddress target, Object command, long requestId, DeliverOrder deliverOrder) {
       Message message = new BytesMessage(target);
       marshallRequest(message, command, requestId);
-      setMessageFlags(message, deliverOrder, noRelay);
-
+      setMessageFlagsForCrossSite(message, deliverOrder);
       send(message);
-      if (noRelay) {
-         assert target instanceof ExtendedUUID;
-         // only record non cross-site messages
-         // TODO FIX: the implementation uses `toString` from the address (uses the name in the tag)
-         metricsManager.recordMessageSent(JGroupsAddressCache.fromExtendedUUID((ExtendedUUID) target), message.size(), requestId == Request.NO_REQUEST_ID);
-      }
+   }
+
+   void doSendForCluster(Address address, ExtendedUUID target, Object command, long requestId, DeliverOrder deliverOrder) {
+      Message message = new BytesMessage(target);
+      marshallRequest(message, command, requestId);
+      setMessageFlagsForCluster(message, deliverOrder);
+      send(message);
+      metricsManager.recordMessageSent(address, message.size(), requestId == Request.NO_REQUEST_ID);
    }
 
    private void marshallRequest(Message message, Object command, long requestId) {
@@ -1193,14 +1203,16 @@ public class JGroupsTransport implements Transport {
       }
    }
 
-   private static void setMessageFlags(Message message, DeliverOrder deliverOrder, boolean noRelay) {
-      short flags = encodeDeliverMode(deliverOrder);
-      if (noRelay) {
-         flags |= Message.Flag.NO_RELAY.value();
-      }
+   private static void setMessageFlagsForCrossSite(Message message, DeliverOrder deliverOrder) {
+      message.setFlag(encodeDeliverMode(deliverOrder), false);
+      message.setFlag(Message.TransientFlag.DONT_LOOPBACK.value(), true);
+   }
 
+
+   private static void setMessageFlagsForCluster(Message message, DeliverOrder deliverOrder) {
+      short flags = (short) (encodeDeliverMode(deliverOrder) | Message.Flag.NO_RELAY.value());
       message.setFlag(flags, false);
-      message.setFlag(Message.TransientFlag.DONT_LOOPBACK);
+      message.setFlag(Message.TransientFlag.DONT_LOOPBACK.value(), true);
    }
 
    private void send(Message message) {
@@ -1319,7 +1331,7 @@ public class JGroupsTransport implements Transport {
    private void sendCommandToAll(ReplicableCommand command, long requestId, DeliverOrder deliverOrder) {
       Message message = new BytesMessage();
       marshallRequest(message, command, requestId);
-      setMessageFlags(message, deliverOrder, true);
+      setMessageFlagsForCluster(message, deliverOrder);
       send(message);
       clusterView.getMembersSet().stream()
             .filter(t -> !t.equals(address))
@@ -1386,7 +1398,7 @@ public class JGroupsTransport implements Transport {
       Objects.requireNonNull(targets);
       Message message = new BytesMessage();
       marshallRequest(message, command, requestId);
-      setMessageFlags(message, deliverOrder, true);
+      setMessageFlagsForCluster(message, deliverOrder);
 
       Message copy = message;
       for (Iterator<Address> it = targets.iterator(); it.hasNext(); ) {
@@ -1523,7 +1535,7 @@ public class JGroupsTransport implements Transport {
          if (org.jgroups.util.Util.isFlagSet(flags, Message.Flag.NO_RELAY)) {
             assert command instanceof ReplicableCommand;
             assert src instanceof ExtendedUUID;
-            invocationHandler.handleFromCluster(JGroupsAddressCache.fromExtendedUUID((ExtendedUUID) src), (ReplicableCommand) command, reply, deliverOrder);
+            invocationHandler.handleFromCluster(AddressCache.fromExtendedUUID((ExtendedUUID) src), (ReplicableCommand) command, reply, deliverOrder);
          } else {
             assert src instanceof SiteAddress;
             assert command instanceof XSiteRequest;
@@ -1554,7 +1566,7 @@ public class JGroupsTransport implements Transport {
             requests.addResponse(requestId, siteUUID.getSite(), response);
          } else {
             assert src instanceof ExtendedUUID;
-            requests.addResponse(requestId, JGroupsAddressCache.fromExtendedUUID((ExtendedUUID) src), response);
+            requests.addResponse(requestId, AddressCache.fromExtendedUUID((ExtendedUUID) src), response);
          }
       } catch (Throwable t) {
          CLUSTER.errorProcessingResponse(requestId, src, t);
@@ -1665,7 +1677,7 @@ public class JGroupsTransport implements Transport {
       @Override
       public org.jgroups.Address generateAddress(String name) {
          var transportCfg = configuration.transport();
-         return JGroupsAddress.randomUUID(name, version, transportCfg.siteId(), transportCfg.rackId(),
+         return Address.randomUUID(name, version, transportCfg.siteId(), transportCfg.rackId(),
                transportCfg.machineId());
       }
    }

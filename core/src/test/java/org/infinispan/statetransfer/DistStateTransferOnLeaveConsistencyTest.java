@@ -16,8 +16,11 @@ import java.util.stream.StreamSupport;
 
 import org.infinispan.Cache;
 import org.infinispan.commons.util.concurrent.CompletableFutures;
+import org.infinispan.commons.util.concurrent.CompletionStages;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.configuration.cache.IsolationLevel;
+import org.infinispan.configuration.internal.PrivateCacheConfigurationBuilder;
 import org.infinispan.container.DataContainer;
 import org.infinispan.distribution.LocalizedCacheTopology;
 import org.infinispan.factories.annotations.Inject;
@@ -32,8 +35,6 @@ import org.infinispan.transaction.TransactionMode;
 import org.infinispan.transaction.lookup.EmbeddedTransactionManagerLookup;
 import org.infinispan.util.ControlledConsistentHashFactory;
 import org.infinispan.util.concurrent.BlockingManager;
-import org.infinispan.commons.util.concurrent.CompletionStages;
-import org.infinispan.configuration.cache.IsolationLevel;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
 import org.testng.annotations.Test;
@@ -76,7 +77,8 @@ public class DistStateTransferOnLeaveConsistencyTest extends MultipleCacheManage
 
       // Make it impossible for a key to be owned by nodes 0 and 2
       consistentHashFactory = new ControlledConsistentHashFactory.Default(new int[][]{{0, 1}, {1, 2}});
-      builder.clustering().hash().numOwners(2).numSegments(2).consistentHashFactory(consistentHashFactory);
+      builder.clustering().hash().numOwners(2).numSegments(2);
+      builder.addModule(PrivateCacheConfigurationBuilder.class).consistentHashFactory(consistentHashFactory);
       builder.clustering().stateTransfer().fetchInMemoryState(true).awaitInitialTransfer(false);
       builder.clustering().l1().disable().locking().lockAcquisitionTimeout(TestingUtil.shortTimeoutMillis());
       return builder;
@@ -230,8 +232,8 @@ public class DistStateTransferOnLeaveConsistencyTest extends MultipleCacheManage
       if (op == Operation.CLEAR || op == Operation.REMOVE) {
          // caches should be empty. check that no keys were revived by an inconsistent state transfer
          for (int i = 0; i < numKeys; i++) {
-            assertNull(dc0.get(i));
-            assertNull(dc2.get(i));
+            assertNull(dc0.peek(i));
+            assertNull(dc2.peek(i));
          }
       } else if (op == Operation.PUT || op == Operation.PUT_MAP || op == Operation.REPLACE) {
          LocalizedCacheTopology cacheTopology = advancedCache(0).getDistributionManager().getCacheTopology();
@@ -239,10 +241,10 @@ public class DistStateTransferOnLeaveConsistencyTest extends MultipleCacheManage
          for (int i = 0; i < numKeys; i++) {
             // check number of owners
             int owners = 0;
-            if (dc0.get(i) != null) {
+            if (dc0.peek(i) != null) {
                owners++;
             }
-            if (dc2.get(i) != null) {
+            if (dc2.peek(i) != null) {
                owners++;
             }
             assertEquals("Wrong number of owners", cacheTopology.getDistribution(i).readOwners().size(), owners);
@@ -257,10 +259,10 @@ public class DistStateTransferOnLeaveConsistencyTest extends MultipleCacheManage
          for (int i = 0; i < numKeys; i++) {
             // check number of owners
             int owners = 0;
-            if (dc0.get(i) != null) {
+            if (dc0.peek(i) != null) {
                owners++;
             }
-            if (dc2.get(i) != null) {
+            if (dc2.peek(i) != null) {
                owners++;
             }
             assertEquals("Wrong number of owners", cacheTopology.getDistribution(i).readOwners().size(), owners);

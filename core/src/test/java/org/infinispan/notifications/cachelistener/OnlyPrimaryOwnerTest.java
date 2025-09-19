@@ -13,7 +13,6 @@ import org.infinispan.cache.impl.EncoderCache;
 import org.infinispan.commands.CommandsFactory;
 import org.infinispan.commands.FlagAffectedCommand;
 import org.infinispan.commands.tx.VersionedPrepareCommand;
-import org.infinispan.commons.dataconversion.Encoder;
 import org.infinispan.commons.marshall.Marshaller;
 import org.infinispan.commons.util.concurrent.CompletableFutures;
 import org.infinispan.configuration.cache.CacheMode;
@@ -32,7 +31,7 @@ import org.infinispan.distribution.LocalizedCacheTopology;
 import org.infinispan.distribution.ch.ConsistentHash;
 import org.infinispan.distribution.ch.KeyPartitioner;
 import org.infinispan.distribution.ch.impl.DefaultConsistentHash;
-import org.infinispan.encoding.DataConversion;
+import org.infinispan.encoding.impl.DataConversionInternal;
 import org.infinispan.factories.ComponentRegistry;
 import org.infinispan.factories.KnownComponentNames;
 import org.infinispan.factories.impl.BasicComponentRegistry;
@@ -46,7 +45,6 @@ import org.infinispan.notifications.cachelistener.event.Event;
 import org.infinispan.persistence.util.EntryLoader;
 import org.infinispan.remoting.rpc.RpcManager;
 import org.infinispan.remoting.transport.Address;
-import org.infinispan.remoting.transport.jgroups.JGroupsAddress;
 import org.infinispan.test.TestingUtil;
 import org.infinispan.topology.CacheTopology;
 import org.infinispan.util.concurrent.BlockingManager;
@@ -68,16 +66,16 @@ public class OnlyPrimaryOwnerTest {
       EmbeddedCacheManager cacheManager = mock(EmbeddedCacheManager.class);
       when(mockCache.getCacheManager()).thenReturn(cacheManager);
       when(mockCache.getAdvancedCache()).thenReturn(mockCache);
-      when(mockCache.getKeyDataConversion()).thenReturn(DataConversion.IDENTITY_KEY);
-      when(mockCache.getValueDataConversion()).thenReturn(DataConversion.IDENTITY_VALUE);
+      when(mockCache.getKeyDataConversion()).thenReturn(DataConversionInternal.IDENTITY_KEY);
+      when(mockCache.getValueDataConversion()).thenReturn(DataConversionInternal.IDENTITY_VALUE);
       when(mockCache.getStatus()).thenReturn(ComponentStatus.INITIALIZING);
       ComponentRegistry componentRegistry = mock(ComponentRegistry.class);
       when(mockCache.getComponentRegistry()).thenReturn(componentRegistry);
       MockBasicComponentRegistry mockRegistry = new MockBasicComponentRegistry();
       when(componentRegistry.getComponent(BasicComponentRegistry.class)).thenReturn(mockRegistry);
-      mockRegistry.registerMocks(RpcManager.class, CommandsFactory.class, Encoder.class);
+      mockRegistry.registerMocks(RpcManager.class, CommandsFactory.class);
       mockRegistry.registerMock(KnownComponentNames.INTERNAL_MARSHALLER, Marshaller.class);
-      Configuration config = new ConfigurationBuilder().memory().storageType(StorageType.OBJECT).build();
+      Configuration config = new ConfigurationBuilder().memory().storage(StorageType.HEAP).build();
       ClusterEventManager cem = mock(ClusterEventManager.class);
       when(cem.sendEvents(any())).thenReturn(CompletableFutures.completedNull());
       TestingUtil.inject(n, mockCache, cdl, config, mockRegistry,
@@ -89,16 +87,16 @@ public class OnlyPrimaryOwnerTest {
    }
 
    private static class MockCDL implements ClusteringDependentLogic {
-      private static final Address PRIMARY = JGroupsAddress.random();
-      private static final Address BACKUP = JGroupsAddress.random();
-      private static final Address NON_OWNER = JGroupsAddress.random();
+      private static final Address PRIMARY = Address.random();
+      private static final Address BACKUP = Address.random();
+      private static final Address NON_OWNER = Address.random();
       boolean isOwner, isPrimaryOwner;
 
       @Override
       public LocalizedCacheTopology getCacheTopology() {
          List<Address> members = Arrays.asList(PRIMARY, BACKUP, NON_OWNER);
          List<Address>[] ownership = new List[]{Arrays.asList(PRIMARY, BACKUP)};
-         ConsistentHash ch = new DefaultConsistentHash(2, 1, members, null, ownership);
+         ConsistentHash ch = DefaultConsistentHash.create(2, 1, members, null, ownership);
          CacheTopology cacheTopology = new CacheTopology(0, 0, ch, null, CacheTopology.Phase.NO_REBALANCE, null, null);
          Address localAddress = isPrimaryOwner ? PRIMARY : (isOwner ? BACKUP : NON_OWNER);
          return new LocalizedCacheTopology(CacheMode.DIST_SYNC, cacheTopology, key -> 0, localAddress, true);

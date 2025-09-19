@@ -17,6 +17,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.StampedLock;
@@ -30,12 +32,16 @@ import org.infinispan.commands.write.InvalidateCommand;
 import org.infinispan.commands.write.PutMapCommand;
 import org.infinispan.commands.write.WriteCommand;
 import org.infinispan.commons.IllegalLifecycleStateException;
+import org.infinispan.commons.TimeoutException;
 import org.infinispan.commons.io.ByteBufferFactory;
+import org.infinispan.commons.jdkspecific.CallerId;
 import org.infinispan.commons.time.TimeService;
 import org.infinispan.commons.util.ByRef;
 import org.infinispan.commons.util.IntSet;
 import org.infinispan.commons.util.IntSets;
+import org.infinispan.commons.util.concurrent.AggregateCompletionStage;
 import org.infinispan.commons.util.concurrent.CompletableFutures;
+import org.infinispan.commons.util.concurrent.CompletionStages;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.StoreConfiguration;
 import org.infinispan.configuration.global.GlobalConfiguration;
@@ -69,7 +75,6 @@ import org.infinispan.notifications.cachelistener.CacheNotifier;
 import org.infinispan.persistence.InitializationContextImpl;
 import org.infinispan.persistence.async.AsyncNonBlockingStore;
 import org.infinispan.persistence.internal.PersistenceUtil;
-import org.infinispan.persistence.spi.LocalOnlyCacheLoader;
 import org.infinispan.persistence.spi.MarshallableEntry;
 import org.infinispan.persistence.spi.MarshallableEntryFactory;
 import org.infinispan.persistence.spi.NonBlockingStore;
@@ -77,13 +82,10 @@ import org.infinispan.persistence.spi.NonBlockingStore.Characteristic;
 import org.infinispan.persistence.spi.PersistenceException;
 import org.infinispan.persistence.spi.StoreUnavailableException;
 import org.infinispan.persistence.support.DelegatingNonBlockingStore;
-import org.infinispan.persistence.support.NonBlockingStoreAdapter;
 import org.infinispan.persistence.support.SegmentPublisherWrapper;
 import org.infinispan.persistence.support.SingleSegmentPublisher;
 import org.infinispan.transaction.impl.AbstractCacheTransaction;
-import org.infinispan.commons.util.concurrent.AggregateCompletionStage;
 import org.infinispan.util.concurrent.BlockingManager;
-import org.infinispan.commons.util.concurrent.CompletionStages;
 import org.infinispan.util.concurrent.NonBlockingManager;
 import org.infinispan.util.function.TriPredicate;
 import org.infinispan.util.logging.Log;
@@ -93,8 +95,10 @@ import org.reactivestreams.Publisher;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.functions.Function;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import net.jcip.annotations.GuardedBy;
 
 @Scope(Scopes.NAMED_CACHE)
@@ -115,6 +119,8 @@ public class PersistenceManagerImpl implements PersistenceManager {
    @ComponentName(KnownComponentNames.NON_BLOCKING_EXECUTOR)
    @Inject Executor nonBlockingExecutor;
    @Inject BlockingManager blockingManager;
+   @ComponentName(KnownComponentNames.TIMEOUT_SCHEDULE_EXECUTOR)
+   @Inject ScheduledExecutorService timeoutExecutor;
    @Inject NonBlockingManager nonBlockingManager;
    @Inject ComponentRef<InternalExpirationManager<Object, Object>> expirationManager;
    @Inject DistributionManager distributionManager;
@@ -133,6 +139,9 @@ public class PersistenceManagerImpl implements PersistenceManager {
    private boolean allSegmentedOrShared;
 
    private int segmentCount;
+
+   private Flowable<?> TIMEOUT_FLOWABLE;
+   private Scheduler rxTimeoutScheduler;
 
    @GuardedBy("lock")
    private List<StoreStatus> stores = null;
@@ -193,6 +202,9 @@ public class PersistenceManagerImpl implements PersistenceManager {
                   __ -> startManagerAndStores(configuration.persistence().stores()),
                   this::releaseWriteLock)
             .blockingAwait();
+
+      TIMEOUT_FLOWABLE = Flowable.error(log.storeTimeoutBetweenEntries(configuration.clustering().remoteTimeout()));
+      rxTimeoutScheduler = Schedulers.from(timeoutExecutor);
    }
 
    @GuardedBy("lock#writeLock")
@@ -550,7 +562,7 @@ public class PersistenceManagerImpl implements PersistenceManager {
          while (statusIterator.hasNext()) {
             StoreStatus status = statusIterator.next();
             NonBlockingStore<?, ?> nonBlockingStore = unwrapStore(status.store());
-            if (nonBlockingStore.getClass().getName().equals(storeType) || containedInAdapter(nonBlockingStore, storeType)) {
+            if (nonBlockingStore.getClass().getName().equals(storeType)) {
                statusIterator.remove();
                aggregateCompletionStage.dependsOn(nonBlockingStore.stop()
                      .whenComplete((v, t) -> {
@@ -607,18 +619,6 @@ public class PersistenceManagerImpl implements PersistenceManager {
       return store;
    }
 
-   private Object unwrapOldSPI(NonBlockingStore<?, ?> store) {
-      if (store instanceof NonBlockingStoreAdapter) {
-         return ((NonBlockingStoreAdapter<?, ?>) store).getActualStore();
-      }
-      return store;
-   }
-
-   private boolean containedInAdapter(NonBlockingStore<?, ?> nonBlockingStore, String adaptedClassName) {
-      return nonBlockingStore instanceof NonBlockingStoreAdapter &&
-            ((NonBlockingStoreAdapter<?, ?>) nonBlockingStore).getActualStore().getClass().getName().equals(adaptedClassName);
-   }
-
    @Override
    public <T> Set<T> getStores(Class<T> storeClass) {
       long stamp = acquireReadLock();
@@ -629,7 +629,6 @@ public class PersistenceManagerImpl implements PersistenceManager {
          return stores.stream()
                .map(StoreStatus::store)
                .map(this::unwrapStore)
-               .map(this::unwrapOldSPI)
                .filter(storeClass::isInstance)
                .map(storeClass::cast)
                .collect(Collectors.toCollection(HashSet::new));
@@ -648,7 +647,6 @@ public class PersistenceManagerImpl implements PersistenceManager {
          return stores.stream()
                .map(StoreStatus::store)
                .map(this::unwrapStore)
-               .map(this::unwrapOldSPI)
                .map(c -> c.getClass().getName())
                .collect(Collectors.toCollection(ArrayList::new));
       } finally {
@@ -800,7 +798,17 @@ public class PersistenceManagerImpl implements PersistenceManager {
                      } else {
                         filterToUse = filter;
                      }
-                     return storeStatus.<K, V>store().publishEntries(segments, filterToUse, fetchValue);
+                     Flowable<MarshallableEntry<K, V>> flowable;
+                     if (PERSISTENCE.isTraceEnabled()) {
+                        flowable = Flowable.error(new TimeoutException("Store publisher didn't publish a value in " +
+                              configuration.clustering().remoteTimeout() + " ms. Stack trace of the original caller is: \n" +
+                              CallerId.getStackTrace()));
+                     } else {
+                        flowable = (Flowable<MarshallableEntry<K,V>>) TIMEOUT_FLOWABLE;
+                     }
+                     return Flowable.fromPublisher(storeStatus.<K, V>store().publishEntries(segments, filterToUse, fetchValue))
+                           .timeout(configuration.clustering().remoteTimeout(), TimeUnit.MILLISECONDS, rxTimeoutScheduler,
+                                 flowable);
                   }
                }
                return Flowable.empty();
@@ -835,7 +843,18 @@ public class PersistenceManagerImpl implements PersistenceManager {
                                      } else {
                                         filterToUse = filter;
                                      }
-                                     return storeStatus.<K, Object>store().publishKeys(segments, filterToUse);
+                                     Flowable<K> flowable;
+                                     if (PERSISTENCE.isTraceEnabled()) {
+                                        flowable = Flowable.error(new TimeoutException("Store publisher didn't publish a key in " +
+                                              configuration.clustering().remoteTimeout() + " ms. Stack trace of the original caller is: \n" +
+                                              CallerId.getStackTrace()));
+                                     } else {
+                                        flowable = (Flowable<K>) TIMEOUT_FLOWABLE;
+                                     }
+                                     return Flowable.fromPublisher(storeStatus.<K, Object>store().publishKeys(segments, filterToUse))
+                                           .timeout(configuration.clustering().remoteTimeout(), TimeUnit.MILLISECONDS, rxTimeoutScheduler,
+                                                 flowable);
+
                                   }
                                }
                                return Flowable.empty();
@@ -863,7 +882,7 @@ public class PersistenceManagerImpl implements PersistenceManager {
          }
          Iterator<StoreStatus> iterator = stores.iterator();
          CompletionStage<MarshallableEntry<K, V>> stage =
-               loadFromStoresIterator(key, segment, iterator, localInvocation, includeStores);
+               loadFromStoresIterator(key, segment, iterator, includeStores);
          if (CompletionStages.isCompletedSuccessfully(stage)) {
             return stage;
          } else {
@@ -879,54 +898,35 @@ public class PersistenceManagerImpl implements PersistenceManager {
 
    private <K, V> CompletionStage<MarshallableEntry<K, V>> loadFromStoresIterator(Object key, int segment,
                                                                                   Iterator<StoreStatus> iterator,
-                                                                                  boolean localInvocation,
                                                                                   boolean includeStores) {
       while (iterator.hasNext()) {
          StoreStatus storeStatus = iterator.next();
          NonBlockingStore<K, V> store = storeStatus.store();
-         if (!allowLoad(storeStatus, localInvocation, includeStores)) {
+         if (!allowLoad(storeStatus, includeStores)) {
             continue;
          }
          CompletionStage<MarshallableEntry<K, V>> loadStage = store.load(segmentOrZero(storeStatus, segment), key);
          return loadStage.thenCompose(e -> {
             if (e != null) {
-               // Read only we apply lifespan expiration to the entry, so it can be reread later
-               // Max Idle is only allowed when the store has passivation, so it can't be read only
+               // Read-only we apply lifespan expiration to the entry, so it can be reread later
+               // Max Idle is only allowed when the store has passivation, so it can't be read-only
                if (storeStatus.hasCharacteristic(Characteristic.READ_ONLY) && configuration.expiration().lifespan() > 0) {
                   e = marshallableEntryFactory.cloneWithExpiration((MarshallableEntry) e, timeService.wallClockTime(),
                         configuration.expiration().lifespan());
                }
                return CompletableFuture.completedFuture(e);
             } else {
-               return loadFromStoresIterator(key, segment, iterator, localInvocation, includeStores);
+               return loadFromStoresIterator(key, segment, iterator, includeStores);
             }
          });
       }
       return CompletableFutures.completedNull();
    }
 
-   private boolean allowLoad(StoreStatus storeStatus, boolean localInvocation, boolean includeStores) {
+   private boolean allowLoad(StoreStatus storeStatus, boolean includeStores) {
       return !storeStatus.hasCharacteristic(Characteristic.WRITE_ONLY) &&
-            (localInvocation || !isLocalOnlyLoader(storeStatus.store)) &&
             (includeStores || storeStatus.hasCharacteristic(Characteristic.READ_ONLY) ||
                   storeStatus.config.ignoreModifications());
-   }
-
-   private boolean isLocalOnlyLoader(NonBlockingStore<?, ?> store) {
-      if (store instanceof LocalOnlyCacheLoader) return true;
-      NonBlockingStore<?, ?> unwrappedStore;
-      if (store instanceof DelegatingNonBlockingStore) {
-         unwrappedStore = ((DelegatingNonBlockingStore<?, ?>) store).delegate();
-      } else {
-         unwrappedStore = store;
-      }
-      if (unwrappedStore instanceof LocalOnlyCacheLoader) {
-         return true;
-      }
-      if (unwrappedStore instanceof NonBlockingStoreAdapter) {
-         return ((NonBlockingStoreAdapter<?, ?>) unwrappedStore).getActualStore() instanceof LocalOnlyCacheLoader;
-      }
-      return false;
    }
 
    @Override

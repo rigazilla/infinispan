@@ -154,6 +154,43 @@
 
    <profiles>
       <profile>
+         <id>coverage</id>
+         <activation>
+            <activeByDefault>false</activeByDefault>
+         </activation>
+         <build>
+            <plugins>
+               <plugin>
+                  <groupId>org.codehaus.mojo</groupId>
+                  <artifactId>build-helper-maven-plugin</artifactId>
+                  <executions>
+                     <execution>
+                        <id>aggregate-classes</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                           <goal>add-source</goal>
+                        </goals>
+                        <configuration combine.self="append">
+                           <sources>
+                              <source>${maven.multiModuleProjectDirectory}/hibernate/cache-commons/src/main/java</source>
+                           </sources>
+                        </configuration>
+                     </execution>
+                  </executions>
+               </plugin>
+
+               <plugin>
+                  <groupId>org.apache.maven.plugins</groupId>
+                  <artifactId>maven-surefire-plugin</artifactId>
+                  <configuration>
+                     <argLine combine.self="append">${jacoco.agent.argLine}</argLine>
+                  </configuration>
+               </plugin>
+            </plugins>
+         </build>
+      </profile>
+
+      <profile>
          <id>hibernate-matrix</id>
          <activation>
             <activeByDefault>false</activeByDefault>
@@ -185,7 +222,6 @@
                               <classpathDependencyExclude>jakarta.activation:jakarta.activation-api</classpathDependencyExclude>
                               <classpathDependencyExclude>net.bytebuddy:byte-buddy</classpathDependencyExclude>
                               <classpathDependencyExclude>org.eclipse.angus:angus-activation</classpathDependencyExclude>
-                              <classpathDependencyExclude>org.jboss.logging:jboss-logging</classpathDependencyExclude>
                            </classpathDependencyExcludes>
                            <additionalClasspathDependencies>
                               <additionalClasspathDependency>
@@ -228,7 +264,6 @@
                               <classpathDependencyExclude>jakarta.activation:jakarta.activation-api</classpathDependencyExclude>
                               <classpathDependencyExclude>net.bytebuddy:byte-buddy</classpathDependencyExclude>
                               <classpathDependencyExclude>org.eclipse.angus:angus-activation</classpathDependencyExclude>
-                              <classpathDependencyExclude>org.jboss.logging:jboss-logging</classpathDependencyExclude>
                               <classpathDependencyExclude>org.hibernate.common:hibernate-commons-annotations</classpathDependencyExclude>
                            </classpathDependencyExcludes>
                            <additionalClasspathDependencies>

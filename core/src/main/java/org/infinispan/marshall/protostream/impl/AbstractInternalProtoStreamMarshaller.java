@@ -45,7 +45,7 @@ public abstract class AbstractInternalProtoStreamMarshaller implements Marshalle
    protected boolean skipUserMarshaller;
    protected Log log;
 
-   abstract public ImmutableSerializationContext getSerializationContext();
+   public abstract ImmutableSerializationContext getSerializationContext();
 
    protected AbstractInternalProtoStreamMarshaller(Log log) {
       this.log = log;
@@ -130,6 +130,10 @@ public abstract class AbstractInternalProtoStreamMarshaller implements Marshalle
    @Override
    public Object objectFromByteBuffer(byte[] buf, int offset, int length) throws IOException {
       return unwrapAndInit(ProtobufUtil.fromWrappedByteArray(getSerializationContext(), buf, offset, length));
+   }
+
+   public Object objectFromByteBuffer(java.nio.ByteBuffer buf) throws IOException {
+      return unwrapAndInit(ProtobufUtil.fromWrappedByteBuffer(getSerializationContext(), buf));
    }
 
    @Override

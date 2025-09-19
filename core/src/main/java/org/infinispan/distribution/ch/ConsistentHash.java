@@ -3,9 +3,10 @@ package org.infinispan.distribution.ch;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 
+import org.infinispan.distribution.ch.impl.ConsistentHashFactory;
 import org.infinispan.globalstate.ScopedPersistentState;
 import org.infinispan.remoting.transport.Address;
 
@@ -50,7 +51,7 @@ public interface ConsistentHash {
    /**
     * Should return the addresses of the nodes used to create this consistent hash.
     *
-    * @return set of node addresses.
+    * @return list of node addresses.
     */
    List<Address> getMembers();
 
@@ -112,31 +113,10 @@ public interface ConsistentHash {
     * Writes this {@link ConsistentHash} to the specified scoped persistent state.
     *
     * @param state         The state to which this {@link ConsistentHash} will be written.
-    * @param addressMapper The mapper {@link Function} to convert the {@link Address} to the unique string used to
+    * @param addressMapper The mapper {@link Function} to convert the {@link Address} to the {@link UUID} used to
     *                      persist the address within the state.
     */
-   default void toScopedState(ScopedPersistentState state, Function<Address, String> addressMapper) {
-      throw new UnsupportedOperationException();
-   }
-
-   /**
-    * Returns a new ConsistentHash with the addresses remapped according to the provided {@link UnaryOperator}.
-    * If an address cannot me remapped (i.e. the remapper returns null) this method should return null.
-    *
-    * @param remapper the remapper which given an address replaces it with another one
-    * @return the remapped ConsistentHash or null if one of the remapped addresses is null
-    */
-   default ConsistentHash remapAddresses(UnaryOperator<Address> remapper) {
-      throw new UnsupportedOperationException();
-   }
-
-   /**
-    * Same as {@link #remapAddresses(UnaryOperator)} but skip missing members.
-    *
-    * @param remapper: the remapper which given an address replaces it with another one
-    * @return the remapped ConsistentHash
-    */
-   default ConsistentHash remapAddressRemoveMissing(UnaryOperator<Address> remapper) {
+   default void toScopedState(ScopedPersistentState state, Function<Address, UUID> addressMapper) {
       throw new UnsupportedOperationException();
    }
 

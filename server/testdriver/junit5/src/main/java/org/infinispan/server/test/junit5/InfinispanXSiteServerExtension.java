@@ -12,9 +12,7 @@ import org.infinispan.server.test.api.RestTestClientDriver;
 import org.infinispan.server.test.api.TestClientXSiteDriver;
 import org.infinispan.server.test.core.TestClient;
 import org.infinispan.server.test.core.TestServer;
-import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
@@ -40,21 +38,18 @@ import org.junit.jupiter.api.extension.ExtensionContext;
  */
 public class InfinispanXSiteServerExtension extends AbstractServerExtension implements
       TestClientXSiteDriver,
-      BeforeAllCallback,
       BeforeEachCallback,
-      AfterEachCallback,
-      AfterAllCallback {
+      AfterEachCallback {
 
-   private final List<TestServer> testServers;
-   private final Map<String, TestClient> testClients = new HashMap<>();
+   protected final List<TestServer> testServers;
+   protected final Map<String, TestClient> testClients = new HashMap<>();
 
    public InfinispanXSiteServerExtension(List<TestServer> testServers) {
       this.testServers = testServers;
    }
 
    @Override
-   public void beforeAll(ExtensionContext extensionContext) {
-      initSuiteClasses(extensionContext);
+   protected void onTestsStart(ExtensionContext extensionContext) throws Exception {
       testServers.forEach((it) -> startTestServer(extensionContext, it));
    }
 
@@ -73,16 +68,14 @@ public class InfinispanXSiteServerExtension extends AbstractServerExtension impl
    }
 
    @Override
-   public void afterAll(ExtensionContext extensionContext) {
-      if (suiteTestClasses.isEmpty()) {
-         testServers.stream()
-               .filter(TestServer::isDriverInitialized)
-               .forEach(server -> {
-                  if (server.isDriverInitialized())
-                     stopTestServer(extensionContext, server);
-                  server.afterListeners();
-               });
-      }
+   protected void onTestsComplete(ExtensionContext extensionContext) {
+      testServers.stream()
+            .filter(TestServer::isDriverInitialized)
+            .forEach(server -> {
+               if (server.isDriverInitialized())
+                  stopTestServer(extensionContext, server);
+               server.afterListeners();
+            });
    }
 
    @Override
@@ -104,6 +97,18 @@ public class InfinispanXSiteServerExtension extends AbstractServerExtension impl
    //All of methodName will be the same
    public String getMethodName() {
       return testClients.values().iterator().next().getMethodName();
+   }
+
+   @Override
+   public String hostAndPort(String siteName) {
+      for (TestServer server : testServers) {
+         if (siteName.equals(server.getSiteName())) {
+            String host = server.getDriver().getServerAddress(0).getHostAddress();
+            int port = server.getDriver().getServerSocket(0, 11222).getPort();
+            return host + ":" + port;
+         }
+      }
+      throw new IllegalStateException("Site " + siteName + " not found.");
    }
 
    @Override

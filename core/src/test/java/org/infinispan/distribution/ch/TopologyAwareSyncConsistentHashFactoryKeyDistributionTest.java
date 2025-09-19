@@ -2,10 +2,10 @@ package org.infinispan.distribution.ch;
 
 import java.util.List;
 
+import org.infinispan.distribution.ch.impl.ConsistentHashFactory;
 import org.infinispan.distribution.ch.impl.DefaultConsistentHash;
 import org.infinispan.distribution.ch.impl.TopologyAwareSyncConsistentHashFactory;
 import org.infinispan.remoting.transport.Address;
-import org.infinispan.remoting.transport.jgroups.JGroupsAddress;
 import org.testng.annotations.Test;
 
 /**
@@ -42,6 +42,6 @@ public class TopologyAwareSyncConsistentHashFactoryKeyDistributionTest extends S
 
    @Override
    protected Address createSingleAddress(int nodeIndex) {
-      return JGroupsAddress.random(null, "s" + (nodeIndex % 2), null, "m" + nodeIndex);
+      return Address.random(null, "s" + (nodeIndex % 2), null, "m" + nodeIndex);
    }
 }

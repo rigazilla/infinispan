@@ -1,5 +1,7 @@
 package org.infinispan.server.test.core;
 
+import static org.infinispan.commons.test.Eventually.DEFAULT_POLL_INTERVAL_MILLIS;
+import static org.infinispan.commons.test.Eventually.eventually;
 import static org.infinispan.server.test.core.TestSystemPropertyNames.INFINISPAN_TEST_SERVER_EMBEDDED_TIMEOUT_SECONDS;
 
 import java.io.Closeable;
@@ -18,6 +20,7 @@ import javax.management.MBeanServerConnection;
 
 import org.infinispan.commons.test.Exceptions;
 import org.infinispan.commons.util.StringPropertyReplacer;
+import org.infinispan.lifecycle.ComponentStatus;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.remoting.transport.Address;
@@ -56,6 +59,8 @@ public class EmbeddedInfinispanServerDriver extends AbstractInfinispanServerDriv
          copyArtifactsToDataDir();
          Server server = createServerInstance(name, rootDir, new File(configuration.configurationFile()), i, serverRoot);
          serverFutures.add(server.run());
+         waitCompletion(server.cacheManagerStart().toCompletableFuture());
+         holdUntilStatusRunning(server);
          servers.add(server);
       }
       // Ensure that the cluster has formed if we start more than one server
@@ -63,6 +68,23 @@ public class EmbeddedInfinispanServerDriver extends AbstractInfinispanServerDriv
       if(cacheManagers.size() > 1) {
          blockUntilViewsReceived(cacheManagers);
       }
+   }
+
+   private static void holdUntilStatusRunning(Server server) {
+      eventually(
+            () -> new AssertionError("Server never started"),
+            () -> {
+               ComponentStatus s = server.getStatus();
+               return s.allowInvocations() || s.isStopping() || s.isTerminated();
+            },
+            30_000, DEFAULT_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS);
+   }
+
+   private static void waitCompletion(CompletableFuture<?> cf) {
+      try {
+         // Only waits for it to complete, we don't care if successfully or not.
+         cf.get(30, TimeUnit.SECONDS);
+      } catch (Throwable ignore) { }
    }
 
    private Server createServerInstance(String name, File rootDir, File configurationFile, int serverIndex, File serverRoot) {
@@ -154,6 +176,7 @@ public class EmbeddedInfinispanServerDriver extends AbstractInfinispanServerDriv
                                            serverIndex, serverRoot);
       servers.set(serverIndex, server);
       serverFutures.set(serverIndex, server.run());
+      waitCompletion(server.cacheManagerStart().toCompletableFuture());
    }
 
    @Override

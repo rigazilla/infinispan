@@ -36,8 +36,7 @@ public class PutAllTest extends SingleCacheManagerTest {
    public Object[] factory() {
       return new Object[]{
             new PutAllTest().storageType(StorageType.OFF_HEAP),
-            new PutAllTest().storageType(StorageType.BINARY),
-            new PutAllTest().storageType(StorageType.OBJECT),
+            new PutAllTest().storageType(StorageType.HEAP),
       };
    }
 
@@ -54,9 +53,9 @@ public class PutAllTest extends SingleCacheManagerTest {
             .storage(LOCAL_HEAP)
             .addIndexedEntity(TestEntity.class)
             .addIndexedEntity(AnotherTestEntity.class)
-            .writer().queueSize(1).queueCount(1);
+            .writer().queueSize(10).queueCount(100);
       cfg.memory()
-            .storageType(storageType);
+            .storage(storageType);
       return TestCacheManagerFactory.createCacheManager(QueryTestSCI.INSTANCE, cfg);
    }
 

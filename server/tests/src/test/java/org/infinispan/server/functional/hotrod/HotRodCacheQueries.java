@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -34,13 +35,14 @@ import org.infinispan.commons.util.CloseableIterator;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.protostream.sampledomain.Address;
 import org.infinispan.protostream.sampledomain.KeywordVector;
+import org.infinispan.protostream.sampledomain.Metadata;
 import org.infinispan.protostream.sampledomain.User;
 import org.infinispan.query.dsl.QueryFactory;
 import org.infinispan.server.functional.ClusteredIT;
 import org.infinispan.server.functional.extensions.entities.Entities;
-import org.infinispan.server.test.junit5.InfinispanServerExtension;
+import org.infinispan.server.test.api.TestClientDriver;
+import org.infinispan.server.test.junit5.InfinispanServer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -50,11 +52,11 @@ import org.junit.jupiter.params.provider.ValueSource;
  **/
 public class HotRodCacheQueries {
 
-   public static final String BANK_PROTO_FILE = "/proto/generated/test.protostream.sampledomain.proto";
+   public static final String BANK_PROTO_FILE = "/org/infinispan/test/test.protostream.sampledomain.proto";
    public static final String ENTITY_USER = "sample_bank_account.User";
 
-   @RegisterExtension
-   public static InfinispanServerExtension SERVERS = ClusteredIT.SERVERS;
+   @InfinispanServer(ClusteredIT.class)
+   public static TestClientDriver SERVERS;
 
    @ParameterizedTest
    @ValueSource(booleans = {true, false})
@@ -258,13 +260,28 @@ public class HotRodCacheQueries {
    }
 
    @Test
+   public void testProjectionAndFilteringOnEmbeddedData() {
+      RemoteCache<String, KeywordVector> remoteCache = createQueryableCache(SERVERS, true,
+              BANK_PROTO_FILE, "sample_bank_account.KeywordVector");
+      for (int i = 0; i < 10; i++) {
+         List<Metadata> metadata = Arrays.asList(new Metadata("key1", "value" + i), new Metadata("key2", "value" + i%2));
+         KeywordVector keywordVector = createImage(i, 50, metadata);
+         remoteCache.put(keywordVector.getName(), keywordVector);
+      }
+      Query<Object[]> queryEntityAndScoreFiltering = remoteCache.query("select i, score(i) from sample_bank_account.KeywordVector i join i.metadata m where m.key='key2' and m.value='value0'");
+      List<Object[]> listWithScoreFiltered = queryEntityAndScoreFiltering.list();
+      assertThat(listWithScoreFiltered).hasSize(5);
+   }
+
+   @Test
    public void testVectorSearch() {
       RemoteCache<String, KeywordVector> remoteCache = createQueryableCache(SERVERS, true,
             BANK_PROTO_FILE, "sample_bank_account.KeywordVector");
 
       KeywordVector center = null;
       for (int i = 0; i < 10; i++) {
-         KeywordVector keywordVector = createImage(i, 50);
+         List<Metadata> metadata = Arrays.asList(new Metadata("key1", "value" + i), new Metadata("key2", "value" + i%2));
+         KeywordVector keywordVector = createImage(i, 50, metadata);
          if (i == 7) {
             center = keywordVector;
          }
@@ -276,7 +293,7 @@ public class HotRodCacheQueries {
       query.setParameter("a", center.getByteEmbedding());
       query.setParameter("k", 3);
       List<KeywordVector> list = query.list();
-      Assertions.assertThat(list).extracting(KeywordVector::getName).containsExactly("bla-7", "bla-6", "bla-8");
+      assertThat(list).extracting(KeywordVector::getName).containsExactly("bla-7", "bla-6", "bla-8");
 
       query = remoteCache.query("from sample_bank_account.KeywordVector i where i.floatEmbedding <-> [:a]~:k");
       query.setParameter("a", center.getFloatEmbedding());
@@ -362,14 +379,13 @@ public class HotRodCacheQueries {
       assertEquals("1234", user.getAddresses().get(0).getPostCode());
    }
 
-   private static KeywordVector createImage(Integer seed, int dimension) {
+   private static KeywordVector createImage(Integer seed, int dimension, List<Metadata> metadata) {
       byte[] byteEmbeddings = new byte[dimension];
       float[] floatEmbeddings = new float[dimension];
       for (int i = 0; i < dimension; i++) {
          byteEmbeddings[i] = seed.byteValue();
          floatEmbeddings[i] = seed.floatValue();
       }
-
-      return new KeywordVector("bla-" + seed, byteEmbeddings, floatEmbeddings);
+      return new KeywordVector("bla-" + seed, byteEmbeddings, floatEmbeddings, metadata);
    }
 }

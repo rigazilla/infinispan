@@ -6,6 +6,7 @@ import static org.jboss.logging.Logger.Level.INFO;
 import static org.jboss.logging.Logger.Level.WARN;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.file.Path;
@@ -13,6 +14,7 @@ import java.util.Set;
 
 import org.infinispan.commons.CacheConfigurationException;
 import org.infinispan.commons.CacheException;
+import org.infinispan.commons.IllegalLifecycleStateException;
 import org.infinispan.commons.dataconversion.MediaType;
 import org.infinispan.distribution.ch.ConsistentHash;
 import org.infinispan.server.core.dataconversion.TranscodingException;
@@ -39,9 +41,9 @@ import io.netty.handler.ipfilter.IpFilterRule;
 @ValidIdRange(min = 5001, max = 6000)
 public interface Log extends BasicLogger {
    String LOG_ROOT = "org.infinispan.";
-   Log CONFIG = Logger.getMessageLogger(Log.class, LOG_ROOT + "CONFIG");
-   Log SECURITY = Logger.getMessageLogger(Log.class, LOG_ROOT + "SECURITY");
-   Log SERVER = Logger.getMessageLogger(Log.class, LOG_ROOT + "SERVER");
+   Log CONFIG = Logger.getMessageLogger(MethodHandles.lookup(), Log.class, LOG_ROOT + "CONFIG");
+   Log SECURITY = Logger.getMessageLogger(MethodHandles.lookup(), Log.class, LOG_ROOT + "SECURITY");
+   Log SERVER = Logger.getMessageLogger(MethodHandles.lookup(), Log.class, LOG_ROOT + "SERVER");
 
    @LogMessage(level = ERROR)
    @Message(value = "Exception reported", id = 5003)
@@ -232,4 +234,7 @@ public interface Log extends BasicLogger {
    @LogMessage(level = WARN)
    @Message(value = "For better performance, it is recommended to use Netty's default thread factory. Current: %s", id = 5065)
    void useNettyThreadFactory(Class<?> clazz);
+
+   @Message(value = "Cache '%s' is not ready", id = 5066)
+   IllegalLifecycleStateException cacheIsNotReady(String cacheName);
 }

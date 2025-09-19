@@ -299,7 +299,7 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
 
       RestResponse namesResponse = join(client.caches());
       assertThat(namesResponse).isOk();
-      List<String> names = Json.read(namesResponse.body()).asJsonList().stream().map(Json::asString).collect(Collectors.toList());
+      List<String> names = Json.read(namesResponse.body()).asJsonList().stream().map(Json::asString).toList();
       assertTrue(names.contains(name));
 
       CompletionStage<RestResponse> putResponse = cacheClient.post("key", "value");
@@ -759,17 +759,20 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
       RestResponse response = join(adminClient.cache("proto").details());
       Json document = Json.read(response.body());
       assertThat(response).isOk();
+      assertThat(document.at("name").asString()).isEqualTo("proto");
+      assertThat(document.at("status").asString()).isEqualTo("RUNNING");
+      assertThat(document.at("type").asString()).isEqualTo("distributed-cache");
       assertThat(document.at("stats")).isNotNull();
       assertThat(document.at("size")).isNotNull();
       assertThat(document.at("configuration")).isNotNull();
-      assertThat(document.at("rehash_in_progress")).isNotNull();
-      assertThat(document.at("persistent")).isNotNull();
-      assertThat(document.at("bounded")).isNotNull();
-      assertThat(document.at("indexed")).isNotNull();
-      assertThat(document.at("has_remote_backup")).isNotNull();
-      assertThat(document.at("secured")).isNotNull();
-      assertThat(document.at("tracing")).isNotNull();
-      assertThat(document.at("indexing_in_progress")).isNotNull();
+      assertThat(document.at("rehash_in_progress").asBoolean()).isFalse();
+      assertThat(document.at("persistent").asBoolean()).isFalse();
+      assertThat(document.at("bounded").asBoolean()).isFalse();
+      assertThat(document.at("indexed").asBoolean()).isFalse();
+      assertThat(document.at("has_remote_backup").asBoolean()).isFalse();
+      assertThat(document.at("secured").asBoolean()).isFalse();
+      assertThat(document.at("tracing").asBoolean()).isFalse();
+      assertThat(document.at("indexing_in_progress").asBoolean()).isFalse();
       assertThat(document.at("aliases")).isNotNull();
       assertThat(document.at("queryable")).isNotNull();
       assertThat(document.at("rebalancing_enabled")).isNotNull();
@@ -792,6 +795,9 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
          assertThat(document.at("storage_type")).isNull();
          assertThat(document.at("max_size")).isNull();
          assertThat(document.at("max_size_bytes")).isNull();
+         assertThat(document.at("name").asString()).isEqualTo("default");
+         assertThat(document.at("status").asString()).isEqualTo("RUNNING");
+         assertThat(document.at("type").asString()).isEqualTo("distributed-cache");
       }
 
       response = join(client.cache("proto").details());
@@ -1068,8 +1074,8 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
       Json entity = singleSet.stream().findFirst().orElseThrow();
       assertTrue(entity.has("key"));
       assertTrue(entity.has("value"));
-      assertEquals(entity.at("key").asString(), "José");
-      assertEquals(entity.at("value").asString(), "Uberlândia");
+      assertEquals("José", entity.at("key").asString());
+      assertEquals("Uberlândia", entity.at("value").asString());
    }
 
    @Test
@@ -1340,7 +1346,6 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
 
    @Test
    public void testProtobufMetadataManipulation() {
-      // Special role {@link ProtobufMetadataManager#SCHEMA_MANAGER_ROLE} is needed for authz. Subject USER has it
       String cache = PROTOBUF_METADATA_CACHE_NAME;
       putStringValueInCache(cache, "file1.proto", "message A{}");
       putStringValueInCache(cache, "file2.proto", "message B{}");
@@ -1387,12 +1392,12 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
 
          switch (key) {
             case "key-1":
-               Assert.assertEquals(7L, version.asLong());
+               assertEquals(7L, version.asLong());
                assertNull(topologyId);
                break;
             case "key-2":
-               Assert.assertEquals(3L, version.asLong());
-               Assert.assertEquals(7, topologyId.asInteger());
+               assertEquals(3L, version.asLong());
+               assertEquals(7, topologyId.asInteger());
                break;
             case "key-3":
                assertNull(version);
@@ -1450,7 +1455,7 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
       String xml = String.format(
             """
                   <%s name="cacheName" mode="SYNC" configuration="parent">
-                     <memory storage="OBJECT" max-count="20"/>
+                     <memory storage="HEAP" max-count="20"/>
                      <persistence>
                         <file-store/>
                      </persistence>
@@ -1481,7 +1486,7 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
                   "configuration":"parent",
                   "mode":"SYNC",
                   "memory":{
-                     "storage":"OBJECT","max-count":"20"
+                     "storage":"HEAP","max-count":"20"
                   },
                   "persistence": {
                      "file-store": {}
@@ -1513,7 +1518,7 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
               mode: 'SYNC'
               configuration: 'parent'
               memory:
-                storage: 'OBJECT'
+                storage: 'HEAP'
                 maxCount: 20
               persistence:
                 fileStore: ~
@@ -1569,7 +1574,7 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
       NodeList children = root.getElementsByTagName("memory");
       assertEquals(1, children.getLength());
       Element memory = (Element) children.item(0);
-      assertEquals("OBJECT", memory.getAttribute("storage"));
+      assertEquals("HEAP", memory.getAttribute("storage"));
       assertEquals("20", memory.getAttribute("max-count"));
    }
 
@@ -1579,7 +1584,7 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
          Map<String, Object> config = yaml.asMap();
          assertEquals("parent", getYamlProperty(config, name, rootElement, "configuration"));
          assertEquals("SYNC", getYamlProperty(config, name, rootElement, "mode"));
-         assertEquals("OBJECT", getYamlProperty(config, name, rootElement, "memory", "storage"));
+         assertEquals("HEAP", getYamlProperty(config, name, rootElement, "memory", "storage"));
          assertEquals("20", getYamlProperty(config, name, rootElement, "memory", "maxCount"));
       }
    }
@@ -1599,7 +1604,6 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
    @Test
    public void testCacheExists() {
       assertEquals(404, checkCache("nonexistent"));
-      assertEquals(204, checkCache("invalid"));
       assertEquals(204, checkCache("default"));
       assertEquals(204, checkCache("indexedCache"));
    }
@@ -1674,6 +1678,38 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
    }
 
    @Test
+   public void testDeleteByQuery() {
+      RestCacheClient cacheClient = adminClient.cache("indexedCache");
+      join(cacheClient.clear());
+
+      insertEntity(1, "Another", 11, "Eleven 1");
+      insertEntity(2, "Another", 11, "Eleven 2");
+      insertEntity(3, "Another", 11, "Eleven 3");
+      insertEntity(4, "Another", 9, "Nine 1");
+      insertEntity(5, "Another", 9, "Nine 2");
+
+      RestResponse response = join(cacheClient.size());
+      assertThat(response).hasReturnedText("5");
+
+      response = join(cacheClient.deleteByQuery("DELETE FROM Another WHERE value > 10", true));
+      assertThat(response).isOk();
+
+      response = join(cacheClient.size());
+      assertThat(response).hasReturnedText("2");
+
+      // Test with POST
+      RestRawClient rawClient = adminClient.raw();
+      RestEntity restEntity = RestEntity.create("{\"query\": \"DELETE FROM Another WHERE value = 9\"}");
+      response = join(rawClient.post("/rest/v2/caches/indexedCache?action=deleteByQuery", restEntity));
+      assertThat(response).isOk();
+      response = join(cacheClient.size());
+      assertThat(response).hasReturnedText("0");
+
+      response = join(cacheClient.deleteByQuery("FROM Another WHERE value = 9", true));
+      assertThat(response).isBadRequest();
+   }
+
+   @Test
    public void testSearchStatistics() {
       RestCacheClient cacheClient = adminClient.cache("indexedCache");
       join(cacheClient.clear());
@@ -1737,7 +1773,7 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
       response = join(cacheClient.query(hybrid));
       Json queryJson = Json.read(response.body());
       assertEquals(2, queryJson.at("hit_count").asInteger());
-      assertEquals(true, queryJson.at("hit_count_exact").asBoolean());
+      assertTrue(queryJson.at("hit_count_exact").asBoolean());
       response = join(cacheClient.searchStats());
       statJson = Json.read(response.body());
 
@@ -1760,11 +1796,12 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
 
    @Test
    public void testIndexDataSyncInvalidSchema() {
-      String notQuiteIndexed = "package schemas;\n" +
-            " /* @Indexed */\n" +
-            " message Entity {\n" +
-            "    optional string name=1;\n" +
-            " }";
+      String notQuiteIndexed = """
+            package schemas;
+             /* @Indexed */
+             message Entity {
+                optional string name=1;
+             }""";
 
       // Register schema
       RestResponse restResponse = join(client.schemas().put("schemas.proto", notQuiteIndexed));
@@ -1792,12 +1829,14 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
 
    @Test
    public void testLazySearchMapping() {
-      String proto = " package future;\n" +
-            " /* @Indexed */\n" +
-            " message Entity {\n" +
-            "    /* @Basic */\n" +
-            "    optional string name=1;\n" +
-            " }";
+      String proto = """
+             package future;
+             /* @Indexed */
+             message Entity {
+                /* @Basic */
+                optional string name=1;
+             }
+            """;
 
       String value = Json.object().set("_type", "future.Entity").set("name", "Kim").toString();
       RestEntity restEntity = RestEntity.create(APPLICATION_JSON, value);
@@ -1900,12 +1939,13 @@ public class CacheResourceV2Test extends AbstractRestResourceTest {
    public void testComparison() {
       RestRawClient rawClient = client.raw();
 
-      String xml = "<distributed-cache name=\"cacheName\" mode=\"SYNC\">\n" +
-            "<memory storage=\"OBJECT\" max-count=\"20\"/>\n" +
-            "</distributed-cache>";
-      String json20 = "{\"distributed-cache\":{\"memory\":{\"storage\":\"OBJECT\",\"max-count\":\"20\"}}}";
-      String json30 = "{\"distributed-cache\":{\"memory\":{\"storage\":\"OBJECT\",\"max-count\":\"30\"}}}";
-      String jsonrepl = "{\"replicated-cache\":{\"memory\":{\"storage\":\"OBJECT\",\"max-count\":\"30\"}}}";
+      String xml = """
+            <distributed-cache name="cacheName" mode="SYNC">
+            <memory storage="HEAP" max-count="20"/>
+            </distributed-cache>""";
+      String json20 = "{\"distributed-cache\":{\"memory\":{\"storage\":\"HEAP\",\"max-count\":\"20\"}}}";
+      String json30 = "{\"distributed-cache\":{\"memory\":{\"storage\":\"HEAP\",\"max-count\":\"30\"}}}";
+      String jsonrepl = "{\"replicated-cache\":{\"memory\":{\"storage\":\"HEAP\",\"max-count\":\"30\"}}}";
 
       MultiPartRestEntity multiPart = RestEntity.multiPart();
       multiPart.addPart("one", xml);

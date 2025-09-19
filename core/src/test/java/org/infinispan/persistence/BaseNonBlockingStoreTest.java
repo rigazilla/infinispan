@@ -12,7 +12,9 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -22,6 +24,7 @@ import org.infinispan.commons.marshall.Marshaller;
 import org.infinispan.commons.marshall.ProtoStreamMarshaller;
 import org.infinispan.commons.marshall.WrappedByteArray;
 import org.infinispan.commons.marshall.WrappedBytes;
+import org.infinispan.commons.time.ControlledTimeService;
 import org.infinispan.commons.util.IntSet;
 import org.infinispan.commons.util.IntSets;
 import org.infinispan.configuration.cache.Configuration;
@@ -35,15 +38,12 @@ import org.infinispan.marshall.TestObjectStreamMarshaller;
 import org.infinispan.marshall.persistence.PersistenceMarshaller;
 import org.infinispan.marshall.persistence.impl.MarshalledEntryFactoryImpl;
 import org.infinispan.marshall.persistence.impl.MarshalledEntryUtil;
-import org.infinispan.persistence.spi.CacheLoader;
-import org.infinispan.persistence.spi.CacheWriter;
 import org.infinispan.persistence.spi.InitializationContext;
 import org.infinispan.persistence.spi.MarshallableEntry;
 import org.infinispan.persistence.spi.MarshallableEntryFactory;
 import org.infinispan.persistence.spi.NonBlockingStore;
 import org.infinispan.persistence.spi.PersistenceException;
 import org.infinispan.persistence.support.EnsureNonBlockingStore;
-import org.infinispan.persistence.support.NonBlockingStoreAdapter;
 import org.infinispan.protostream.ProtobufUtil;
 import org.infinispan.protostream.SerializationContext;
 import org.infinispan.protostream.SerializationContextInitializer;
@@ -54,8 +54,8 @@ import org.infinispan.test.data.Key;
 import org.infinispan.test.data.Person;
 import org.infinispan.test.fwk.TestCacheManagerFactory;
 import org.infinispan.test.fwk.TestInternalCacheEntryFactory;
-import org.infinispan.commons.time.ControlledTimeService;
 import org.infinispan.util.PersistenceMockUtil;
+import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -84,14 +84,6 @@ public abstract class BaseNonBlockingStoreTest extends AbstractInfinispanTest {
    protected KeyPartitioner keyPartitioner = k -> Math.abs(k.hashCode() % segmentCount);
    protected Set<NonBlockingStore.Characteristic> characteristics;
    protected IntSet segments;
-
-   protected static <K, V> NonBlockingStore<K, V> asNonBlockingStore(CacheLoader<K, V> loader) {
-      return new NonBlockingStoreAdapter<>(loader);
-   }
-
-   protected static <K, V> NonBlockingStore<K, V> asNonBlockingStore(CacheWriter<K, V> writer) {
-      return new NonBlockingStoreAdapter<>(writer);
-   }
 
    protected abstract NonBlockingStore<Object, Object> createStore() throws Exception;
    protected abstract Configuration buildConfig(ConfigurationBuilder configurationBuilder);
@@ -683,6 +675,31 @@ public abstract class BaseNonBlockingStoreTest extends AbstractInfinispanTest {
 
    public void testIsAvailable() {
       assertTrue(store.checkAvailable());
+   }
+
+   public void testRemoveNonOwnedSegments() throws ExecutionException, InterruptedException, TimeoutException {
+      // Only makes sense if the store is segmented and not shared (note shared always has all segments available)
+      if (!characteristics.contains(NonBlockingStore.Characteristic.SEGMENTABLE) ||
+            !configuration.persistence().usingSegmentedStore() || configuration.persistence().stores().get(0).shared()) {
+         return;
+      }
+
+      if (segmentCount <= 1) {
+         throw new SkipException("Test can only be ran if we have at least 2 segments!");
+      }
+
+      InternalCacheEntry<Object, Object> ice = internalCacheEntry("k1", "v1", -1);
+      assertExpired(ice, false);
+      // Force it to segment 0 so after we remove higher segments the entry is still present
+      TestingUtil.join(store.write(0, marshalledEntry(ice)));
+
+      assertEquals(1, store.sizeWait(segments));
+
+      // Remove all but 0 segment - but do it twice as ST can do sometimes
+      TestingUtil.join(store.removeSegments(IntSets.immutableOffsetIntSet(1, segmentCount)));
+      TestingUtil.join(store.removeSegments(IntSets.immutableOffsetIntSet(1, segmentCount)));
+
+      assertEquals(1, store.sizeWait(segments));
    }
 
    protected final InitializationContext createContext(Configuration configuration) {

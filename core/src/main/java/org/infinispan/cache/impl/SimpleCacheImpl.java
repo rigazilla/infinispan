@@ -39,9 +39,7 @@ import org.infinispan.LockedStream;
 import org.infinispan.batch.BatchContainer;
 import org.infinispan.commons.api.query.ContinuousQuery;
 import org.infinispan.commons.api.query.Query;
-import org.infinispan.commons.dataconversion.Encoder;
 import org.infinispan.commons.dataconversion.MediaType;
-import org.infinispan.commons.dataconversion.Wrapper;
 import org.infinispan.commons.time.TimeService;
 import org.infinispan.commons.util.ByRef;
 import org.infinispan.commons.util.CloseableIterator;
@@ -121,12 +119,12 @@ import jakarta.transaction.TransactionManager;
 @MBean(objectName = CacheImpl.OBJECT_NAME, description = "Component that represents an individual cache instance.")
 @Scope(Scopes.NAMED_CACHE)
 public class SimpleCacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache<K, V> {
-   private final static Log log = LogFactory.getLog(SimpleCacheImpl.class);
+   private static final Log log = LogFactory.getLog(SimpleCacheImpl.class);
 
-   private final static String NULL_KEYS_NOT_SUPPORTED = "Null keys are not supported!";
-   private final static String NULL_VALUES_NOT_SUPPORTED = "Null values are not supported!";
-   private final static String NULL_FUNCTION_NOT_SUPPORTED = "Null functions are not supported!";
-   private final static Class<? extends Annotation>[] FIRED_EVENTS = new Class[]{
+   private static final String NULL_KEYS_NOT_SUPPORTED = "Null keys are not supported!";
+   private static final String NULL_VALUES_NOT_SUPPORTED = "Null values are not supported!";
+   private static final String NULL_FUNCTION_NOT_SUPPORTED = "Null functions are not supported!";
+   private static final Class<? extends Annotation>[] FIRED_EVENTS = new Class[]{
          CacheEntryCreated.class, CacheEntryRemoved.class, CacheEntryVisited.class,
          CacheEntryModified.class, CacheEntriesEvicted.class, CacheEntryInvalidated.class,
          CacheEntryExpired.class};
@@ -158,6 +156,7 @@ public class SimpleCacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache
             .lifespan(configuration.expiration().lifespan())
             .maxIdle(configuration.expiration().maxIdle()).build();
       componentRegistry.start();
+      componentRegistry.postStart();
    }
 
    @Override
@@ -230,6 +229,21 @@ public class SimpleCacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache
       return CompletableFuture.completedFuture(getAndPutInternalEntry(key, value, applyDefaultMetadata(metadata)));
    }
 
+   private InternalCacheEntry<K, V> internalGet(Object k) {
+      InternalCacheEntry<K, V> e = getDataContainer().peek(k);
+      if (e != null && e.canExpire()) {
+         long currentTimeMillis = timeService.wallClockTime();
+         InternalExpirationManager<K, V> iem = (InternalExpirationManager<K, V>) getExpirationManager();
+         if (e.isExpired(currentTimeMillis) &&
+               iem.entryExpiredInMemory(e, currentTimeMillis, false).join() == Boolean.TRUE) {
+            e = null;
+         } else {
+            e.touch(currentTimeMillis);
+         }
+      }
+      return e;
+   }
+
    @Override
    public Map<K, V> getAll(Set<?> keys) {
       Map<K, V> map = new HashMap<>(keys.size());
@@ -239,7 +253,7 @@ public class SimpleCacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache
       }
       for (Object k : keys) {
          Objects.requireNonNull(k, NULL_KEYS_NOT_SUPPORTED);
-         InternalCacheEntry<K, V> entry = getDataContainer().get(k);
+         InternalCacheEntry<K, V> entry = internalGet(k);
          if (entry != null) {
             K key = entry.getKey();
             V value = entry.getValue();
@@ -265,7 +279,7 @@ public class SimpleCacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache
 
    @Override
    public CacheEntry<K, V> getCacheEntry(Object k) {
-      InternalCacheEntry<K, V> entry = getDataContainer().get(k);
+      InternalCacheEntry<K, V> entry = internalGet(k);
       if (entry != null) {
          K key = entry.getKey();
          V value = entry.getValue();
@@ -291,7 +305,7 @@ public class SimpleCacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache
       }
       for (Object key : keys) {
          Objects.requireNonNull(key, NULL_KEYS_NOT_SUPPORTED);
-         InternalCacheEntry<K, V> entry = getDataContainer().get(key);
+         InternalCacheEntry<K, V> entry = internalGet(key);
          if (entry != null) {
             V value = entry.getValue();
             if (aggregateCompletionStage != null) {
@@ -564,7 +578,7 @@ public class SimpleCacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache
    @Override
    public V get(Object key) {
       Objects.requireNonNull(key, NULL_KEYS_NOT_SUPPORTED);
-      InternalCacheEntry<K, V> entry = getDataContainer().get(key);
+      InternalCacheEntry<K, V> entry = internalGet(key);
       if (entry == null) {
          return null;
       } else {
@@ -603,41 +617,16 @@ public class SimpleCacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache
 
    @Override
    public CompletableFuture<Boolean> removeLifespanExpired(K key, V value, Long lifespan) {
-      checkExpiration(getDataContainer().get(key), timeService.wallClockTime());
+      checkExpiration(getDataContainer().peek(key), timeService.wallClockTime());
       return CompletableFutures.completedTrue();
    }
 
    @Override
    public CompletableFuture<Boolean> removeMaxIdleExpired(K key, V value) {
-      if (checkExpiration(getDataContainer().get(key), timeService.wallClockTime())) {
+      if (checkExpiration(getDataContainer().peek(key), timeService.wallClockTime())) {
          return CompletableFutures.completedTrue();
       }
       return CompletableFutures.completedFalse();
-   }
-
-   @Override
-   public AdvancedCache<?, ?> withEncoding(Class<? extends Encoder> encoder) {
-      throw new UnsupportedOperationException();
-   }
-
-   @Override
-   public AdvancedCache<?, ?> withEncoding(Class<? extends Encoder> keyEncoder, Class<? extends Encoder> valueEncoder) {
-      throw new UnsupportedOperationException();
-   }
-
-   @Override
-   public AdvancedCache<Object, Object> withKeyEncoding(Class<? extends Encoder> encoder) {
-      throw new UnsupportedOperationException();
-   }
-
-   @Override
-   public AdvancedCache<K, V> withWrapping(Class<? extends Wrapper> wrapper) {
-      throw new UnsupportedOperationException();
-   }
-
-   @Override
-   public AdvancedCache<?, ?> withMediaType(String keyMediaType, String valueMediaType) {
-      throw new UnsupportedOperationException();
    }
 
    @Override
@@ -647,11 +636,6 @@ public class SimpleCacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache
 
    @Override
    public AdvancedCache<K, V> withStorageMediaType() {
-      throw new UnsupportedOperationException();
-   }
-
-   @Override
-   public AdvancedCache<K, V> withWrapping(Class<? extends Wrapper> keyWrapper, Class<? extends Wrapper> valueWrapper) {
       throw new UnsupportedOperationException();
    }
 
@@ -1751,7 +1735,7 @@ public class SimpleCacheImpl<K, V> implements AdvancedCache<K, V>, InternalCache
 
       @Override
       public boolean contains(Object o) {
-         return delegate.get(o) != null;
+         return delegate.containsKey(o);
       }
 
       @Override

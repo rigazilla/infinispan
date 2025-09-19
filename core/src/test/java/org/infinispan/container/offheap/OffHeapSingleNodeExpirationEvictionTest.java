@@ -9,7 +9,6 @@ import org.infinispan.Cache;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.container.entries.CacheEntry;
 import org.infinispan.encoding.DataConversion;
-import org.infinispan.eviction.EvictionType;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.testng.annotations.Test;
 
@@ -77,7 +76,7 @@ public class OffHeapSingleNodeExpirationEvictionTest extends OffHeapSingleNodeTe
             break;
       }
       if (eviction) {
-         defaultConfig.memory().evictionType(EvictionType.COUNT).size(1000);
+         defaultConfig.memory().maxCount(1000);
       }
       return super.addClusterEnabledCacheManager(defaultConfig);
    }
@@ -91,7 +90,7 @@ public class OffHeapSingleNodeExpirationEvictionTest extends OffHeapSingleNodeTe
       DataConversion dataConversion = cache.getAdvancedCache().getKeyDataConversion();
 
       Object convertedKey = dataConversion.toStorage("k");
-      assertNotNull(cache.getAdvancedCache().getDataContainer().get(convertedKey));
+      assertNotNull(cache.getAdvancedCache().getDataContainer().peek(convertedKey));
 
       CacheEntry<String, String> entry = cache.getAdvancedCache().getDataContainer().peek(convertedKey);
 

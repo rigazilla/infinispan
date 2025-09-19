@@ -10,6 +10,7 @@ import static org.testng.AssertJUnit.assertTrue;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +26,7 @@ import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.global.GlobalConfiguration;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.distribution.ch.ConsistentHash;
-import org.infinispan.distribution.ch.ConsistentHashFactory;
+import org.infinispan.distribution.ch.impl.ConsistentHashFactory;
 import org.infinispan.distribution.ch.impl.ReplicatedConsistentHashFactory;
 import org.infinispan.factories.GlobalComponentRegistry;
 import org.infinispan.factories.KnownComponentNames;
@@ -39,7 +40,6 @@ import org.infinispan.remoting.responses.SuccessfulResponse;
 import org.infinispan.remoting.transport.Address;
 import org.infinispan.remoting.transport.MockTransport;
 import org.infinispan.remoting.transport.Transport;
-import org.infinispan.remoting.transport.jgroups.JGroupsAddress;
 import org.infinispan.test.AbstractInfinispanTest;
 import org.infinispan.util.logging.events.EventLogManager;
 import org.infinispan.util.logging.events.TestingEventLogManager;
@@ -53,8 +53,8 @@ public class ClusterTopologyManagerImplTest extends AbstractInfinispanTest {
    private final ExecutorService executor = Executors.newFixedThreadPool(2, getTestThreadFactory("Executor"));
    private final ExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor(getTestThreadFactory("Executor"));
 
-    private static final Address A = JGroupsAddress.random("A");
-    private static final Address B = JGroupsAddress.random("B");
+    private static final Address A = Address.random("A");
+    private static final Address B = Address.random("B");
    private final ConsistentHashFactory<?> replicatedChf = ReplicatedConsistentHashFactory.getInstance();
    // The persistent UUIDs are different, the rest of the join info is the same
    private final CacheJoinInfo joinInfoA = makeJoinInfo();
@@ -62,7 +62,7 @@ public class ClusterTopologyManagerImplTest extends AbstractInfinispanTest {
 
    private CacheJoinInfo makeJoinInfo() {
       return new CacheJoinInfo(replicatedChf, 16, 1, 1000,
-            CacheMode.REPL_SYNC, 1.0f, PersistentUUID.randomUUID(), Optional.empty());
+            CacheMode.REPL_SYNC, 1.0f, UUID.randomUUID(), Optional.empty());
    }
 
    /**

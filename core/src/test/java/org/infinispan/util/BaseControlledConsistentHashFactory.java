@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.infinispan.distribution.ch.ConsistentHash;
-import org.infinispan.distribution.ch.ConsistentHashFactory;
+import org.infinispan.distribution.ch.impl.ConsistentHashFactory;
 import org.infinispan.distribution.ch.impl.DefaultConsistentHash;
 import org.infinispan.distribution.ch.impl.ReplicatedConsistentHash;
 import org.infinispan.protostream.annotations.ProtoField;
@@ -119,7 +119,7 @@ public abstract class BaseControlledConsistentHashFactory<CH extends ConsistentH
       public DefaultConsistentHash create(int numOwners, int numSegments, List<Address> members,
                                           Map<Address, Float> capacityFactors, List<Address>[] segmentOwners,
                                           boolean rebalanced) {
-         return new DefaultConsistentHash(numOwners, numSegments, members, capacityFactors, segmentOwners);
+         return DefaultConsistentHash.create(numOwners, numSegments, members, capacityFactors, segmentOwners);
       }
 
       @Override
@@ -166,7 +166,7 @@ public abstract class BaseControlledConsistentHashFactory<CH extends ConsistentH
       }
    }
 
-   public static abstract class Default extends BaseControlledConsistentHashFactory<DefaultConsistentHash> {
+   public abstract static class Default extends BaseControlledConsistentHashFactory<DefaultConsistentHash> {
       protected Default(int numSegments) {
          super(new DefaultTrait(), numSegments);
       }

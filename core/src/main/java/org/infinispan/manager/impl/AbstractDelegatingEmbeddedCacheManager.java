@@ -158,11 +158,6 @@ public class AbstractDelegatingEmbeddedCacheManager extends InternalCacheManager
    }
 
    @Override
-   public ClassAllowList getClassWhiteList() {
-      return cm.getClassAllowList();
-   }
-
-   @Override
    public ClassAllowList getClassAllowList() {
       return cm.getClassAllowList();
    }
@@ -175,6 +170,11 @@ public class AbstractDelegatingEmbeddedCacheManager extends InternalCacheManager
    @Override
    public <K, V> Cache<K, V> getCache(String cacheName, boolean createIfAbsent) {
       return cm.getCache(cacheName, createIfAbsent);
+   }
+
+   @Override
+   public void stopCache(String cacheName) {
+      cm.stopCache(cacheName);
    }
 
    @Override

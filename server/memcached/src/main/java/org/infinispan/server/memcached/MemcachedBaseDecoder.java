@@ -46,8 +46,8 @@ import io.netty.util.concurrent.GenericFutureListener;
  * @since 15.0
  **/
 public abstract class MemcachedBaseDecoder extends ByteToMessageDecoder {
-   protected final static Subject ANONYMOUS = new Subject();
-   protected final static Log log = LogFactory.getLog(MemcachedBaseDecoder.class, Log.class);
+   protected static final Subject ANONYMOUS = new Subject();
+   protected static final Log log = LogFactory.getLog(MemcachedBaseDecoder.class, Log.class);
    protected final MemcachedServer server;
    protected final MemcachedStats statistics;
    protected final boolean statsEnabled;
@@ -82,6 +82,11 @@ public abstract class MemcachedBaseDecoder extends ByteToMessageDecoder {
       this.statsEnabled = statistics != null;
       this.accessLogging = MemcachedAccessLogging.isEnabled();
       this.maxContentLength = server.getConfiguration().maxContentLengthBytes();
+   }
+
+   protected final void assertCacheIsReady() {
+      if (!server.isDefaultCacheRunning())
+         throw log.cacheIsNotReady(server.defaultCacheName());
    }
 
    protected int bytesAvailable(ByteBuf buf, int requestBytes) {

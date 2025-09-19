@@ -57,8 +57,8 @@ import org.infinispan.security.AuthorizationPermission;
 import org.infinispan.server.Server;
 import org.infinispan.server.network.NetworkAddress;
 import org.infinispan.server.test.api.TestUser;
+import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.exporter.ZipExporter;
-import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.junit.Assume;
 import org.wildfly.security.x500.GeneralName;
 import org.wildfly.security.x500.cert.BasicConstraintsExtension;
@@ -282,30 +282,33 @@ public abstract class AbstractInfinispanServerDriver implements InfinispanServer
       // Maven artifacts
       String propertyArtifacts = configuration.properties().getProperty(TestSystemPropertyNames.INFINISPAN_TEST_SERVER_EXTRA_LIBS);
       if (propertyArtifacts != null) {
-         addArtifactsToLibDir(propertyArtifacts.replaceAll("\\s+", "").split(","), libDir);
+         addArtifactsToLibDir(libDir, propertyArtifacts.replaceAll("\\s+", "").split(","));
       }
-      addArtifactsToLibDir(configuration.mavenArtifacts(), libDir);
+      addArtifactsToLibDir(libDir, configuration.mavenArtifacts());
 
       // Supplied artifacts
       if (configuration.archives() != null) {
-         for (JavaArchive artifact : configuration.archives()) {
+         for (Archive<?> artifact : configuration.archives()) {
             File jar = libDir.toPath().resolve(artifact.getName()).toFile();
             jar.setWritable(true, false);
             artifact.as(ZipExporter.class).exportTo(jar, true);
+            log.infof("Artifact: %s", jar);
          }
       }
    }
 
-   private void addArtifactsToLibDir(String[] artifacts, File libDir) {
+   protected void addArtifactsToLibDir(File libDir, String... artifacts) {
       if (artifacts != null && artifacts.length > 0) {
-         try {
-            MavenSettings.init();
-            for (String artifact : artifacts) {
-               Path resolved = Artifact.fromString(artifact).resolveArtifact();
+         MavenSettings.init();
+         for (String artifact : artifacts) {
+            Artifact a = Artifact.fromString(artifact);
+            log.infof("Artifact: %s", a);
+            try {
+               Path resolved = a.resolveArtifact();
                Files.copy(resolved, libDir.toPath().resolve(resolved.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+               throw new RuntimeException(e);
             }
-         } catch (IOException e) {
-            throw new RuntimeException(e);
          }
       }
    }

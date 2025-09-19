@@ -31,13 +31,12 @@ import org.infinispan.factories.scopes.Scopes;
 public class GlobalConfiguration {
 
    private final Map<Class<?>, ?> modules;
-   private final SiteConfiguration site;
    private final ClassLoader cl;
    private final CacheContainerConfiguration cacheContainerConfiguration;
    private final Features features;
 
    GlobalConfiguration(CacheContainerConfiguration cacheContainerConfiguration,
-                       List<?> modules, SiteConfiguration site,
+                       List<?> modules,
                        ClassLoader cl, Features features) {
       this.cacheContainerConfiguration = cacheContainerConfiguration;
       Map<Class<?>, Object> moduleMap = new HashMap<>();
@@ -45,7 +44,6 @@ public class GlobalConfiguration {
          moduleMap.put(module.getClass(), module);
       }
       this.modules = Map.copyOf(moduleMap);
-      this.site = site;
       this.cl = cl;
       this.features = features;
    }
@@ -64,24 +62,6 @@ public class GlobalConfiguration {
 
    public ThreadPoolConfiguration listenerThreadPool() {
       return cacheContainerConfiguration.listenerThreadPool();
-   }
-
-   /**
-    * @return An empty {@code ThreadPoolConfiguration}.
-    * @deprecated Since 11.0, no longer used.
-    */
-   @Deprecated(forRemoval=true, since = "11.0")
-   public ThreadPoolConfiguration persistenceThreadPool() {
-      return cacheContainerConfiguration.persistenceThreadPool();
-   }
-
-   /**
-    * @return An empty {@code ThreadPoolConfiguration}.
-    * @deprecated Since 11.0, no longer used.
-    */
-   @Deprecated(forRemoval=true, since = "11.0")
-   public ThreadPoolConfiguration asyncThreadPool() {
-      return cacheContainerConfiguration.asyncThreadPool();
    }
 
    public ThreadPoolConfiguration nonBlockingThreadPool() {
@@ -128,14 +108,6 @@ public class GlobalConfiguration {
       return cacheContainerConfiguration.globalState();
    }
 
-   /**
-    * @deprecated Since 11.0, no longer used.
-    */
-   @Deprecated(forRemoval=true, since = "11.0")
-   public String asyncThreadPoolName() {
-      return cacheContainer().asyncExecutor();
-   }
-
    public String nonBlockingThreadPoolName() {
       return cacheContainer().nonBlockingExecutor();
    }
@@ -146,14 +118,6 @@ public class GlobalConfiguration {
 
    public String expirationThreadPoolName() {
       return cacheContainer().expirationExecutor();
-   }
-
-   /**
-    * @deprecated Since 11.0, no longer used.
-    */
-   @Deprecated(forRemoval=true, since = "11.0")
-   public String persistenceThreadPoolName() {
-      return cacheContainer().persistenceExecutor();
    }
 
    public String blockingThreadPoolName() {
@@ -174,10 +138,6 @@ public class GlobalConfiguration {
     */
    public ClassLoader classLoader() {
       return cl;
-   }
-
-   public SiteConfiguration sites() {
-      return site;
    }
 
    public Optional<String> defaultCacheName() {
@@ -206,7 +166,6 @@ public class GlobalConfiguration {
    public String toString() {
       return "GlobalConfiguration{" +
             ", modules=" + modules +
-            ", site=" + site +
             ", cl=" + cl +
             '}';
    }

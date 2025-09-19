@@ -9,11 +9,12 @@ import static org.testng.AssertJUnit.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.infinispan.distribution.ch.ConsistentHash;
-import org.infinispan.distribution.ch.ConsistentHashFactory;
+import org.infinispan.distribution.ch.impl.ConsistentHashFactory;
 import org.infinispan.partitionhandling.impl.AvailabilityStrategy;
 import org.infinispan.partitionhandling.impl.AvailabilityStrategyContext;
 import org.infinispan.remoting.transport.Address;
@@ -154,11 +155,11 @@ public class TestClusterCacheStatus {
                              asList(addresses), null);
    }
 
-   public static PersistentUUID persistentUUID(Address a) {
-      return new PersistentUUID(a.hashCode(), a.hashCode());
+   public static UUID persistentUUID(Address a) {
+      return new UUID(a.hashCode(), a.hashCode());
    }
 
-   private static List<PersistentUUID> persistentUUIDs(List<Address> members) {
+   private static List<UUID> persistentUUIDs(List<Address> members) {
       return members.stream()
                     .map(TestClusterCacheStatus::persistentUUID)
                     .collect(Collectors.toList());

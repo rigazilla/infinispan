@@ -1,6 +1,5 @@
 package org.infinispan.server.memcached.test;
 
-import static org.infinispan.server.memcached.test.MemcachedTestingUtil.serverBuilder;
 import static org.infinispan.test.TestingUtil.k;
 import static org.infinispan.test.TestingUtil.sleepThread;
 import static org.infinispan.test.TestingUtil.v;
@@ -18,16 +17,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.infinispan.Cache;
 import org.infinispan.commons.util.Version;
-import org.infinispan.configuration.cache.Configuration;
-import org.infinispan.configuration.cache.ConfigurationBuilder;
-import org.infinispan.configuration.cache.StorageType;
-import org.infinispan.manager.EmbeddedCacheManager;
-import org.infinispan.server.memcached.MemcachedServer;
-import org.infinispan.server.memcached.configuration.MemcachedProtocol;
-import org.infinispan.server.memcached.configuration.MemcachedServerConfigurationBuilder;
-import org.infinispan.test.fwk.TestCacheManagerFactory;
 import org.testng.annotations.Test;
 
 import net.spy.memcached.CASResponse;
@@ -86,6 +76,17 @@ public abstract class MemcachedFunctionalTest extends MemcachedSingleNodeTest {
       Map<String, Object> ret = client.getBulk(keys);
       assertEquals(v(m, "v1-"), ret.get(k(m, "k1-")));
       assertEquals(v(m, "v2-"), ret.get(k(m, "k2-")));
+      assertEquals(v(m, "v3-"), ret.get(k(m, "k3-")));
+   }
+
+   public void testGetMultipleKeysWithNonExistent(Method m) throws InterruptedException, ExecutionException, TimeoutException {
+      OperationFuture<Boolean> f1 = client.set(k(m, "k1-"), 0, v(m, "v1-"));
+      OperationFuture<Boolean> f3 = client.set(k(m, "k3-"), 0, v(m, "v3-"));
+      assertTrue(f1.get(timeout, TimeUnit.SECONDS));
+      assertTrue(f3.get(timeout, TimeUnit.SECONDS));
+      List<String> keys = Arrays.asList(k(m, "k1-"), k(m, "k2-"), k(m, "k3-"));
+      Map<String, Object> ret = client.getBulk(keys);
+      assertEquals(v(m, "v1-"), ret.get(k(m, "k1-")));
       assertEquals(v(m, "v3-"), ret.get(k(m, "k3-")));
    }
 
@@ -264,7 +265,7 @@ public abstract class MemcachedFunctionalTest extends MemcachedSingleNodeTest {
       assertEquals(value.getValue(), v(m));
       assertTrue(value.getCas() != 0);
       CASResponse resp = client.cas(k(m), value.getCas(), v(m, "v1-"));
-      assertEquals(resp, CASResponse.OK);
+      assertEquals(CASResponse.OK, resp);
    }
 
    public void testCasNotFound(Method m) throws InterruptedException, ExecutionException, TimeoutException {
@@ -273,7 +274,7 @@ public abstract class MemcachedFunctionalTest extends MemcachedSingleNodeTest {
       assertEquals(value.getValue(), v(m));
       assertTrue(value.getCas() != 0);
       CASResponse resp = client.cas(k(m, "k1-"), value.getCas(), v(m, "v1-"));
-      assertEquals(resp, CASResponse.NOT_FOUND);
+      assertEquals(CASResponse.NOT_FOUND, resp);
    }
 
    public void testCasExists(Method m) throws InterruptedException, ExecutionException, TimeoutException {
@@ -309,15 +310,15 @@ public abstract class MemcachedFunctionalTest extends MemcachedSingleNodeTest {
       OperationFuture<Boolean> f = client.set(k(m), 0, "1");
       assertTrue(f.get(timeout, TimeUnit.SECONDS));
       long result = client.incr(k(m), 1);
-      assertEquals(result, 2);
+      assertEquals(2, result);
    }
 
    public void testIncrementTriple(Method m) throws InterruptedException, ExecutionException, TimeoutException {
       OperationFuture<Boolean> f = client.set(k(m), 0, "1");
       assertTrue(f.get(timeout, TimeUnit.SECONDS));
-      assertEquals(client.incr(k(m), 1), 2);
-      assertEquals(client.incr(k(m), 2), 4);
-      assertEquals(client.incr(k(m), 4), 8);
+      assertEquals(2, client.incr(k(m), 1));
+      assertEquals(4, client.incr(k(m), 2));
+      assertEquals(8, client.incr(k(m), 4));
    }
 
    public void testIncrementNotExist(Method m) {
@@ -327,39 +328,39 @@ public abstract class MemcachedFunctionalTest extends MemcachedSingleNodeTest {
    public void testIncrementIntegerMax(Method m) throws InterruptedException, ExecutionException, TimeoutException {
       OperationFuture<Boolean> f = client.set(k(m), 0, "0");
       assertTrue(f.get(timeout, TimeUnit.SECONDS));
-      assertEquals(client.incr(k(m), Integer.MAX_VALUE), Integer.MAX_VALUE);
+      assertEquals(Integer.MAX_VALUE, client.incr(k(m), Integer.MAX_VALUE));
    }
 
    public void testIncrementBeyondIntegerMax(Method m) throws InterruptedException, ExecutionException, TimeoutException {
       OperationFuture<Boolean> f = client.set(k(m), 0, "1");
       assertTrue(f.get(timeout, TimeUnit.SECONDS));
       long newValue = client.incr(k(m), Integer.MAX_VALUE);
-      assertEquals(newValue, (long) Integer.MAX_VALUE + 1);
+      assertEquals((long) Integer.MAX_VALUE + 1, newValue);
    }
 
    public void testDecrementBasic(Method m) throws InterruptedException, ExecutionException, TimeoutException {
       OperationFuture<Boolean> f = client.set(k(m), 0, "1");
       assertTrue(f.get(timeout, TimeUnit.SECONDS));
-      assertEquals(client.decr(k(m), 1), 0);
+      assertEquals(0, client.decr(k(m), 1));
    }
 
    public void testDecrementTriple(Method m) throws InterruptedException, ExecutionException, TimeoutException {
       OperationFuture<Boolean> f = client.set(k(m), 0, "8");
       assertTrue(f.get(timeout, TimeUnit.SECONDS));
-      assertEquals(client.decr(k(m), 1), 7);
-      assertEquals(client.decr(k(m), 2), 5);
-      assertEquals(client.decr(k(m), 4), 1);
+      assertEquals(7, client.decr(k(m), 1));
+      assertEquals(5, client.decr(k(m), 2));
+      assertEquals(1, client.decr(k(m), 4));
    }
 
    public void testDecrementNotExist(Method m) {
-      assertEquals(client.decr(k(m), 1), -1);
+      assertEquals(-1, client.decr(k(m), 1));
    }
 
    public void testDecrementBelowZero(Method m) throws InterruptedException, ExecutionException, TimeoutException {
       OperationFuture<Boolean> f = client.set(k(m), 0, "1");
       assertTrue(f.get(timeout, TimeUnit.SECONDS));
       long newValue = client.decr(k(m), 2);
-      assertEquals(newValue, 0);
+      assertEquals(0, newValue);
    }
 
    public void testFlushAll(Method m) throws InterruptedException, ExecutionException, TimeoutException {
@@ -413,28 +414,9 @@ public abstract class MemcachedFunctionalTest extends MemcachedSingleNodeTest {
 
    public void testVersion() {
       Map<SocketAddress, String> versions = client.getVersions();
-      assertEquals(versions.size(), 1);
+      assertEquals(1, versions.size());
       String version = versions.values().iterator().next();
       assertEquals(Version.getVersion(), version);
-   }
-
-   public void testStoreAsBinaryOverride() {
-      ConfigurationBuilder builder = TestCacheManagerFactory.getDefaultCacheConfiguration(false);
-      builder.memory().storageType(StorageType.BINARY);
-      EmbeddedCacheManager cm = TestCacheManagerFactory.createCacheManager(builder);
-      Configuration cfg = builder.build();
-      cm.defineConfiguration(new MemcachedServerConfigurationBuilder().build().defaultCacheName(), cfg);
-      assertEquals(StorageType.BINARY, cfg.memory().storageType());
-      MemcachedServerConfigurationBuilder serverBuilder = serverBuilder().protocol(MemcachedProtocol.TEXT).port(server.getPort() + 33);
-      MemcachedServer testServer = MemcachedTestingUtil.createMemcachedServer(decoderReplay);
-      testServer.start(serverBuilder.build(), cm);
-      try {
-         Cache memcachedCache = cm.getCache(testServer.getConfiguration().defaultCacheName());
-         assertEquals(StorageType.BINARY, memcachedCache.getCacheConfiguration().memory().storageType());
-      } finally {
-         cm.stop();
-         testServer.stop();
-      }
    }
 
    private void addAndGet(Method m) throws InterruptedException, ExecutionException, TimeoutException {

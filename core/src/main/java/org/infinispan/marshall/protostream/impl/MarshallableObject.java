@@ -7,13 +7,14 @@ import java.io.IOException;
 import org.infinispan.commons.io.ByteBuffer;
 import org.infinispan.commons.marshall.ProtoStreamTypeIds;
 import org.infinispan.metadata.Metadata;
+import org.infinispan.protostream.BaseMarshallerDelegate;
+import org.infinispan.protostream.GeneratedMarshallerBase;
 import org.infinispan.protostream.ProtobufTagMarshaller;
 import org.infinispan.protostream.TagReader;
 import org.infinispan.protostream.WrappedMessage;
 import org.infinispan.protostream.annotations.ProtoFactory;
 import org.infinispan.protostream.annotations.ProtoField;
 import org.infinispan.protostream.annotations.ProtoTypeId;
-import org.infinispan.protostream.annotations.impl.GeneratedMarshallerBase;
 import org.infinispan.protostream.descriptors.WireType;
 
 /**
@@ -71,7 +72,7 @@ public class MarshallableObject<T> extends AbstractMarshallableWrapper<T> {
       private final String typeName;
       private final GlobalMarshaller marshaller;
 
-      private volatile org.infinispan.protostream.impl.BaseMarshallerDelegate<WrappedMessage> delegate;
+      private volatile BaseMarshallerDelegate<WrappedMessage> delegate;
 
       public Marshaller(GlobalMarshaller marshaller) {
          this.typeName = getFqTypeName(MarshallableObject.class);
@@ -106,7 +107,7 @@ public class MarshallableObject<T> extends AbstractMarshallableWrapper<T> {
                }
                case (2 << WireType.TAG_TYPE_NUM_BITS | WireType.WIRETYPE_LENGTH_DELIMITED): {
                   if (delegate == null)
-                     delegate = ((org.infinispan.protostream.impl.SerializationContextImpl) ctx.getSerializationContext()).getMarshallerDelegate(org.infinispan.protostream.WrappedMessage.class);
+                     delegate = ctx.getSerializationContext().getMarshallerDelegate(org.infinispan.protostream.WrappedMessage.class);
                   int length = in.readUInt32();
                   int oldLimit = in.pushLimit(length);
                   message = readMessage(delegate, ctx);
@@ -140,7 +141,7 @@ public class MarshallableObject<T> extends AbstractMarshallableWrapper<T> {
             ctx.getWriter().writeBytes(1, buf.getBuf(), buf.getOffset(), buf.getLength());
          } else {
             if (delegate == null)
-               delegate = ((org.infinispan.protostream.impl.SerializationContextImpl) ctx.getSerializationContext()).getMarshallerDelegate(WrappedMessage.class);
+               delegate = ctx.getSerializationContext().getMarshallerDelegate(WrappedMessage.class);
             writeNestedMessage(delegate, ctx, 2, new WrappedMessage(object));
          }
       }

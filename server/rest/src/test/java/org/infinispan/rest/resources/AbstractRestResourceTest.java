@@ -2,7 +2,6 @@ package org.infinispan.rest.resources;
 
 import static org.infinispan.client.rest.configuration.Protocol.HTTP_11;
 import static org.infinispan.commons.dataconversion.MediaType.APPLICATION_JSON;
-import static org.infinispan.commons.dataconversion.MediaType.APPLICATION_OBJECT_TYPE;
 import static org.infinispan.commons.dataconversion.MediaType.TEXT_PLAIN_TYPE;
 import static org.infinispan.rest.RequestHeader.KEY_CONTENT_TYPE_HEADER;
 import static org.testng.AssertJUnit.assertEquals;
@@ -40,14 +39,12 @@ import org.infinispan.counter.configuration.AbstractCounterConfiguration;
 import org.infinispan.counter.configuration.CounterConfigurationSerializer;
 import org.infinispan.factories.impl.BasicComponentRegistry;
 import org.infinispan.manager.EmbeddedCacheManager;
-import org.infinispan.query.remote.ProtobufMetadataManager;
 import org.infinispan.rest.RestTestSCI;
 import org.infinispan.rest.TestClass;
 import org.infinispan.rest.assertion.ResponseAssertion;
 import org.infinispan.rest.authentication.impl.BasicAuthenticator;
 import org.infinispan.rest.helper.RestServerHelper;
 import org.infinispan.rest.resources.security.SimpleSecurityDomain;
-import org.infinispan.scripting.ScriptingManager;
 import org.infinispan.security.AuthorizationPermission;
 import org.infinispan.security.Security;
 import org.infinispan.security.actions.SecurityActions;
@@ -69,8 +66,8 @@ import io.netty.util.ResourceLeakDetector;
 @Test(groups = "functional")
 public class AbstractRestResourceTest extends MultipleCacheManagersTest {
    public static final String REALM = "ApplicationRealm";
-   public static final Subject ADMIN = TestingUtil.makeSubject("ADMIN", ScriptingManager.SCRIPT_MANAGER_ROLE, ProtobufMetadataManager.SCHEMA_MANAGER_ROLE);
-   public static final Subject USER = TestingUtil.makeSubject("USER", ScriptingManager.SCRIPT_MANAGER_ROLE, ProtobufMetadataManager.SCHEMA_MANAGER_ROLE);
+   public static final Subject ADMIN = TestingUtil.makeSubject("ADMIN");
+   public static final Subject USER = TestingUtil.makeSubject("USER");
 
    private final MBeanServerLookup mBeanServerLookup = TestMBeanServerLookup.create();
    protected RestClient client;
@@ -131,7 +128,7 @@ public class AbstractRestResourceTest extends MultipleCacheManagersTest {
    protected void addSecurity(GlobalConfigurationBuilder globalBuilder) {
       globalBuilder.security().authorization().enable().groupOnlyMapping(false).principalRoleMapper(new IdentityRoleMapper())
             .role("ADMIN").description("admin role").permission(AuthorizationPermission.ALL)
-            .role("USER").description("user role").permission(AuthorizationPermission.WRITE, AuthorizationPermission.READ, AuthorizationPermission.EXEC, AuthorizationPermission.BULK_READ);
+            .role("USER").description("user role").permission(AuthorizationPermission.WRITE, AuthorizationPermission.READ, AuthorizationPermission.EXEC, AuthorizationPermission.BULK_READ, AuthorizationPermission.CREATE);
    }
 
    @Override
@@ -142,7 +139,6 @@ public class AbstractRestResourceTest extends MultipleCacheManagersTest {
             addClusterEnabledCacheManager(new GlobalConfigurationBuilder().read(configForNode.build()), getDefaultCacheBuilder(), TransportFlags.minimalXsiteFlags());
          }
          cacheManagers.forEach(this::defineCaches);
-         cacheManagers.forEach(cm -> cm.defineConfiguration("invalid", getDefaultCacheBuilder().encoding().mediaType(APPLICATION_OBJECT_TYPE).indexing().enabled(true).addIndexedEntities("invalid").build()));
          serverStateManager = new DummyServerStateManager();
          for (EmbeddedCacheManager cm : cacheManagers) {
             BasicComponentRegistry bcr = SecurityActions.getGlobalComponentRegistry(cm).getComponent(BasicComponentRegistry.class);

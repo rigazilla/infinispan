@@ -7,7 +7,6 @@ import static org.infinispan.partitionhandling.AvailabilityMode.DEGRADED_MODE;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -20,11 +19,9 @@ import org.infinispan.distribution.LocalizedCacheTopology;
 import org.infinispan.distribution.MagicKey;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.remoting.transport.Address;
-import org.infinispan.remoting.transport.jgroups.JGroupsAddress;
 import org.infinispan.test.TestingUtil;
 import org.infinispan.topology.ClusterTopologyManager;
 import org.infinispan.topology.LocalTopologyManager;
-import org.infinispan.topology.PersistentUUID;
 import org.testng.annotations.Test;
 
 @Test(groups = "functional", testName = "partitionhandling.PreferConsistencyRestartTest")
@@ -40,7 +37,7 @@ public class PreferConsistencyRestartTest extends BaseStatefulPartitionHandlingT
    }
 
    public void testOnlyFreshNodeLeftDuringDegraded() throws Exception {
-      Map<JGroupsAddress, PersistentUUID> addressMappings = createInitialCluster();
+      var addressMappings = createInitialCluster();
 
       checkData();
 
@@ -49,6 +46,7 @@ public class PreferConsistencyRestartTest extends BaseStatefulPartitionHandlingT
 
       // The remaining node is the new coordinator.
       assertThat(manager(0).isCoordinator()).isTrue();
+      eventuallyClusterTopologyCoordinator(0);
 
       // The cache is now in degraded mode.
       ClusterTopologyManager ctm = TestingUtil.extractGlobalComponent(manager(0), ClusterTopologyManager.class);
@@ -65,6 +63,7 @@ public class PreferConsistencyRestartTest extends BaseStatefulPartitionHandlingT
 
       // Cache still degraded.
       ctm = TestingUtil.extractGlobalComponent(manager(0), ClusterTopologyManager.class);
+      eventuallyClusterTopologyCoordinator(0);
       assertThat(ctm.getAvailabilityMode(CACHE_NAME)).isEqualTo(DEGRADED_MODE);
 
       // The previous nodes join now.
@@ -81,9 +80,9 @@ public class PreferConsistencyRestartTest extends BaseStatefulPartitionHandlingT
       assertThat(ctm.getAvailabilityMode(CACHE_NAME)).isEqualTo(AVAILABLE);
 
       // Check restart. Add new extraneous node.
-      PersistentUUID uuid = TestingUtil.extractGlobalComponent(manager(0), LocalTopologyManager.class)
+      var uuid = TestingUtil.extractGlobalComponent(manager(0), LocalTopologyManager.class)
             .getPersistentUUID();
-      addressMappings.put((JGroupsAddress) manager(0).getAddress(), uuid);
+      addressMappings.put(manager(0).getAddress(), uuid);
       checkPersistentUUIDMatch(addressMappings);
    }
 
@@ -97,6 +96,7 @@ public class PreferConsistencyRestartTest extends BaseStatefulPartitionHandlingT
 
       // The remaining node is the new coordinator.
       assertThat(manager(0).isCoordinator()).isTrue();
+      eventuallyClusterTopologyCoordinator(0);
 
       // The cache is now in degraded mode.
       ClusterTopologyManager ctm = TestingUtil.extractGlobalComponent(manager(0), ClusterTopologyManager.class);
@@ -113,6 +113,7 @@ public class PreferConsistencyRestartTest extends BaseStatefulPartitionHandlingT
 
       // Cache still degraded.
       ctm = TestingUtil.extractGlobalComponent(manager(0), ClusterTopologyManager.class);
+      eventuallyClusterTopologyCoordinator(0);
       assertThat(ctm.getAvailabilityMode(CACHE_NAME)).isEqualTo(DEGRADED_MODE);
 
       // Add extraneous nodes.
@@ -141,7 +142,7 @@ public class PreferConsistencyRestartTest extends BaseStatefulPartitionHandlingT
    }
 
    public void testCoordinatorChangesWhileDegraded() throws Exception {
-      Map<JGroupsAddress, PersistentUUID> addressMappings = createInitialCluster();
+      var addressMappings = createInitialCluster();
 
       // Operate directly on the default cache.
       // Since it is created by default, it could cause the node fail to start.
@@ -157,6 +158,7 @@ public class PreferConsistencyRestartTest extends BaseStatefulPartitionHandlingT
 
       // The cache is now in degraded mode.
       ClusterTopologyManager ctm = TestingUtil.extractGlobalComponent(manager(0), ClusterTopologyManager.class);
+      eventuallyClusterTopologyCoordinator(0);
       assertThat(ctm.getAvailabilityMode(defaultCacheName)).isEqualTo(DEGRADED_MODE);
 
       // Previous coordinator joins.
@@ -171,6 +173,7 @@ public class PreferConsistencyRestartTest extends BaseStatefulPartitionHandlingT
 
       // And the cache is still in degraded mode.
       ctm = TestingUtil.extractGlobalComponent(manager(0), ClusterTopologyManager.class);
+      eventuallyClusterTopologyCoordinator(0);
       assertThat(ctm.getAvailabilityMode(defaultCacheName)).isEqualTo(DEGRADED_MODE);
 
       // Add all members back.
@@ -184,8 +187,13 @@ public class PreferConsistencyRestartTest extends BaseStatefulPartitionHandlingT
       checkPersistentUUIDMatch(addressMappings);
    }
 
+   private void eventuallyClusterTopologyCoordinator(int index) {
+      ClusterTopologyManager ctm = TestingUtil.extractGlobalComponent(manager(index), ClusterTopologyManager.class);
+      eventually(() -> ctm.getStatus() == ClusterTopologyManager.ClusterManagerStatus.COORDINATOR);
+   }
+
    public void testCrashBeforeRecover() throws Exception {
-      Map<JGroupsAddress, PersistentUUID> addressMappings = createInitialCluster();
+      var addressMappings = createInitialCluster();
 
       checkData();
 

@@ -145,7 +145,7 @@ public class CacheLoaderFunctionalTest extends AbstractInfinispanTest {
    }
 
    private <K> void assertInCacheAndStore(Cache<? super K, ?> cache, DummyInMemoryStore loader, K key, Object value, long lifespanMillis) throws PersistenceException {
-      InternalCacheEntry se = cache.getAdvancedCache().getDataContainer().get(key);
+      InternalCacheEntry se = cache.getAdvancedCache().getDataContainer().peek(key);
       testStoredEntry(se.getValue(), value, se.getLifespan(), lifespanMillis, "Cache", key);
       MarshallableEntry load = loader.loadEntry(key);
       testStoredEntry(load.getValue(), value, load.getMetadata() == null ? -1 : load.getMetadata().lifespan(), lifespanMillis, "Store", key);
@@ -341,13 +341,13 @@ public class CacheLoaderFunctionalTest extends AbstractInfinispanTest {
 
    public void testPreloadingWithEvictionAndOneMaxEntry() throws Exception {
       ConfigurationBuilder preloadingCfg = newPreloadConfiguration(cfg.build(), this.getClass().getName() + "preloadingCache_3");
-      preloadingCfg.memory().size(1);
+      preloadingCfg.memory().maxCount(1);
       doPreloadingTestWithEviction(preloadingCfg.build(), "preloadingCache_3");
    }
 
    public void testPreloadingWithEviction() throws Exception {
       ConfigurationBuilder preloadingCfg = newPreloadConfiguration(cfg.build(), this.getClass().getName() + "preloadingCache_4");
-      preloadingCfg.memory().size(3);
+      preloadingCfg.memory().maxCount(3);
       doPreloadingTestWithEviction(preloadingCfg.build(), "preloadingCache_4");
    }
 
@@ -631,7 +631,7 @@ public class CacheLoaderFunctionalTest extends AbstractInfinispanTest {
       cm.defineConfiguration(cacheName, preloadingCfg);
 
       final Cache<String, String> preloadingCache = getCache(cm, cacheName);
-      final long expectedEntriesInContainer = Math.min(4L, preloadingCfg.memory().size());
+      final long expectedEntriesInContainer = Math.min(4L, preloadingCfg.memory().maxCount());
       DummyInMemoryStore preloadingCacheLoader = TestingUtil.getFirstStore(preloadingCache);
 
       assertTrue("Preload not enabled in cache configuration",
@@ -653,7 +653,7 @@ public class CacheLoaderFunctionalTest extends AbstractInfinispanTest {
          final Object value = "v" + i;
          final long lifespan = i % 2 == 1 ? -1 : this.lifespan;
          boolean found = false;
-         InternalCacheEntry se = preloadingCache.getAdvancedCache().getDataContainer().get(key);
+         InternalCacheEntry se = preloadingCache.getAdvancedCache().getDataContainer().peek(key);
          MarshallableEntry load = preloadingCacheLoader.loadEntry(key);
          if (se != null) {
             testStoredEntry(se.getValue(), value, se.getLifespan(), lifespan, "Cache", key);
@@ -684,7 +684,7 @@ public class CacheLoaderFunctionalTest extends AbstractInfinispanTest {
          final Object value = "v" + i;
          final long lifespan = i % 2 == 1 ? -1 : this.lifespan;
          boolean found = false;
-         InternalCacheEntry se = preloadingCache.getAdvancedCache().getDataContainer().get(key);
+         InternalCacheEntry se = preloadingCache.getAdvancedCache().getDataContainer().peek(key);
          MarshallableEntry load = preloadingCacheLoader.loadEntry(key);
          if (se != null) {
             testStoredEntry(se.getValue(), value, se.getLifespan(), lifespan, "Cache", key);

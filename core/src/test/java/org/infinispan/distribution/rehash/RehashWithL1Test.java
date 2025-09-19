@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.configuration.internal.PrivateCacheConfigurationBuilder;
 import org.infinispan.distribution.ch.impl.DefaultConsistentHash;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.protostream.SerializationContextInitializer;
@@ -35,7 +36,8 @@ public class RehashWithL1Test extends MultipleCacheManagersTest {
    protected void createCacheManagers() throws Throwable {
       MyBaseControlledConsistentHashFactory chf = new MyBaseControlledConsistentHashFactory();
       builder = getDefaultClusteredCacheConfig(CacheMode.DIST_SYNC, false);
-      builder.clustering().hash().numSegments(1).numOwners(1).consistentHashFactory(chf);
+      builder.clustering().hash().numSegments(1).numOwners(1);
+      builder.addModule(PrivateCacheConfigurationBuilder.class).consistentHashFactory(chf);
       builder.clustering().l1().enable().lifespan(10, TimeUnit.MINUTES);
       createClusteredCaches(3, RehashWithL1TestSCI.INSTANCE, builder);
    }
@@ -114,7 +116,7 @@ public class RehashWithL1Test extends MultipleCacheManagersTest {
    @ProtoSchema(
          includeClasses = RehashWithL1Test.MyBaseControlledConsistentHashFactory.class,
          schemaFileName = "test.core.RehashWithL1Test.proto",
-         schemaFilePath = "proto/generated",
+         schemaFilePath = "org/infinispan",
          schemaPackageName = "org.infinispan.test.core.RehashWithL1Test",
          service = false,
          syntax = ProtoSyntax.PROTO3

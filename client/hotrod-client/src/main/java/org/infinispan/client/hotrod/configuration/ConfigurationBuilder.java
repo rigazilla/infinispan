@@ -74,7 +74,6 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
          null, ConsistentHashV2.class, SegmentConsistentHash.class, CRC16ConsistentHashV2.class
    };
    private boolean forceReturnValues;
-   private int keySizeEstimate = ConfigurationProperties.DEFAULT_KEY_SIZE;
    private Class<? extends Marshaller> marshallerClass;
    private Marshaller marshaller;
    private ProtocolVersion protocolVersion = ProtocolVersion.DEFAULT_PROTOCOL_VERSION;
@@ -83,13 +82,10 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
    private final SecurityConfigurationBuilder security;
    private boolean tcpNoDelay = true;
    private boolean tcpKeepAlive = false;
-   private int valueSizeEstimate = ConfigurationProperties.DEFAULT_VALUE_SIZE;
    private int maxRetries = ConfigurationProperties.DEFAULT_MAX_RETRIES;
    private int serverFailureTimeout = ConfigurationProperties.DEFAULT_SERVER_FAILURE_TIMEOUT;
-   private final NearCacheConfigurationBuilder nearCache;
    private final List<String> allowListRegExs = new ArrayList<>();
    private int batchSize = ConfigurationProperties.DEFAULT_BATCH_SIZE;
-   private final TransactionConfigurationBuilder transaction;
    private final StatisticsConfigurationBuilder statistics;
    private final List<ClusterConfigurationBuilder> clusters = new ArrayList<>();
    private Features features;
@@ -101,6 +97,7 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
    private int dnsResolverMaxTTL = Integer.MAX_VALUE;
    private int dnsResolverNegativeTTL = 0;
    private RemoteCacheManagerMetricsRegistry metricRegistry;
+   private long transactionTimeout = ConfigurationProperties.DEFAULT_TRANSACTION_TIMEOUT;
 
 
    public ConfigurationBuilder() {
@@ -108,8 +105,6 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
       this.connectionPool = new ConnectionPoolConfigurationBuilder(this);
       this.asyncExecutorFactory = new ExecutorFactoryConfigurationBuilder(this);
       this.security = new SecurityConfigurationBuilder(this);
-      this.nearCache = new NearCacheConfigurationBuilder(this);
-      this.transaction = new TransactionConfigurationBuilder(this);
       this.statistics = new StatisticsConfigurationBuilder(this);
       this.remoteCacheBuilders = new HashMap<>();
    }
@@ -246,16 +241,6 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
       return this;
    }
 
-   /**
-    * @deprecated Since 12.0, does nothing and will be removed in 15.0
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   @Override
-   public ConfigurationBuilder keySizeEstimate(int keySizeEstimate) {
-      this.keySizeEstimate = keySizeEstimate;
-      return this;
-   }
-
    @Override
    public ConfigurationBuilder marshaller(String marshallerClassName) {
       return marshaller(marshallerClassName == null ? null : Util.loadClass(marshallerClassName, ConfigurationBuilder.class.getClassLoader()));
@@ -292,16 +277,6 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
    public ConfigurationBuilder addContextInitializers(SerializationContextInitializer... contextInitializers) {
       this.contextInitializers.addAll(Arrays.asList(contextInitializers));
       return this;
-   }
-
-   /**
-    * @deprecated since 11.0. To be removed in 14.0. Use
-    * {@link RemoteCacheConfigurationBuilder#nearCacheMode(NearCacheMode)} and
-    * {@link RemoteCacheConfigurationBuilder#nearCacheMaxEntries(int)} instead.
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   public NearCacheConfigurationBuilder nearCache() {
-      return nearCache;
    }
 
    @Override
@@ -344,16 +319,6 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
       return uri(URI.create(uri));
    }
 
-   /**
-    * @deprecated Since 12.0, does nothing and will be removed in 15.0
-    */
-   @Deprecated(forRemoval=true, since = "12.0")
-   @Override
-   public ConfigurationBuilder valueSizeEstimate(int valueSizeEstimate) {
-      this.valueSizeEstimate = valueSizeEstimate;
-      return this;
-   }
-
    @Override
    public ConfigurationBuilder maxRetries(int maxRetries) {
       this.maxRetries = maxRetries;
@@ -373,12 +338,6 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
    }
 
    @Override
-   @Deprecated(forRemoval=true, since = "12.0")
-   public ConfigurationBuilder addJavaSerialWhiteList(String... regEx) {
-      return addJavaSerialAllowList(regEx);
-   }
-
-   @Override
    public ConfigurationBuilder batchSize(int batchSize) {
       if (batchSize <= 0) {
          throw new IllegalArgumentException("batchSize must be greater than 0");
@@ -393,19 +352,13 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
    }
 
    @Override
-   public TransactionConfigurationBuilder transaction() {
-      return transaction;
-   }
-
-   @Override
    public RemoteCacheConfigurationBuilder remoteCache(String name) {
       return remoteCacheBuilders.computeIfAbsent(name, (n) -> new RemoteCacheConfigurationBuilder(this, n));
    }
 
    @Override
    public ConfigurationBuilder transactionTimeout(long timeout, TimeUnit timeUnit) {
-      //TODO replace this invocation with a long field in this class when TransactionConfigurationBuilder is removed.
-      transaction.timeout(timeout, timeUnit);
+      this.transactionTimeout = timeUnit.toMillis(timeout);
       return this;
    }
 
@@ -466,9 +419,6 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
       if (typed.containsKey(ConfigurationProperties.FORCE_RETURN_VALUES)) {
          this.forceReturnValues(typed.getBooleanProperty(ConfigurationProperties.FORCE_RETURN_VALUES, forceReturnValues, true));
       }
-      if (typed.containsKey(ConfigurationProperties.KEY_SIZE_ESTIMATE)) {
-         this.keySizeEstimate(typed.getIntProperty(ConfigurationProperties.KEY_SIZE_ESTIMATE, keySizeEstimate, true));
-      }
       if (typed.containsKey(ConfigurationProperties.MARSHALLER)) {
          this.marshaller(typed.getProperty(ConfigurationProperties.MARSHALLER, null, true));
       }
@@ -494,9 +444,6 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
       if (typed.containsKey(ConfigurationProperties.TCP_KEEP_ALIVE)) {
          this.tcpKeepAlive(typed.getBooleanProperty(ConfigurationProperties.TCP_KEEP_ALIVE, tcpKeepAlive, true));
       }
-      if (typed.containsKey(ConfigurationProperties.VALUE_SIZE_ESTIMATE)) {
-         this.valueSizeEstimate(typed.getIntProperty(ConfigurationProperties.VALUE_SIZE_ESTIMATE, valueSizeEstimate, true));
-      }
       if (typed.containsKey(ConfigurationProperties.MAX_RETRIES)) {
          this.maxRetries(typed.getIntProperty(ConfigurationProperties.MAX_RETRIES, maxRetries, true));
       }
@@ -515,14 +462,7 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
       this.security.ssl().withProperties(properties);
       this.security.authentication().withProperties(properties);
 
-      String serialAllowList = typed.getProperty(ConfigurationProperties.JAVA_SERIAL_WHITELIST);
-      if (serialAllowList != null && !serialAllowList.isEmpty()) {
-         org.infinispan.commons.logging.Log.CONFIG.deprecatedProperty(ConfigurationProperties.JAVA_SERIAL_WHITELIST, ConfigurationProperties.JAVA_SERIAL_ALLOWLIST);
-         String[] classes = serialAllowList.split(",");
-         Collections.addAll(this.allowListRegExs, classes);
-      }
-
-      serialAllowList = typed.getProperty(ConfigurationProperties.JAVA_SERIAL_ALLOWLIST);
+      String serialAllowList = typed.getProperty(ConfigurationProperties.JAVA_SERIAL_ALLOWLIST);
       if (serialAllowList != null && !serialAllowList.isEmpty()) {
          String[] classes = serialAllowList.split(",");
          Collections.addAll(this.allowListRegExs, classes);
@@ -530,9 +470,10 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
       if (typed.containsKey(ConfigurationProperties.BATCH_SIZE)) {
          this.batchSize(typed.getIntProperty(ConfigurationProperties.BATCH_SIZE, batchSize, true));
       }
-      //TODO read TRANSACTION_TIMEOUT property after TransactionConfigurationBuilder is removed.
-      transaction.withTransactionProperties(typed);
-      nearCache.withProperties(properties);
+
+      if (typed.containsKey(ConfigurationProperties.TRANSACTION_TIMEOUT)) {
+         this.transactionTimeout(typed.getDurationProperty(ConfigurationProperties.TRANSACTION_TIMEOUT, transactionTimeout, true), TimeUnit.MILLISECONDS);
+      }
 
       parseClusterProperties(typed);
 
@@ -593,8 +534,6 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
       connectionPool.validate();
       asyncExecutorFactory.validate();
       security.validate();
-      nearCache.validate();
-      transaction.validate();
       statistics.validate();
       if (maxRetries < 0) {
          throw HOTROD.invalidMaxRetries(maxRetries);
@@ -642,9 +581,9 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
       return new Configuration(asyncExecutorFactory.create(), balancingStrategyFactory, classLoader == null ? null : classLoader.get(),
             clientIntelligence, connectionPool.create(), connectionTimeout, consistentHashImpl,
             dnsResolverMinTTL, dnsResolverMaxTTL, dnsResolverNegativeTTL,
-            forceReturnValues, keySizeEstimate, buildMarshaller, buildMarshallerClass, protocolVersion, servers, socketTimeout,
-            security.create(), tcpNoDelay, tcpKeepAlive, valueSizeEstimate, maxRetries, nearCache.create(),
-            serverClusterConfigs, allowListRegExs, batchSize, transaction.create(), statistics.create(), features,
+            forceReturnValues, buildMarshaller, buildMarshallerClass, protocolVersion, servers, socketTimeout,
+            security.create(), tcpNoDelay, tcpKeepAlive, maxRetries,
+            serverClusterConfigs, allowListRegExs, batchSize, transactionTimeout, statistics.create(), features,
             contextInitializers, remoteCaches, transportFactory, tracingPropagationEnabled, metricRegistry, serverFailureTimeout);
    }
 
@@ -680,7 +619,6 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
       this.dnsResolverMaxTTL = template.dnsResolverMaxTTL();
       this.dnsResolverNegativeTTL = template.dnsResolverNegativeTTL();
       this.forceReturnValues = template.forceReturnValues();
-      this.keySizeEstimate = template.keySizeEstimate();
       this.marshaller = template.marshaller();
       this.marshallerClass = template.marshallerClass();
       this.protocolVersion = template.version();
@@ -695,11 +633,9 @@ public class ConfigurationBuilder implements ConfigurationChildBuilder, Builder<
       this.tcpNoDelay = template.tcpNoDelay();
       this.tcpKeepAlive = template.tcpKeepAlive();
       this.transportFactory = template.transportFactory();
-      this.valueSizeEstimate = template.valueSizeEstimate();
       this.maxRetries = template.maxRetries();
-      this.nearCache.read(template.nearCache(), combine);
-      this.allowListRegExs.addAll(template.serialWhitelist());
-      this.transaction.read(template.transaction(), combine);
+      this.allowListRegExs.addAll(template.serialAllowList());
+      this.transactionTimeout = template.transactionTimeout();
       this.statistics.read(template.statistics(), combine);
       this.contextInitializers.clear();
       this.contextInitializers.addAll(template.getContextInitializers());
