@@ -72,11 +72,6 @@
          <scope>test</scope>
       </dependency>
       <dependency>
-         <groupId>io.lettuce</groupId>
-         <artifactId>lettuce-core</artifactId>
-         <scope>test</scope>
-      </dependency>
-      <dependency>
          <groupId>org.junit.support</groupId>
          <artifactId>testng-engine</artifactId>
          <scope>test</scope>
