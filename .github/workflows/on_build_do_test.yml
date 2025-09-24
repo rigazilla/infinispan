@@ -13,7 +13,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  # Cancel jobs same head_branch same repo, works
+  # Cancel jobs with same head_branch same repo, works
   # both for pull_request and push
   group: >
       ${{ github.workflow }}-${{ github.event.workflow_run.head_repository.full_name }}-
