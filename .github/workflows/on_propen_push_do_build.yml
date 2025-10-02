@@ -17,7 +17,6 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
@@ -27,6 +26,7 @@ jobs:
         uses: ./.github/actions/build-infinispan
 
       - name: Server version
+        # actionlint:ignore[shellcheck]
         run: >
           mvn -q -Dexec.executable=echo -Dexec.args='-n ${project.version}'
           --non-recursive exec:exec > server-version.txt
