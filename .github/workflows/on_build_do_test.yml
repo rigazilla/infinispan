@@ -65,6 +65,10 @@ jobs:
 
       - name: Setup Java
         uses: ./.github/actions/setup-java
+        with:
+          setup: load
+          run-id: ${{ github.event.workflow_run.id }}
+
 
       - name: Extract Maven Artifacts
         uses: ./.github/actions/extract-maven-artifacts

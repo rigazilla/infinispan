@@ -14,6 +14,9 @@ runs:
       uses: ./.github/actions/setup-java
       with:
         gpg-private-key: ${{ inputs.gpg-private-key }}
+        version: 24
+        distribution: temurin
+        setup: store
 
     - name: Build Infinispan
       shell: bash
