@@ -136,11 +136,7 @@ jobs:
       fail-fast: false
       matrix:
         targets:
-          - mssql
-          - oracle
-          - db2
           - tomcat
-          - rolling-upgrades
     steps:
     - name: Set run_id based on event type
       id: run_id
