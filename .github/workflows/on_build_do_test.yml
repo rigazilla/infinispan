@@ -462,89 +462,9 @@ jobs:
           mv infinispan-${{ steps.dis.outputs.server-version }}-src infinispan
           cp -r infinispan infinispan-rolling-upgrade
 
-      - uses: actions/download-artifact@v6.0.0
-        with:
-          pattern: jacoco-files-*
-
       - name: Build infinispan before adding jacoco files
         shell: bash
         # language=bash
         run: |
           cd test_dir/infinispan && 
           mvn clean install -DskipTests=true
-
-      - name: Merge Jacoco exec files
-        shell: bash
-        # language=bash
-        run: |
-          .github/scripts/merge-jacoco-files.sh "$GITHUB_WORKSPACE/test_dir/infinispan/" "${GITHUB_WORKSPACE}/jacoco-files-*"
-          #Read and store value of PR from the File
-          PR_NUMBER=$(cat "$GITHUB_WORKSPACE/jacoco-files-main/pr-number.txt")
-          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-
-      - name: Coverage report generation
-        id: generate_coverage
-        shell: bash
-        # language=bash
-        run: |
-          cd test_dir/infinispan/ &&
-          mvn validate -P jacocoReport
-
-      - name: Add coverage to PR
-        id: jacoco
-        uses: madrapps/jacoco-report@v1.7.2
-        with:
-          paths: |
-            ${{ github.workspace }}/test_dir/infinispan/jacoco-report/jacoco.xml
-          token: ${{ secrets.GITHUB_TOKEN }}
-          min-coverage-overall: 70
-          min-coverage-changed-files: 70
-          pr-number: ${{ env.PR_NUMBER }}
-          debug-mode: true
-
-      - name: Copy the Jacoco Report into Readable directory
-        shell: bash
-        # language=bash
-        run: |
-          mkdir ${{ github.workspace }}/jacocoReport
-          cp -R ${{ github.workspace }}/test_dir/infinispan/jacoco-report/ ${{ github.workspace }}/jacocoReport/ 
-
-      - name: Upload jacoco report
-        if: (success() || failure())
-        uses: actions/upload-artifact@v5
-        with:
-          name: jacocoReport
-          path: |
-            ${{ github.workspace }}/jacocoReport/
-
-      - name: Report for rolling upgrades
-        shell: bash
-        # language=bash
-        run: |
-          cd test_dir/infinispan-rolling-upgrade
-          mvn clean install -DskipTests=true -pl server/rollingupgradetests -am
-          cp ${{ github.workspace }}/jacoco-files-rolling-upgrades/rollingupgradetests/target/*.exec server/rollingupgradetests/target/
-          mvn validate -P jacocoReport
-          mkdir ${{ github.workspace }}/jacocoReport-rolling-upgrade
-          cp -R jacoco-report/ ${{ github.workspace }}/jacocoReport-rolling-upgrade
-
-      - name: Add rolling upgrade coverage to PR
-        id: jacoco-rolling-upgrade
-        uses: madrapps/jacoco-report@v1.7.2
-        with:
-          paths: |
-            ${{ github.workspace }}/test_dir/infinispan-rolling-upgrade/jacoco-report/jacoco.xml
-          token: ${{ secrets.GITHUB_TOKEN }}
-          min-coverage-overall: 25
-          min-coverage-changed-files: 25
-          pr-number: ${{ env.PR_NUMBER }}
-          title: Coverage for rolling-upgrade tests
-          debug-mode: true
-
-      - name: Upload jacoco report for rolling upgrade
-        if: (success() || failure())
-        uses: actions/upload-artifact@v5
-        with:
-          name: jacocoReport-rolling-upgrade
-          path: |
-            ${{ github.workspace }}/jacocoReport-rolling-upgrade/
