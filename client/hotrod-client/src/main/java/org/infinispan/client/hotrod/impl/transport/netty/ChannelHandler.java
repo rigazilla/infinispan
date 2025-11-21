@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -129,7 +130,16 @@ public class ChannelHandler {
          // We only want to shutdown the EventLoop when using the default TransportFactory. This way users can control
          // the lifecycle of the EventLoop themselves.
          if (configuration.transportFactory() == TransportFactory.DEFAULT) {
-            eventLoopGroup.shutdownGracefully(0, 0, TimeUnit.MILLISECONDS).get();
+            try {
+               eventLoopGroup.shutdownGracefully(0, 0, TimeUnit.MILLISECONDS).get(30, TimeUnit.SECONDS);
+            } catch (TimeoutException e) {
+               log.warnf("EventLoopGroup shutdown timed out after 30 seconds. " +
+                     "EventLoopGroup state: isShutdown=%s, isTerminated=%s, " +
+                     "Active channels: %d, Channel addresses: %s",
+                     eventLoopGroup.isShutdown(), eventLoopGroup.isTerminated(),
+                     channels.size(), channels.keySet());
+               throw e;
+            }
          }
       } catch (Exception e) {
          log.warn("Exception while shutting down the channel handler.", e);
