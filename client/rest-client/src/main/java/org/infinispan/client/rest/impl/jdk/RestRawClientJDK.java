@@ -300,18 +300,24 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
                executorService instanceof ThreadPoolExecutor ? ((ThreadPoolExecutor) executorService).getQueue().size() : -1);
 
          // Wrap HttpClient.close() with timeout to prevent indefinite hang
-         CompletableFuture<Void> closeFuture = CompletableFuture.runAsync(() -> {
+         // IMPORTANT: Create a separate thread instead of using executorService to avoid deadlock
+         // (the executorService might have pending requests that close() needs to wait for)
+         CompletableFuture<Void> closeFuture = new CompletableFuture<>();
+         Thread closeThread = new Thread(() -> {
             try {
                long startTime = System.currentTimeMillis();
                LOG.debugf("Starting HttpClient.close() call");
                ((AutoCloseable) httpClient).close(); // close() was only introduced in JDK 21
                long duration = System.currentTimeMillis() - startTime;
                LOG.debugf("HttpClient.close() completed successfully in %d ms", duration);
+               closeFuture.complete(null);
             } catch (Exception e) {
                LOG.errorf(e, "Exception during HttpClient.close()");
-               throw new RuntimeException(e);
+               closeFuture.completeExceptionally(e);
             }
-         }, executorService);
+         }, "HttpClient-close-" + baseURL);
+         closeThread.setDaemon(true);
+         closeThread.start();
 
          try {
             closeFuture.get(30, TimeUnit.SECONDS);
