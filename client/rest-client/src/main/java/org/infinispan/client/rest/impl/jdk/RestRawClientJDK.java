@@ -208,7 +208,7 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
       EventSubscriber subscriber = new EventSubscriber(listener);
 
       long listenerId = activeListeners.incrementAndGet();
-      LOG.debugf("Starting SSE listener #%d for path: %s", listenerId, path);
+      LOG.warnf("Starting SSE listener #%d for path: %s", listenerId, path);
 
       execute(builder, subscriber::bodyHandler).handle((r, t) -> {
          if (t != null) {
@@ -220,7 +220,7 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
             }
          }
          long remaining = activeListeners.decrementAndGet();
-         LOG.debugf("SSE listener #%d completed (active listeners: %d)", listenerId, remaining);
+         LOG.warnf("SSE listener #%d completed (active listeners: %d)", listenerId, remaining);
          return null;
       });
       return subscriber;
@@ -290,7 +290,7 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
    public void close() throws Exception {
       if (Runtime.version().feature() >= 21) {
          // Log state before attempting to close
-         LOG.debugf("Attempting to close HttpClient for %s. Active requests: %d, Total requests: %d, Active listeners: %d, " +
+         LOG.warnf("Attempting to close HttpClient for %s. Active requests: %d, Total requests: %d, Active listeners: %d, " +
                "ExecutorService state before close: isShutdown=%s, isTerminated=%s, " +
                "Active threads: %d, Pool size: %d, Queue size: %d",
                baseURL, activeRequests.get(), totalRequests.get(), activeListeners.get(),
@@ -306,10 +306,10 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
          Thread closeThread = new Thread(() -> {
             try {
                long startTime = System.currentTimeMillis();
-               LOG.debugf("Starting HttpClient.close() call");
+               LOG.warnf("Starting HttpClient.close() call");
                ((AutoCloseable) httpClient).close(); // close() was only introduced in JDK 21
                long duration = System.currentTimeMillis() - startTime;
-               LOG.debugf("HttpClient.close() completed successfully in %d ms", duration);
+               LOG.warnf("HttpClient.close() completed successfully in %d ms", duration);
                closeFuture.complete(null);
             } catch (Exception e) {
                LOG.errorf(e, "Exception during HttpClient.close()");
@@ -321,7 +321,7 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
 
          try {
             closeFuture.get(30, TimeUnit.SECONDS);
-            LOG.debugf("HttpClient closed successfully within timeout");
+            LOG.warnf("HttpClient closed successfully within timeout");
          } catch (java.util.concurrent.TimeoutException e) {
             // Dump all threads to help diagnose what's blocking
             Thread.getAllStackTraces().forEach((thread, stackTrace) -> {
@@ -333,7 +333,7 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
                   for (StackTraceElement element : stackTrace) {
                      sb.append("  at ").append(element).append("\n");
                   }
-                  LOG.debugf("Active thread during HttpClient.close() timeout:\n%s", sb);
+                  LOG.warnf("Active thread during HttpClient.close() timeout:\n%s", sb);
                }
             });
 
@@ -352,13 +352,13 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
          }
       }
       if (managedExecutorService) {
-         LOG.debugf("Shutting down managed ExecutorService");
+         LOG.warnf("Shutting down managed ExecutorService");
          executorService.shutdownNow();
          boolean terminated = executorService.awaitTermination(5, TimeUnit.SECONDS);
          if (!terminated) {
             LOG.warnf("ExecutorService did not terminate within 5 seconds after shutdownNow()");
          } else {
-            LOG.debugf("ExecutorService terminated successfully");
+            LOG.warnf("ExecutorService terminated successfully");
          }
       }
    }
