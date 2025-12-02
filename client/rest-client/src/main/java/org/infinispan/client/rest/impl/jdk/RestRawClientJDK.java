@@ -50,9 +50,6 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
    private final String baseURL;
    private final boolean managedExecutorService;
    private final ExecutorService executorService;
-   private final AtomicLong activeRequests = new AtomicLong(0);
-   private final AtomicLong totalRequests = new AtomicLong(0);
-   private final AtomicLong activeListeners = new AtomicLong(0);
 
    RestRawClientJDK(RestClientConfiguration configuration) {
       this.configuration = configuration;
@@ -207,9 +204,6 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
       configuration.headers().forEach(builder::header);
       EventSubscriber subscriber = new EventSubscriber(listener);
 
-      long listenerId = activeListeners.incrementAndGet();
-      LOG.warnf("Starting SSE listener #%d for path: %s", listenerId, path);
-
       execute(builder, subscriber::bodyHandler).handle((r, t) -> {
          if (t != null) {
             listener.onError(t, r);
@@ -219,8 +213,6 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
                listener.onError(null, r);
             }
          }
-         long remaining = activeListeners.decrementAndGet();
-         LOG.warnf("SSE listener #%d completed (active listeners: %d)", listenerId, remaining);
          return null;
       });
       return subscriber;
@@ -254,20 +246,8 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
          authenticator.preauthenticate(builder);
       }
 
-      // Track active requests
-      long active = activeRequests.incrementAndGet();
-      long total = totalRequests.incrementAndGet();
-      LOG.tracef("Starting request #%d (active=%d): %s", total, active, request.uri());
-
-      CompletionStage<RestResponse> stage = handle(httpClient.sendAsync(request, handlerSupplier.get()), handlerSupplier)
+      return handle(httpClient.sendAsync(request, handlerSupplier.get()), handlerSupplier)
             .thenApply(RestResponseJDK::new);
-
-      return stage.whenComplete((response, throwable) -> {
-         long remaining = activeRequests.decrementAndGet();
-         LOG.tracef("Completed request to %s (active=%d, status=%s)",
-               request.uri(), remaining,
-               response != null ? response.status() : "error");
-      });
    }
 
    private <T> CompletionStage<HttpResponse<T>> handle(CompletionStage<HttpResponse<T>> response, Supplier<HttpResponse.BodyHandler<?>> handlerSupplier) {
@@ -289,77 +269,26 @@ public class RestRawClientJDK implements RestRawClient, AutoCloseable {
    @Override
    public void close() throws Exception {
       if (Runtime.version().feature() >= 21) {
-         // Log state before attempting to close
-         LOG.warnf("Attempting to close HttpClient for %s. Active requests: %d, Total requests: %d, Active listeners: %d, " +
-               "ExecutorService state before close: isShutdown=%s, isTerminated=%s, " +
-               "Active threads: %d, Pool size: %d, Queue size: %d",
-               baseURL, activeRequests.get(), totalRequests.get(), activeListeners.get(),
-               executorService.isShutdown(), executorService.isTerminated(),
-               executorService instanceof ThreadPoolExecutor ? ((ThreadPoolExecutor) executorService).getActiveCount() : -1,
-               executorService instanceof ThreadPoolExecutor ? ((ThreadPoolExecutor) executorService).getPoolSize() : -1,
-               executorService instanceof ThreadPoolExecutor ? ((ThreadPoolExecutor) executorService).getQueue().size() : -1);
-
          // Wrap HttpClient.close() with timeout to prevent indefinite hang
          // IMPORTANT: Create a separate thread instead of using executorService to avoid deadlock
          // (the executorService might have pending requests that close() needs to wait for)
          CompletableFuture<Void> closeFuture = new CompletableFuture<>();
          Thread closeThread = new Thread(() -> {
             try {
-               long startTime = System.currentTimeMillis();
-               LOG.warnf("Starting HttpClient.close() call");
                ((AutoCloseable) httpClient).close(); // close() was only introduced in JDK 21
-               long duration = System.currentTimeMillis() - startTime;
-               LOG.warnf("HttpClient.close() completed successfully in %d ms", duration);
                closeFuture.complete(null);
             } catch (Exception e) {
-               LOG.errorf(e, "Exception during HttpClient.close()");
                closeFuture.completeExceptionally(e);
             }
          }, "HttpClient-close-" + baseURL);
          closeThread.setDaemon(true);
          closeThread.start();
 
-         try {
-            closeFuture.get(30, TimeUnit.SECONDS);
-            LOG.warnf("HttpClient closed successfully within timeout");
-         } catch (java.util.concurrent.TimeoutException e) {
-            // Dump all threads to help diagnose what's blocking
-            Thread.getAllStackTraces().forEach((thread, stackTrace) -> {
-               if (thread.getName().contains("REST") || thread.getName().contains("HttpClient") ||
-                   thread.getName().contains("InnocuousThread") || thread.isDaemon()) {
-                  StringBuilder sb = new StringBuilder();
-                  sb.append("Thread: ").append(thread.getName())
-                    .append(" (").append(thread.getState()).append(", daemon=").append(thread.isDaemon()).append(")\n");
-                  for (StackTraceElement element : stackTrace) {
-                     sb.append("  at ").append(element).append("\n");
-                  }
-                  LOG.warnf("Active thread during HttpClient.close() timeout:\n%s", sb);
-               }
-            });
-
-            LOG.warnf("HttpClient.close() timed out after 30 seconds. " +
-                  "Base URL: %s, Active requests: %d, Active listeners: %d, Total requests: %d, " +
-                  "ExecutorService state: isShutdown=%s, isTerminated=%s, " +
-                  "Active threads: %d, Pool size: %d, Queue size: %d, Completed tasks: %d",
-                  baseURL, activeRequests.get(), activeListeners.get(), totalRequests.get(),
-                  executorService.isShutdown(), executorService.isTerminated(),
-                  executorService instanceof ThreadPoolExecutor ? ((ThreadPoolExecutor) executorService).getActiveCount() : -1,
-                  executorService instanceof ThreadPoolExecutor ? ((ThreadPoolExecutor) executorService).getPoolSize() : -1,
-                  executorService instanceof ThreadPoolExecutor ? ((ThreadPoolExecutor) executorService).getQueue().size() : -1,
-                  executorService instanceof ThreadPoolExecutor ? ((ThreadPoolExecutor) executorService).getCompletedTaskCount() : -1);
-            closeFuture.cancel(true);
-            throw e;
-         }
+         closeFuture.get(30, TimeUnit.SECONDS);
       }
       if (managedExecutorService) {
-         LOG.warnf("Shutting down managed ExecutorService");
          executorService.shutdownNow();
-         boolean terminated = executorService.awaitTermination(5, TimeUnit.SECONDS);
-         if (!terminated) {
-            LOG.warnf("ExecutorService did not terminate within 5 seconds after shutdownNow()");
-         } else {
-            LOG.warnf("ExecutorService terminated successfully");
-         }
+         executorService.awaitTermination(5, TimeUnit.SECONDS);
       }
    }
 
