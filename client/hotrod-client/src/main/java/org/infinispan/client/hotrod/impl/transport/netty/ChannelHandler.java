@@ -130,16 +130,7 @@ public class ChannelHandler {
          // We only want to shutdown the EventLoop when using the default TransportFactory. This way users can control
          // the lifecycle of the EventLoop themselves.
          if (configuration.transportFactory() == TransportFactory.DEFAULT) {
-            try {
-               eventLoopGroup.shutdownGracefully(0, 0, TimeUnit.MILLISECONDS).get(30, TimeUnit.SECONDS);
-            } catch (TimeoutException e) {
-               log.warnf("EventLoopGroup shutdown timed out after 30 seconds. " +
-                     "EventLoopGroup state: isShutdown=%s, isTerminated=%s, " +
-                     "Active channels: %d, Channel addresses: %s",
-                     eventLoopGroup.isShutdown(), eventLoopGroup.isTerminated(),
-                     channels.size(), channels.keySet());
-               throw e;
-            }
+            eventLoopGroup.shutdownGracefully(0, 0, TimeUnit.MILLISECONDS).get(30, TimeUnit.SECONDS);
          }
       } catch (Exception e) {
          log.warn("Exception while shutting down the channel handler.", e);
