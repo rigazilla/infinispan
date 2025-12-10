@@ -9,6 +9,9 @@ on:
 jobs:
   nightly-build:
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
     steps:
       - name: Get latest Infinispan Server version
         id: get-latest-server-ver
@@ -56,19 +59,11 @@ jobs:
             com.ibm.db2:jcc:12.1.2.0,com.microsoft.sqlserver:mssql-jdbc:12.10.1.jre11
         # Get GitHub App token to use in API calls
 
-      - uses: actions/create-github-app-token@v2
-        if: success() || failure()
-        id: app-token
-        with:
-          # required
-          app-id: ${{ secrets.GH_APP_ISPN_ID }}
-          private-key: ${{ secrets.GH_APP_ISPN_KEY }}
       - name: Publish Test Report
         if: success() || failure()
         # Waiting for https://github.com/ScaCap/action-surefire-report/pull/251
         uses: rigazilla/action-surefire-report@summary
         with:
             report_paths: '**/target/*-reports/TEST-*.xml'
-            github_token: ${{ steps.app-token.outputs.token }}
             check_name: 'Cross-compatibility Test Report'
             summary: "Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
