@@ -65,5 +65,5 @@ jobs:
         uses: rigazilla/action-surefire-report@summary
         with:
             report_paths: '**/target/*-reports/TEST-*.xml'
-            check_name: 'Cross-compatibility Test Report'
             summary: "Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            create_check: false

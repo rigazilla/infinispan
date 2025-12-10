@@ -57,13 +57,26 @@ jobs:
       # Publish test results as a GitHub check
       # This runs regardless of whether tests pass or fail
       # Excludes any files marked as FLAKY from the report
-      - name: Publish Clients Test Report
-        if: (success() || failure())
-        uses: ScaCap/action-surefire-report@v1.9.1
+      - name: Publish Test Report
+        uses: ctrf-io/github-test-reporter@v1
         with:
-            check_name: Clients Test Report Result
-            ignore_flaky_tests: true
-            report_paths: |
-              **/*-reports*/**/TEST-*.xml
-              !**/*FLAKY*.xml
-            create_check: false
+          report-path: |
+            **/*-reports*/**/TEST-*.xml
+            !**/*FLAKY*.xml
+          write-ctrf-to-file: './ctrf-reports/ctrf-report.json'
+          integrations-config: |
+            {
+              "junit-to-ctrf": {
+                "enabled": true,
+                "action": "convert",
+                "options": {
+                  "output": "./ctrf-reports/ctrf-report.json",
+                  "toolname": "junit-to-ctrf",
+                  "useSuiteName": false,
+                  "env": {
+                    "appName": "my-app"
+                  }
+                }
+              }
+            }
+        if: always()
