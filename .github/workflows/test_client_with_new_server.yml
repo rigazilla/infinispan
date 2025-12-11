@@ -60,10 +60,25 @@ jobs:
         # Get GitHub App token to use in API calls
 
       - name: Publish Test Report
-        if: success() || failure()
-        # Waiting for https://github.com/ScaCap/action-surefire-report/pull/251
-        uses: rigazilla/action-surefire-report@summary
+        uses: ctrf-io/github-test-reporter@v1
         with:
-            report_paths: '**/target/*-reports/TEST-*.xml'
-            summary: "Result from workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            create_check: false
+          report-path: |
+            **/*-reports*/**/TEST-*.xml
+            !**/*FLAKY*.xml
+          write-ctrf-to-file: './ctrf-reports/ctrf-report.json'
+          integrations-config: |
+            {
+              "junit-to-ctrf": {
+                "enabled": true,
+                "action": "convert",
+                "options": {
+                  "output": "./ctrf-reports/ctrf-report.json",
+                  "toolname": "junit-to-ctrf",
+                  "useSuiteName": false,
+                  "env": {
+                    "appName": "my-app"
+                  }
+                }
+              }
+            }
+        if: always()
