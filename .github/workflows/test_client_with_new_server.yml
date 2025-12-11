@@ -62,9 +62,7 @@ jobs:
       - name: Publish Test Report
         uses: ctrf-io/github-test-reporter@v1
         with:
-          report-path: |
-            **/*-reports*/**/TEST-*.xml
-            !**/*FLAKY*.xml
+          report-path: '**/*-reports*/**/TEST-*.xml'
           write-ctrf-to-file: './ctrf-reports/ctrf-report.json'
           integrations-config: |
             {
