@@ -62,6 +62,8 @@ jobs:
         with:
           summary-delta-report: true
           slowest-report: true
+          failed-folded-report: true
+          previous-results-report: true
           report-path: '**/*-reports*/**/TEST-*.xml'
           write-ctrf-to-file: './ctrf-reports/ctrf-report.json'
           integrations-config: |
