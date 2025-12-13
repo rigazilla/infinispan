@@ -40,12 +40,12 @@ jobs:
       - name: Maven Install (skip tests)
         run: ./mvnw install -DskipTests -B
 
-      - name: Replace configuration folder from 15.2.x
+      - name: Replace configuration folder from 16.0.x
         run: |
           rm -rf server/tests/src/test/resources/configuration
-          git fetch origin 15.2.x
-          git checkout origin/15.2.x -- server/tests/src/test/resources/configuration
-          git checkout origin/15.2.x -- server/tests/src/test/resources/jgroups_metrics.txt
+          git fetch origin 16.0.x
+          git checkout origin/16.0.x -- server/tests/src/test/resources/configuration
+          git checkout origin/16.0.x -- server/tests/src/test/resources/jgroups_metrics.txt
 
       - name: Maven Verify (server/tests)
         run: |
