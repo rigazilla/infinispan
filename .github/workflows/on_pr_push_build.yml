@@ -57,7 +57,7 @@ jobs:
       # Publish test results as a GitHub check
       # This runs regardless of whether tests pass or fail
       # Excludes any files marked as FLAKY from the report
-      - name: Publish Test Report
+      - name: Publish Client Test Report
         uses: ctrf-io/github-test-reporter@v1
         with:
           summary-delta-report: true

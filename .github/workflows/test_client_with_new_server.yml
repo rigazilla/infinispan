@@ -51,7 +51,7 @@ jobs:
         run: |
             ./mvnw clean verify \
             -V -B -e -DrerunFailingTestsCount=2 \
-            -Dmaven.test.failure.ignore=true -Dansi.strip=true \
+            -fae -Dansi.strip=true \
             -pl server/tests -DdefaultExcludedJUnitGroups=embeddedserver,cli \
             -Dorg.infinispan.test.server.dir=${{ github.workspace }}/infinispan-server-${ISPN_SERVER_VER}/ \
             -Dorg.infinispan.test.server.container.newerThan14=true \
