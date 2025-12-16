@@ -70,14 +70,14 @@ jobs:
       - name: Publish Client Test Report
         uses: ctrf-io/github-test-reporter@v1
         env:
-          NOT_FORK_PR: ${{ github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork }}
+          IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
         with:
-          summary-delta-report: true
-          failed-folded-report: true
-          slowest-report: ${{ env.NOT_FORK_PR }}
-          previous-results-report: ${{ env.NOT_FORK_PR }}
-          report-path: '**/*-reports*/**/TEST-*.xml'
+          summary-delta-report: ${{ env.IS_FORK_PR }}
+          failed-folded-report: ${{ env.IS_FORK_PR }}
+          slowest-report: ${{ env.IS_FORK_PR != 'true' }}
+          previous-results-report: ${{ env.IS_FORK_PR != 'true' }}
           write-ctrf-to-file: './ctrf-reports/ctrf-report.json'
+          report-path: '**/*-reports*/**/TEST-*.xml'
           integrations-config: |
             {
               "junit-to-ctrf": {
