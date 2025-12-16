@@ -13,14 +13,13 @@ on:
   pull_request:
     branches:
       - 14.0.x
-
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: read
-   steps:
+    steps:
       # Checkout the repository code
       - name: Checkout code
         uses: actions/checkout@v6
