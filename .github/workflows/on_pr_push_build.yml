@@ -17,7 +17,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
+    permissions:
+      contents: read
+      actions: read
+   steps:
       # Checkout the repository code
       - name: Checkout code
         uses: actions/checkout@v6
@@ -67,11 +70,13 @@ jobs:
       # Excludes any files marked as FLAKY from the report
       - name: Publish Client Test Report
         uses: ctrf-io/github-test-reporter@v1
+        env:
+          NOT_FORK_PR: ${{ github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork }}
         with:
           summary-delta-report: true
-          slowest-report: true
           failed-folded-report: true
-          previous-results-report: true
+          slowest-report: ${{ env.NOT_FORK_PR }}
+          previous-results-report: ${{ env.NOT_FORK_PR }}
           report-path: '**/*-reports*/**/TEST-*.xml'
           write-ctrf-to-file: './ctrf-reports/ctrf-report.json'
           integrations-config: |

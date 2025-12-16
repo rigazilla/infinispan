@@ -10,8 +10,8 @@ jobs:
   nightly-build:
     runs-on: ubuntu-latest
     permissions:
-      checks: write
       contents: read
+      actions: read
     steps:
       - name: Get latest Infinispan Server version
         id: get-latest-server-ver
@@ -77,11 +77,13 @@ jobs:
 
       - name: Publish Test Report
         uses: ctrf-io/github-test-reporter@v1
+        env:
+          NOT_FORK_PR: ${{ github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork }}
         with:
           summary-delta-report: true
-          slowest-report: true
           failed-folded-report: true
-          previous-results-report: true
+          slowest-report: ${{ env.NOT_FORK_PR }}
+          previous-results-report: ${{ env.NOT_FORK_PR }}
           report-path: '**/*-reports*/**/TEST-*.xml'
           write-ctrf-to-file: './ctrf-reports/ctrf-report.json'
           integrations-config: |
