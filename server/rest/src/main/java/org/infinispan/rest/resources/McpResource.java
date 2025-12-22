@@ -24,7 +24,7 @@ import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.counter.api.WeakCounter;
 import org.infinispan.manager.EmbeddedCacheManagerAdmin;
 import org.infinispan.metadata.Metadata;
-import org.infinispan.query.remote.ProtobufMetadataManager;
+import org.infinispan.server.core.query.ProtobufMetadataManager;
 import org.infinispan.rest.EventStream;
 import org.infinispan.rest.InvocationHelper;
 import org.infinispan.rest.NettyRestResponse;
@@ -265,7 +265,7 @@ public class McpResource implements ResourceHandler {
 
    @Override
    public Invocations getInvocations() {
-      return new Invocations.Builder("mcp", "Model Context Protocol")
+      return new Invocations.Builder()
             .invocation().methods(GET, POST).path("/v3/mcp")
             .handleWith(this::mcp)
             .create();
