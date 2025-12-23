@@ -121,7 +121,6 @@ jobs:
       - name: Display Check Run URL
         run: |
           echo "::notice title=Test Report Check Run::Check run created: https://github.com/${{ github.repository }}/runs/${{ steps.create_check.outputs.id }}"
-          echo "SMRY: https://github.com/${{ github.repository }}/runs/${{ steps.create_check.outputs.id }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Maven Test
         env:
@@ -339,7 +338,6 @@ jobs:
       - name: Display Check Run URL
         run: |
           echo "::notice title=Test Report Check Run (${{ matrix.targets }})::Check run created: https://github.com/${{ github.repository }}/runs/${{ steps.create_check.outputs.id }}"
-          echo "SMRY: https://github.com/${{ github.repository }}/runs/${{ steps.create_check.outputs.id }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Download and unzip Apache Tomcat ${{ env.TOMCAT_VERSION }}
         if: ${{ matrix.targets == 'tomcat' }}
