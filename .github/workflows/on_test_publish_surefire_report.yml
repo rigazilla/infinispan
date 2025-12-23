@@ -62,6 +62,22 @@ jobs:
             CHECK_RUN_ID=$(cat check-run-id.txt)
             echo "check_run_id=$CHECK_RUN_ID" >> "$GITHUB_OUTPUT"
 
+        - name: Download Check Run ID
+          if: (success() || failure()) && steps.job-status.outputs.job_status == 'success'
+          uses: actions/download-artifact@v7.0.0
+          with:
+            name: check-run-id
+            github-token: ${{ github.token }}
+            run-id: ${{ steps.run_id.outputs.runid }}
+
+        - name: Read Check Run ID
+          if: (success() || failure()) && steps.job-status.outputs.job_status == 'success'
+          id: read_check_id
+          run: |
+            CHECK_RUN_ID=$(cat check-run-id.txt)
+            echo "CHECK_RUN_ID=$CHECK_RUN_ID" >> $GITHUB_ENV
+            echo "check_run_id=$CHECK_RUN_ID" >> $GITHUB_OUTPUT
+
         - name: Publish Test Report
           if: (success() || failure()) && steps.job-status.outputs.job_status == 'success'
           # Waiting for https://github.com/ScaCap/action-surefire-report/pull/251
@@ -79,6 +95,7 @@ jobs:
           if: (success() || failure()) && steps.job-status.outputs.job_status == 'success'
           run: |
             echo "::notice title=Test Report Published::View test report: https://github.com/${{ github.repository }}/runs/${{ steps.read_check_id.outputs.check_run_id }}"
+            echo "SMRY: https://github.com/${{ github.repository }}/runs/${{ steps.read_check_id.outputs.check_run_id }}" >> $GITHUB_STEP_SUMMARY
 
         - name: Set failure check if Publish Test Report step failed
           if: failure() && steps.job-status.outputs.job_status == 'success'
@@ -204,6 +221,22 @@ jobs:
       run: |
         CHECK_RUN_ID=$(cat "check-run-id-${{ matrix.targets }}.txt")
         echo "check_run_id=$CHECK_RUN_ID" >> "$GITHUB_OUTPUT"
+
+    - name: Download Check Run ID
+      if: (success() || failure()) && steps.job-status.outputs.job_status == 'success'
+      uses: actions/download-artifact@v7.0.0
+      with:
+        name: check-run-id-${{ matrix.targets }}
+        github-token: ${{ github.token }}
+        run-id: ${{ steps.run_id.outputs.runid }}
+
+    - name: Read Check Run ID
+      if: (success() || failure()) && steps.job-status.outputs.job_status == 'success'
+      id: read_check_id
+      run: |
+        CHECK_RUN_ID=$(cat check-run-id-${{ matrix.targets }}.txt)
+        echo "CHECK_RUN_ID=$CHECK_RUN_ID" >> $GITHUB_ENV
+        echo "check_run_id=$CHECK_RUN_ID" >> $GITHUB_OUTPUT
 
     - name: Publish Test Report
       if: (success() || failure()) && steps.job-status.outputs.job_status == 'success'
