@@ -95,7 +95,6 @@ jobs:
           if: (success() || failure()) && steps.job-status.outputs.job_status == 'success'
           run: |
             echo "::notice title=Test Report Published::View test report: https://github.com/${{ github.repository }}/runs/${{ steps.read_check_id.outputs.check_run_id }}"
-            echo "SMRY: https://github.com/${{ github.repository }}/runs/${{ steps.read_check_id.outputs.check_run_id }}" >> $GITHUB_STEP_SUMMARY
 
         - name: Set failure check if Publish Test Report step failed
           if: failure() && steps.job-status.outputs.job_status == 'success'
