@@ -103,7 +103,7 @@ jobs:
         - name: Check test number
           id: test-number
           env:
-            MIN_TEST_NUM: 32300
+            MIN_TEST_NUM: 32301
             GH_TOKEN: ${{ github.token }}
           run: |
             if [ "${{ steps.job-status.outputs.job_status }}" != "success" ]; then
