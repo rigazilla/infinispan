@@ -2,7 +2,10 @@ name: Nightly Alt JDK Matrix Test
 
 on:
   schedule:
-    - cron: '42 1 * * *' # Runs every day at 01:42 UTC
+    - cron: '42 1 * * *' # Runs every day at 01:42 UTC on main branch only
+  push:
+    branches:
+      - '16.1.x'
   workflow_dispatch:
     inputs:
       jdk-versions:
@@ -92,7 +95,6 @@ jobs:
     permissions:
       checks: write
     needs: prepare-matrix
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       MAVEN_OPTS: "-Xmx1500m -XX:+HeapDumpOnOutOfMemoryError"
