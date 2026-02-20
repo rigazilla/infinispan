@@ -12,7 +12,7 @@
    <xs:element name="socket-bindings" type="tns:socket-bindings"/>
    <xs:element name="endpoints" type="tns:endpoints">
       <xs:unique name="connector-unique">
-         <xs:selector xpath="./tns:hotrod-connector|./tns:rest-connector|./tns:memcached-connector|./tns:resp-connector"/>
+         <xs:selector xpath="./tns:hotrod-connector|./tns:rest-connector|./tns:memcached-connector|./tns:resp-connector|./tns:grpc-connector"/>
          <xs:field xpath="@name"/>
       </xs:unique>
    </xs:element>
@@ -391,6 +391,7 @@
                <xs:element type="tns:rest-connector" name="rest-connector"/>
                <xs:element type="tns:memcached-connector" name="memcached-connector"/>
                <xs:element type="tns:resp-connector" name="resp-connector"/>
+               <xs:element type="tns:grpc-connector" name="grpc-connector"/>
             </xs:choice>
             <xs:attribute name="socket-binding" type="xs:string" use="required">
                <xs:annotation>
@@ -615,6 +616,31 @@
             <xs:attribute name="security-realm" type="xs:string">
                <xs:annotation>
                   <xs:documentation>Specifies a security realm for the RESP connector.
+                  </xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
+         </xs:extension>
+      </xs:complexContent>
+   </xs:complexType>
+
+   <xs:complexType name="grpc-connector">
+      <xs:complexContent>
+         <xs:extension base="tns:named-protocol-connector">
+            <xs:attribute name="cache" type="xs:string">
+               <xs:annotation>
+                  <xs:documentation>Names the cache that the gRPC connector exposes. The default cache name is ___defaultcache.
+                  </xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="max-inbound-message-size" type="xs:int">
+               <xs:annotation>
+                  <xs:documentation>Sets the maximum size in bytes for inbound messages. Default is 4194304 (4MB).
+                  </xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="max-inbound-metadata-size" type="xs:int">
+               <xs:annotation>
+                  <xs:documentation>Sets the maximum size in bytes for inbound metadata (headers). Default is 8192 (8KB).
                   </xs:documentation>
                </xs:annotation>
             </xs:attribute>

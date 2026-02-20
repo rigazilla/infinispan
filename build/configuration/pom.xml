@@ -133,6 +133,8 @@
       <version.nashorn>15.7</version.nashorn>
       <version.netty>4.1.131.Final</version.netty>
       <version.netty.incubator.iouring>0.0.26.Final</version.netty.incubator.iouring>
+      <version.grpc>1.62.2</version.grpc>
+      <version.protobuf>3.25.3</version.protobuf>
       <version.openjdk.jmh>1.37</version.openjdk.jmh>
       <version.org.wildfly.arquillian>5.1.0.Final</version.org.wildfly.arquillian>
       <version.org.wildfly.elytron>2.8.2.Final</version.org.wildfly.elytron>
