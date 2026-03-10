@@ -261,6 +261,11 @@
             <artifactId>infinispan-server-resp</artifactId>
             <version>${project.version}</version>
          </dependency>
+         <dependency>
+            <groupId>org.infinispan</groupId>
+            <artifactId>infinispan-server-grpc</artifactId>
+            <version>${project.version}</version>
+         </dependency>
          <!-- TODO should be here? -->
          <dependency>
             <groupId>org.infinispan</groupId>
