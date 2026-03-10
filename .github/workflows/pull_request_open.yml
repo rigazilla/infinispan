@@ -62,7 +62,7 @@ jobs:
                 
                 if [[ "$BASE_REF" == "main" ]]; then
                   # For main branch: only apply if no branch matches maj.min.x pattern
-                  if echo "$ALL_BRANCHES" | grep -qE "^${MAJ_MIN}\.[0-9]+\.x$"; then
+                  if echo "$ALL_BRANCHES" | grep -qE "^${MAJ_MIN}\.x$"; then
                     echo "  Skipping $LABEL: branch ${MAJ_MIN}.x exists (not for main)"
                     continue
                   fi
