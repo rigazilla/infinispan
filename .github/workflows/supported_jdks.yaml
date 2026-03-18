@@ -26,13 +26,13 @@ jobs:
       fail-fast: false
       matrix:
         jdk:
-          - '26-ea'
+          - '27-ea'
 
     steps:
       - uses: actions/checkout@v6
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v5.2.0
         with:
           java-version: ${{ matrix.jdk }}
           distribution: 'zulu'
