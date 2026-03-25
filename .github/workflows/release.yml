@@ -145,7 +145,7 @@ jobs:
 
       - if: ${{ matrix.os == 'windows-2022' }}
         name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v2.0.0
+        uses: microsoft/setup-msbuild@v3.0.0
 
       - uses: graalvm/setup-graalvm@v1
         with:
@@ -210,7 +210,7 @@ jobs:
   operator-2-4-x:
     needs: images-legacy
     if: contains(inputs.version, '.Final') && (startsWith(inputs.version, '15.'))
-    uses: infinispan/infinispan-operator/.github/workflows/add_operand.yml@2.5.4
+    uses: infinispan/infinispan-operator/.github/workflows/add_operand.yml@2.5.5
     secrets: inherit
     with:
       image: quay.io/infinispan/server:${{ inputs.version }}
@@ -221,9 +221,15 @@ jobs:
     needs: published
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+            app-id: ${{ secrets.GH_APP_ISPN_ID }}
+            private-key: ${{ secrets.GH_APP_ISPN_KEY }}
+
       - name: Update GitHub Organization Variable to next release version
         shell: bash
         env:
-          GH_TOKEN: "${{ secrets.INFINISPAN_RELEASE_TOKEN }}"
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: >
           gh variable set "RELEASE_$(echo '${{ inputs.version }}' | cut -f 1-2 -d '.' | tr . _)_VERSION" -b "${{ inputs.nextVersion }}" --org infinispan;
