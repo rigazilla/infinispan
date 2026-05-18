@@ -9,6 +9,8 @@
       <relativePath>build/configuration/pom.xml</relativePath>
    </parent>
 
+   <!-- just some whitespace changes to trigger the CI action -->
+
    <artifactId>infinispan-parent</artifactId>
    <version>16.2.0-SNAPSHOT</version>
    <packaging>pom</packaging>
