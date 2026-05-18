@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package org.infinispan.grpc;
+option java_package = "org.infinispan.server.grpc.proto";
+option java_outer_classname = "CacheProto";
+option go_package = "github.com/infinispan/infinispan/api/grpc";
+
+import "common.proto";
+
+// Cache service for basic CRUD operations
+service CacheService {
+  // Put a key-value pair into the cache
+  rpc Put(PutRequest) returns (PutResponse);
+
+  // Get a value by key
+  rpc Get(GetRequest) returns (GetResponse);
+
+  // Remove a key from the cache
+  rpc Remove(RemoveRequest) returns (RemoveResponse);
+
+  // Check if cache contains a key
+  rpc ContainsKey(ContainsKeyRequest) returns (ContainsKeyResponse);
+
+  // Get the cache size
+  rpc Size(SizeRequest) returns (SizeResponse);
+
+  // Clear all entries from cache
+  rpc Clear(ClearRequest) returns (ClearResponse);
+}
+
+message PutRequest {
+  string cache_name = 1;
+  bytes key = 2;
+  bytes value = 3;
+  optional int64 lifespan_ms = 4;
+  optional int64 max_idle_ms = 5;
+}
+
+message PutResponse {
+  Status status = 1;
+  optional bytes previous_value = 2;
+}
+
+message GetRequest {
+  string cache_name = 1;
+  bytes key = 2;
+}
+
+message GetResponse {
+  Status status = 1;
+  optional bytes value = 2;
+}
+
+message RemoveRequest {
+  string cache_name = 1;
+  bytes key = 2;
+}
+
+message RemoveResponse {
+  Status status = 1;
+  optional bytes previous_value = 2;
+}
+
+message ContainsKeyRequest {
+  string cache_name = 1;
+  bytes key = 2;
+}
+
+message ContainsKeyResponse {
+  Status status = 1;
+  bool contains = 2;
+}
+
+message SizeRequest {
+  string cache_name = 1;
+}
+
+message SizeResponse {
+  Status status = 1;
+  int64 size = 2;
+}
+
+message ClearRequest {
+  string cache_name = 1;
+}
+
+message ClearResponse {
+  Status status = 1;
+}

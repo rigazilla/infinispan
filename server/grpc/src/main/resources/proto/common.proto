@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package org.infinispan.grpc;
+option java_package = "org.infinispan.server.grpc.proto";
+option java_outer_classname = "CommonProto";
+option go_package = "github.com/infinispan/infinispan/api/grpc";
+
+// Common types used across services
+message Status {
+  bool success = 1;
+  optional string error_message = 2;
+}
