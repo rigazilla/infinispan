@@ -1,4 +1,4 @@
-[![Infinispan](https://design.jboss.org/infinispan/logo/final/PNG/infinispan_logo_rgb_lightbluewhite_darkblue_600px.png)](https://infinispan.org/)
+  [![Infinispan](https://design.jboss.org/infinispan/logo/final/PNG/infinispan_logo_rgb_lightbluewhite_darkblue_600px.png)](https://infinispan.org/)
 
 [![Used by](https://img.shields.io/badge/used%20by-Keycloak%20|%20Hibernate%20|%20Debezium%20%26%20more-003D6B?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](https://github.com/infinispan/infinispan/network/dependents)
 
