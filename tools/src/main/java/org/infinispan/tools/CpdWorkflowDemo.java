@@ -39,27 +39,6 @@ public final class CpdWorkflowDemo {
    }
 
    public static List<Integer> processNumbersB(List<Integer> input) {
-      List<Integer> result = new ArrayList<>();
-      for (Integer value : input) {
-         if (value == null) {
-            continue;
-         }
-         int doubled = value * 2;
-         int squared = doubled * doubled;
-         int adjusted = squared + 17;
-         int rescaled = adjusted / 3;
-         int offset = rescaled + 42;
-         if (offset > 2000) {
-            result.add(offset - 2000);
-         } else if (offset > 1000) {
-            result.add(offset - 1000);
-         } else if (offset < 0) {
-            result.add(-offset);
-         } else {
-            result.add(offset);
-         }
-      }
-      return result;
+      return processNumbersA(input);
    }
 }
-
